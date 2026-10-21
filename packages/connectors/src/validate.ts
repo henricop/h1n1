@@ -74,10 +74,15 @@ export const SIVEP_COUNT_INDICATORS: readonly string[] = [
 ].map(S);
 export const SIVEP_STRATUM_DIMENSION = 'age_group';
 const SIVEP_NATIONAL = 'BRA';
+/** CDF do atraso de notificação: por (geo, período) os 13 valores delay_weeks=0..12 devem existir e ser não decrescentes. */
+export const DELAY_CDF_INDICATOR = 'sivep_reporting_delay_cdf';
+export const DELAY_CDF_DIMENSION = 'delay_weeks';
+export const DELAY_CDF_MAX_D = 12;
 
 const CROSS_INDICATORS: ReadonlySet<string> = new Set([
   ...CROSS_RULES.flatMap((r) => [...r.lhs, r.rhs]),
   ...SIVEP_COUNT_INDICATORS,
+  DELAY_CDF_INDICATOR,
 ]);
 
 class Violations {
@@ -156,6 +161,34 @@ export class CrossValidator {
         const nat = natByStratum.get(natKey);
         if (nat === undefined) continue;
         if (sum > nat) v.add('sivep: soma das UFs ≤ total nacional', `${natKey}: ${sum} > ${nat}`);
+      }
+    }
+    // (3) sivep_reporting_delay_cdf: 13 estratos por (geo, período), monotônico não decrescente em d (nulos ignorados)
+    if (this.seen.has(DELAY_CDF_INDICATOR)) {
+      const series = new Map<string, Array<number | null | undefined>>();
+      for (const [key, cell] of this.cells) {
+        const x = cell.get(DELAY_CDF_INDICATOR);
+        if (x === undefined) continue;
+        const [level, geo, period, stratum] = key.split('|') as [string, string, string, string];
+        const m = /^delay_weeks=(\d+)$/.exec(stratum);
+        if (!m) continue;
+        const d = Number(m[1]);
+        const sKey = `${level}|${geo}|${period}`;
+        let arr = series.get(sKey);
+        if (!arr) { arr = new Array(DELAY_CDF_MAX_D + 1).fill(undefined); series.set(sKey, arr); }
+        if (d <= DELAY_CDF_MAX_D) arr[d] = x;
+      }
+      for (const [sKey, arr] of series) {
+        const missing: number[] = [];
+        for (let d = 0; d <= DELAY_CDF_MAX_D; d++) if (arr[d] === undefined) missing.push(d);
+        if (missing.length) v.add('sivep: delay_cdf com estratos delay_weeks ausentes', `${sKey}: faltam d=${missing.join(',')}`);
+        let prev: number | null = null;
+        for (let d = 0; d <= DELAY_CDF_MAX_D; d++) {
+          const x = arr[d];
+          if (x === undefined || x === null) continue;
+          if (prev !== null && x < prev) { v.add('sivep: delay_cdf não decrescente em delay_weeks', `${sKey}: d=${d} ${x} < ${prev}`); break; }
+          prev = x;
+        }
       }
     }
     return v.list();

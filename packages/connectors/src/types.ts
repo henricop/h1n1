@@ -5,8 +5,10 @@ import type { Db } from '@h1n1/db';
 export interface ConnectorOptions {
   /** sivep: ano do arquivo INFLUD */
   year?: number;
-  /** flunet: lista de ISO3 */
+  /** flunet: lista de ISO3 (ou 'ALL' para a view inteira) */
   countries?: string[];
+  /** flunet: `--all` = todos os países (equivale a `--country ALL`) */
+  all?: boolean;
   /** ibge: intervalo de anos */
   years?: number[];
   /** limite de linhas de microdados (desenvolvimento) */
@@ -51,7 +53,10 @@ export interface NormalizeContext {
   snapshotId: string;
   options: ConnectorOptions;
   log: (msg: string) => void;
-  /** Linhas geo a garantir na tabela geo (upsert) antes da validação */
+  /**
+   * Linhas geo a garantir na tabela geo (upsert) antes da validação. Pode ser chamado durante a normalização
+   * em streaming: o código passa a ser aceito pelo validador imediatamente e o upsert ocorre antes da publicação.
+   */
   ensureGeo: (entries: GeoEntry[]) => void;
   /** Contadores e notas que vão para o validation_report / ingestion_runs */
   report: Record<string, unknown>;

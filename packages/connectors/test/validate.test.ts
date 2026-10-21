@@ -157,5 +157,27 @@ describe('validate: invariantes cruzadas', () => {
     expect(r.connector_errors).toEqual(['2 linha(s) duplicada(s)']);
     expect(r.errors.join(' ')).toMatch(/conector: 2 linha/);
   });
-});
 
+  it('sivep_reporting_delay_cdf: 13 estratos por (geo, período), não decrescente em delay_weeks, 0..100', () => {
+    const cdf = (values: Array<number | null>, geo = 'BRA') => values.map((v, d) => makeObs({
+      indicator_id: 'sivep_reporting_delay_cdf', snapshot_id: 's', geo_level: geo === 'BRA' ? 'country' : 'state', geo_code: geo,
+      period_type: 'year', period: '2026', value: v, denominator: 500, stratum: { delay_weeks: String(d) },
+    }));
+    const okVals = [10, 30, 50, 60, 70, 80, 85, 90, 95, 97, 98, 99, 100];
+    expect(validateObservations(cdf(okVals), { validGeoCodes: geo, previousCounts: new Map() }).ok).toBe(true);
+    // nulos (n < min_denominator) são ignorados na monotonia
+    expect(validateObservations(cdf(okVals.map(() => null)), { validGeoCodes: geo, previousCounts: new Map() }).ok).toBe(true);
+    const bad = cdf([10, 30, 20, 60, 70, 80, 85, 90, 95, 97, 98, 99, 100]);
+    const r = validateObservations(bad, { validGeoCodes: geo, previousCounts: new Map() });
+    expect(r.ok).toBe(false);
+    expect(r.cross_checks.map((c) => c.rule)).toContain('sivep: delay_cdf não decrescente em delay_weeks');
+    expect(r.cross_checks[0]!.samples[0]).toMatch(/country\|BRA\|2026: d=2 20 < 30/);
+    const missing = cdf(okVals).filter((o) => o.stratum.delay_weeks !== '5');
+    const r2 = validateObservations(missing, { validGeoCodes: geo, previousCounts: new Map() });
+    expect(r2.cross_checks.map((c) => c.rule)).toContain('sivep: delay_cdf com estratos delay_weeks ausentes');
+    const over = cdf([...okVals.slice(0, 12), 101]);
+    expect(validateObservations(over, { validGeoCodes: geo, previousCounts: new Map() }).errors.join(' ')).toMatch(/fora de 0..100/);
+    const badType = cdf(okVals).map((o) => ({ ...o, period_type: 'epiweek' as const, period: '2026-W01' }));
+    expect(validateObservations(badType, { validGeoCodes: geo, previousCounts: new Map() }).errors.join(' ')).toMatch(/period_type/);
+  });
+});

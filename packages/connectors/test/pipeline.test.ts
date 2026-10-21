@@ -277,4 +277,78 @@ describe('pipeline fim a fim (PGlite memory://)', () => {
     expect(ok.status).toBe('ok');
     expect((await current(IND_C))!.snapshot_id).toBe(ok.snapshotId);
   });
+
+  it('normalize em streaming (AsyncIterable): lotes por país, geo nova garantida durante o fluxo e aceita pela validação', async () => {
+    const stream: Connector = {
+      id: 'fake-stream', sourceId: 'INT-01', indicators: [IND_D],
+      async fetch(ctx): Promise<RawSnapshot> {
+        const body = 'stream-' + Math.random();
+        const path = join(ctx.tmpDir, `stream_${Date.now()}.ndjson`);
+        await writeFile(path, body);
+        return { url: 'https://example.test/stream', urls: ['https://example.test/stream'], path, ext: 'ndjson', sha256: sha256Hex(body), bytes: body.length,
+          content_type: 'application/x-ndjson', license: 'teste', data_as_of: '2026-10-11', fetched_at: new Date().toISOString() };
+      },
+      async *normalize(_raw, ctx): AsyncIterable<Observation[]> {
+        for (const geo of ['BRA', 'ZZQ']) {
+          // país que não existe na tabela geo chega no meio do fluxo
+          ctx.ensureGeo([{ code: geo, level: 'country', name: geo === 'ZZQ' ? 'Zedônia' : 'Brasil', parent_code: 'WLD' }]);
+          yield weeks(5, 3).map((r) => makeObs({ indicator_id: IND_D, snapshot_id: ctx.snapshotId, geo_level: 'country', geo_code: geo, period_type: 'isoweek', period: r.period, value: r.value }));
+          ctx.countRowsIn(5);
+        }
+      },
+    };
+    const r = await runConnector(stream, { force: true }, { db, snapshotRoot: root, log });
+    expect(r.status).toBe('ok');
+    expect(r.rowsIn).toBe(10);
+    expect(r.rowsOut).toBe(10);
+    const g = await db.query<{ name: string; level: string }>(`select name, level from geo where code = 'ZZQ'`);
+    expect(g.rows[0]).toEqual({ name: 'Zedônia', level: 'country' });
+    const s = await getSeries(db, { indicator: IND_D, geoCode: 'ZZQ' });
+    expect(s!.observations).toHaveLength(5);
+  });
+
+  it('carry-forward com period_type year (sivep_reporting_delay_cdf): ano fora da cobertura é mantido da publicação vigente', async () => {
+    const DELAY = 'sivep_reporting_delay_cdf';
+    const cdfConnector = (period: string, values: number[], dataAsOf: string): Connector => ({
+      id: 'fake-cdf', sourceId: 'BR-03', indicators: [DELAY],
+      async fetch(ctx): Promise<RawSnapshot> {
+        const body = JSON.stringify({ period, values });
+        const path = join(ctx.tmpDir, `cdf_${Date.now()}.json`);
+        await writeFile(path, body);
+        return { url: 'https://example.test/cdf', urls: ['https://example.test/cdf'], path, ext: 'json', sha256: sha256Hex(body), bytes: body.length,
+          content_type: 'application/json', license: 'teste', data_as_of: dataAsOf, fetched_at: new Date().toISOString() };
+      },
+      async normalize(_raw, ctx): Promise<Observation[]> {
+        ctx.countRowsIn(values.length);
+        ctx.setCoverage(DELAY, period, period);
+        return values.map((v, d) => makeObs({ indicator_id: DELAY, snapshot_id: ctx.snapshotId, geo_level: 'country', geo_code: 'BRA', period_type: 'year', period, value: v, denominator: 500, stratum: { delay_weeks: String(d) } }));
+      },
+    });
+    const vals2025 = [10, 30, 50, 60, 70, 80, 85, 90, 95, 97, 98, 99, 100];
+    const r1 = await runConnector(cdfConnector('2025', vals2025, '2025-12-20'), {}, { db, snapshotRoot: root, log });
+    expect(r1.status).toBe('ok');
+    const vals2026 = [20, 40, 55, 65, 75, 82, 88, 92, 96, 98, 99, 99.5, 100];
+    const r2 = await runConnector(cdfConnector('2026', vals2026, '2026-10-19'), {}, { db, snapshotRoot: root, log });
+    expect(r2.status).toBe('ok');
+    expect(r2.rowsOut).toBe(26); // 13 novas + 13 carregadas adiante
+    const rows = await db.query<{ period: string; d: string; value: string; flags: string[] }>(
+      `select period, stratum->>'delay_weeks' as d, value::text as value, quality_flags as flags from observations
+        where indicator_id = $1 and snapshot_id = $2::uuid order by period, (stratum->>'delay_weeks')::int`, [DELAY, r2.snapshotId]);
+    expect(rows.rows).toHaveLength(26);
+    expect(rows.rows.filter((x) => x.period === '2025').every((x) => x.flags.includes('carried_forward'))).toBe(true);
+    expect(rows.rows.filter((x) => x.period === '2026').every((x) => !x.flags.includes('carried_forward'))).toBe(true);
+    expect(Number(rows.rows.find((x) => x.period === '2025' && x.d === '0')!.value)).toBe(10);
+    expect(Number(rows.rows.find((x) => x.period === '2026' && x.d === '0')!.value)).toBe(20);
+    expect((await current(DELAY))!.data_as_of).toBe('2026-10-19');
+    // reprocessar 2026 com valores novos sobrescreve 2026 e continua carregando 2025 adiante
+    const r3 = await runConnector(cdfConnector('2026', vals2026.map((v) => Math.min(100, v + 1)), '2026-10-26'), {}, { db, snapshotRoot: root, log });
+    expect(r3.status).toBe('ok');
+    const again = await db.query<{ period: string; n: string }>(`select period, count(*)::text as n from observations where indicator_id = $1 and snapshot_id = $2::uuid group by period order by period`, [DELAY, r3.snapshotId]);
+    expect(again.rows).toEqual([{ period: '2025', n: '13' }, { period: '2026', n: '13' }]);
+    // CDF não monotônica → quarentena, vigente permanece
+    const bad = await runConnector(cdfConnector('2026', [50, 40, ...vals2026.slice(2)], '2026-11-02'), {}, { db, snapshotRoot: root, log });
+    expect(bad.status).toBe('quarantined');
+    expect(String(bad.validation.errors)).toMatch(/delay_cdf não decrescente/);
+    expect((await current(DELAY))!.snapshot_id).toBe(r3.snapshotId);
+  });
 });

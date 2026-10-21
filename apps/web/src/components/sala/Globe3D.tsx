@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Globe, { type GlobeMethods } from 'react-globe.gl';
 import { MeshPhongMaterial } from 'three';
 import { feature } from 'topojson-client';
+import { polygonToCells } from 'h3-js';
 import type { Feature, Geometry } from 'geojson';
 import type { GlobeCountry } from '@/lib/api';
 import { COUNTRIES_TOPOJSON_URL } from '@/lib/geo-urls';
@@ -18,6 +19,16 @@ interface Props {
   playing: boolean;
   dataAsOf: string;
   onReady?: () => void;
+}
+
+function h3Accepts(geom: Geometry): boolean {
+  try {
+    const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : [];
+    for (const poly of polys) polygonToCells(poly as number[][][], 3, true);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 interface Point { iso3: string; name: string; lat: number; lng: number; value: number; t: number }
@@ -38,7 +49,9 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
       .then((topo) => {
         if (!alive) return;
         const fc = feature(topo, topo.objects.countries) as unknown as { features: Feature<Geometry>[] };
-        setLand(fc.features);
+        // O H3 (hexágonos do three-globe) rejeita algumas geometrias do atlas 110m (ex.: polígonos que
+        // cruzam a linha de data ou a Antártida). Testamos cada feição antes de entregá-la ao globo.
+        setLand(fc.features.filter((f) => f.id !== '010' && h3Accepts(f.geometry)));
       })
       .catch(() => setLand([]));
     return () => {

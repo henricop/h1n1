@@ -66,9 +66,7 @@ export async function GlobePoster({ countries, weekIndex, week, max, dataAsOf, i
           <g key={d.iso3}>
             <circle cx={d.x} cy={d.y} r={d.r * 1.8} fill="#ff4fd8" fillOpacity={0.12} />
             <circle cx={d.x} cy={d.y} r={d.r} fill="#ff4fd8" fillOpacity={0.75} stroke="#ffd1f3" strokeWidth={0.6}>
-              <title>
-                {d.name}: {new Intl.NumberFormat('pt-BR').format(d.v)} detecções na semana {week}
-              </title>
+              <title>{`${d.name}: ${new Intl.NumberFormat('pt-BR').format(d.v)} detecções na semana ${week}`}</title>
             </circle>
           </g>
         ))}

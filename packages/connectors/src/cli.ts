@@ -16,11 +16,11 @@ function snapshotRoot(): string {
 
 function usage(): void {
   console.log(`uso:
-  pnpm ingest <conector> [--year 2026] [--country BRA,USA] [--years 2021-2025] [--max-rows N] [--force] [--dry-run]
+  pnpm ingest <conector> [--year 2026] [--country BRA,USA|ALL] [--all] [--years 2021-2025] [--max-rows N] [--force] [--dry-run]
   pnpm ingest status     # frescor por indicador (getFreshness)
   pnpm ingest list       # conectores disponíveis
 --max-rows N / SIVEP_MAX_ROWS: execução PARCIAL (desenvolvimento) — a snapshot fica em quarentena e nunca é publicada.
---country: apenas códigos ISO3 (três letras maiúsculas).
+--country: apenas códigos ISO3 (três letras maiúsculas) ou ALL; --all = --country ALL (flunet: view VIW_FNT inteira).
 conectores: ${CONNECTORS.map((c) => c.id).join(', ')}`);
 }
 
@@ -38,6 +38,7 @@ function parseArgs(argv: string[]): { cmd: string | undefined; options: Connecto
     else if (a.startsWith('--years=')) options.years = parseYearRange(a.slice(8));
     else if (a === '--max-rows') options.maxRows = Number(next());
     else if (a.startsWith('--max-rows=')) options.maxRows = Number(a.slice(11));
+    else if (a === '--all') options.all = true;
     else if (a === '--force') options.force = true;
     else if (a === '--dry-run') options.dryRun = true;
     else if (a === '-h' || a === '--help') positional.push('help');

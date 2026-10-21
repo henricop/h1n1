@@ -220,16 +220,23 @@ export async function runConnector(connector: Connector, inputOptions: Connector
     const report: Record<string, unknown> = {};
     const validGeo = new Set((await db.query<{ code: string }>('select code from geo')).rows.map((r) => r.code));
     const validator = new Validator({ validGeoCodes: validGeo, previousCounts: new Map() }, connector.indicators);
+    // geo garantida pelo conector (também em streaming): aceita pelo validador na hora; upsert antes da validação/publicação
+    let geoUpserted = 0;
+    const upsertPendingGeo = async () => {
+      if (dryRun || geoEntries.length <= geoUpserted) return;
+      const n = await upsertGeo(db, geoEntries.slice(geoUpserted));
+      geoUpserted = geoEntries.length;
+      log(`[${connector.id}] geo: ${n} código(s) garantido(s)`);
+    };
     const ctx = {
       snapshotId: ctxSnapshotId, options, log, report,
-      ensureGeo: (e: GeoEntry[]) => { geoEntries.push(...e); },
+      ensureGeo: (e: GeoEntry[]) => { geoEntries.push(...e); for (const g of e) validGeo.add(g.code); },
       countRowsIn: (n: number) => { result.rowsIn += n; },
       addError: (msg: string) => { validator.addError(msg); },
       setCoverage: (id: string, from: string, to: string) => { coverage.set(id, { from, to }); },
     };
     const out = await connector.normalize(raw, ctx);
     const batches: AsyncIterable<Observation[]> | Iterable<Observation[]> = Array.isArray(out) ? [out] : out;
-    for (const g of geoEntries) validGeo.add(g.code);
 
     let pending: Observation[] = [];
     const flush = async () => {
@@ -239,7 +246,7 @@ export async function runConnector(connector: Connector, inputOptions: Connector
       pending = [];
     };
     // geo precisa existir antes das observações? Não há FK, mas garantimos antes da validação/publicação.
-    if (!dryRun && geoEntries.length) log(`[${connector.id}] geo: ${await upsertGeo(db, geoEntries)} código(s) garantido(s)`);
+    await upsertPendingGeo();
     for await (const batch of batches) {
       for (const o of batch) {
         if (o.snapshot_id !== ctxSnapshotId) o.snapshot_id = ctxSnapshotId;
@@ -249,12 +256,8 @@ export async function runConnector(connector: Connector, inputOptions: Connector
       }
     }
     await flush();
-    // geo entries que chegaram durante normalize (streams) — garantir de novo
-    if (!dryRun && geoEntries.length) {
-      const missing = geoEntries.filter((g) => !validGeo.has(g.code));
-      if (missing.length) await upsertGeo(db, missing);
-    }
-    for (const g of geoEntries) validGeo.add(g.code);
+    // geo entries que chegaram durante normalize (streams) — garantir antes da validação
+    await upsertPendingGeo();
     log(`[${connector.id}] normalização: ${result.rowsIn} linha(s) lida(s) → ${result.rowsOut} observação(ões)`);
     // microdados: o bruto já cumpriu seu papel; só agregados ficam
     await discardRaw();

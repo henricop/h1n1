@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BR_STATES, INDICATORS, stateGeoCode, type Observation } from '@h1n1/core';
-import { aggregateSivepCsv, findSivepUrl, dataAsOfFromUrl, sivepConnector, SIVEP_INDICATORS } from '../src/connectors/sivep.js';
+import { aggregateSivepCsv, findSivepUrl, dataAsOfFromUrl, sivepConnector, SIVEP_INDICATORS, DELAY_CDF_ID, delayWindow } from '../src/connectors/sivep.js';
 import { validateObservations } from '../src/validate.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -29,7 +29,7 @@ const base = { SG_UF: 'SP', CLASSI_FIN: '1', PCR_FLUASU: '1', TP_FLU_PCR: '1', E
 
 beforeAll(async () => {
   tmp = mkdtempSync(join(tmpdir(), 'h1n1-sivep-'));
-  const r = await aggregateSivepCsv(fixture, 2026);
+  const r = await aggregateSivepCsv(fixture, 2026, { dataAsOf: '2026-10-19' });
   obs = r.observations;
   summary = r.summary;
 });
@@ -59,8 +59,8 @@ describe('sivep normalize (agregação em streaming)', () => {
   });
 
   it('emite zeros explícitos para todas as células de SE1 até a última SE com dado', () => {
-    // 12 semanas × (8 indicadores × 28 geos × (1 total + 7 faixas) + 1 completude)
-    expect(obs).toHaveLength(12 * (8 * 28 * 8 + 1));
+    // 12 semanas × (8 indicadores × 28 geos × (1 total + 7 faixas) + 1 completude) + atraso (28 geos × 13 d)
+    expect(obs).toHaveLength(12 * (8 * 28 * 8 + 1) + 28 * 13);
     expect(get('sivep_srag_notifications', 'BR-AC', '2026-W03')!.value).toBe(0);
     expect(get('sivep_srag_ah1n1pdm09_confirmed', 'BRA', '2026-W01', { age_group: '65+' })!.value).toBe(0);
   });
@@ -195,7 +195,7 @@ describe('sivep normalize (agregação em streaming)', () => {
   });
 
   it('respeita --max-rows', async () => {
-    const r = await aggregateSivepCsv(fixture, 2026, 10);
+    const r = await aggregateSivepCsv(fixture, 2026, { maxRows: 10 });
     expect(r.summary.rows_total).toBe(10);
   });
 
@@ -205,5 +205,99 @@ describe('sivep normalize (agregação em streaming)', () => {
     expect(findSivepUrl(html, 2026)).toBe('https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SRAG/2026/INFLUD26-19-10-2026.csv');
     expect(findSivepUrl(html, 2024)).toBeNull();
     expect(dataAsOfFromUrl('https://x/SRAG/2026/INFLUD26-19-10-2026.csv')).toBe('2026-10-19');
+  });
+
+  it('sivep_reporting_delay_cdf no fixture de 30 linhas: 28 geos × 13 d, valores nulos (n < 100), denominador = n', () => {
+    const delay = obs.filter((o) => o.indicator_id === DELAY_CDF_ID);
+    expect(delay).toHaveLength(28 * 13);
+    expect(delay.every((o) => o.period_type === 'year' && o.period === '2026' && o.value === null)).toBe(true);
+    // 21 linhas CLASSI_FIN=1 do fixture (2026-W10/W12) caem na janela 2025-07-21..2026-07-19
+    expect(get(DELAY_CDF_ID, 'BRA', '2026', { delay_weeks: '0' })!.denominator).toBe(21);
+    expect(get(DELAY_CDF_ID, 'BR-AC', '2026', { delay_weeks: '12' })!.denominator).toBe(0);
+  });
+});
+
+describe('sivep_reporting_delay_cdf (fixture sintética)', () => {
+  const onset = '2026-03-01'; // SE 10/2026 (domingo)
+  const plus = (days: number) => { const d = new Date(Date.UTC(2026, 2, 1) + days * 86_400_000); return d.toISOString().slice(0, 10); };
+  const row = (o: Record<string, string>) => ({ ...base, DT_SIN_PRI: onset, SEM_PRI: '10', DT_NOTIFIC: plus(2), DT_DIGITA: plus(3), ...o });
+  let r: Awaited<ReturnType<typeof aggregateSivepCsv>>;
+  const cdf = (geo: string, d: number) => r.observations.find((o) => o.indicator_id === DELAY_CDF_ID && o.geo_code === geo && o.stratum.delay_weeks === String(d))!;
+
+  beforeAll(async () => {
+    const rows: Array<Record<string, string>> = [
+      ...Array.from({ length: 60 }, () => row({ DT_DIGITA: plus(3) })),              // SP, 0 semanas
+      ...Array.from({ length: 30 }, () => row({ DT_DIGITA: plus(8) })),              // SP, 1 semana
+      ...Array.from({ length: 20 }, () => row({ DT_DIGITA: plus(14) })),             // SP, 2 semanas
+      ...Array.from({ length: 10 }, () => row({ DT_DIGITA: plus(100) })),            // SP, > 12 semanas (só no n)
+      row({ DT_DIGITA: plus(-5) }),                                                   // SP, negativo → 0
+      row({ DT_DIGITA: '', DT_NOTIFIC: plus(8) }),                                    // SP, sem DT_DIGITA → DT_NOTIFIC (1 semana)
+      row({ DT_DIGITA: '', DT_NOTIFIC: '' }),                                         // SP, sem data de digitação: ignorada (contada)
+      ...Array.from({ length: 5 }, () => row({ SG_UF: 'RJ', DT_DIGITA: plus(3) })),  // RJ, n = 5 < 100 → nulo
+      ...Array.from({ length: 2 }, () => row({ SG_UF: '', DT_DIGITA: plus(3) })),    // sem UF: só no nacional
+      row({ CLASSI_FIN: '4' }),                                                       // não influenza: fora do universo
+      row({ DT_SIN_PRI: '2026-08-02', SEM_PRI: '32', DT_DIGITA: '2026-08-05' }),      // 13 semanas recentes: fora da janela
+      row({ DT_SIN_PRI: '2025-10-05', SEM_PRI: '40', DT_DIGITA: '2025-10-08' }),      // na janela, mas ano epidemiológico 2025: fora do arquivo 2026
+    ];
+    const path = writeCsv('delay.csv', rows);
+    r = await aggregateSivepCsv(path, 2026, { dataAsOf: '2026-10-19' });
+  });
+
+  it('janela: primeiros sintomas entre 65 e 13 semanas antes de data_as_of; período = ano epidemiológico de data_as_of', () => {
+    expect(delayWindow('2026-10-19')).toEqual({ data_as_of: '2026-10-19', period: '2026', from: '2025-07-21', to: '2026-07-19' });
+    expect(delayWindow('2026-01-04').period).toBe('2026');
+    expect(delayWindow('2025-12-27').period).toBe('2025');
+  });
+
+  it('CDF por geo: value = 100 × (atraso ≤ d) / n, denominator = n; negativos → 0; DT_NOTIFIC como fallback; ausentes ignorados', () => {
+    // SP: n = 60 + 30 + 20 + 10 + 1 (negativo) + 1 (DT_NOTIFIC) = 122
+    expect(cdf('BR-SP', 0).denominator).toBe(122);
+    expect(cdf('BR-SP', 0).value).toBeCloseTo(100 * 61 / 122, 3);
+    expect(cdf('BR-SP', 1).value).toBeCloseTo(100 * 92 / 122, 3);
+    expect(cdf('BR-SP', 2).value).toBeCloseTo(100 * 112 / 122, 3);
+    expect(cdf('BR-SP', 12).value).toBeCloseTo(100 * 112 / 122, 3);
+    // BRA: SP 122 + RJ 5 + sem UF 2 = 129
+    expect(cdf('BRA', 0).denominator).toBe(129);
+    expect(cdf('BRA', 0).value).toBeCloseTo(100 * 68 / 129, 3);
+    expect(cdf('BRA', 1).value).toBeCloseTo(100 * 99 / 129, 3);
+    expect(cdf('BRA', 12).value).toBeCloseTo(100 * 119 / 129, 3);
+    expect(cdf('BRA', 0).quality_flags).toContain('uf_ignored');
+    expect(cdf('BR-SP', 0).quality_flags).not.toContain('uf_ignored');
+    // RJ: n = 5 < 100 → valor nulo, denominador preservado; UF sem registros: n = 0
+    expect(cdf('BR-RJ', 3)).toMatchObject({ value: null, denominator: 5 });
+    expect(cdf('BR-AM', 3)).toMatchObject({ value: null, denominator: 0 });
+    for (const geo of ['BRA', 'BR-SP']) {
+      const vals = Array.from({ length: 13 }, (_, d) => cdf(geo, d).value!);
+      expect(vals.every((v, i) => i === 0 || v >= vals[i - 1]!)).toBe(true);
+      expect(vals.every((v) => v >= 0 && v <= 100)).toBe(true);
+    }
+    const o = cdf('BRA', 0);
+    expect(o).toMatchObject({ period_type: 'year', period: '2026', period_start: '2026-01-01', period_end: '2026-12-31', geo_level: 'country', update_status: 'provisional' });
+    expect(cdf('BR-SP', 0).geo_level).toBe('state');
+    expect(r.observations.filter((o) => o.indicator_id === DELAY_CDF_ID)).toHaveLength(28 * 13);
+  });
+
+  it('delay_window_coverage: janela cruzando anos restrita ao ano epidemiológico do arquivo; contadores', () => {
+    expect(r.delay_window_coverage).toMatchObject({
+      data_as_of: '2026-10-19', period: '2026', window_from: '2025-07-21', window_to: '2026-07-19', window_weeks: 52, excluded_recent_weeks: 13,
+      file_year: 2026, file_year_from: '2025-12-28', effective_from: '2025-12-28', effective_to: '2026-07-19', effective_weeks: 29.1,
+      observed_onset_min: '2026-03-01', observed_onset_max: '2026-03-01',
+      rows_in_window: 130, rows_missing_digita: 1, rows_negative_delay: 1, rows_uf_ignored: 2, n_bra: 129, ufs_below_min_denominator: 26, min_denominator: 100,
+    });
+    // a linha de 2025 está na janela mas fora do arquivo (ano epidemiológico 2025); a de agosto está nas 13 semanas excluídas
+    expect(r.summary.rows_outside_year).toBe(1);
+  });
+
+  it('sem data_as_of o indicador não é emitido e a cobertura é nula', async () => {
+    const r2 = await aggregateSivepCsv(fixture, 2026);
+    expect(r2.delay_window_coverage).toBeNull();
+    expect(r2.observations.some((o) => o.indicator_id === DELAY_CDF_ID)).toBe(false);
+  });
+
+  it('saída sintética passa na validação (monotonia e 0..100)', () => {
+    const geo = new Set(['BRA', ...BR_STATES.map((s) => stateGeoCode(s.uf))]);
+    const v = validateObservations(r.observations, { validGeoCodes: geo, previousCounts: new Map() }, SIVEP_INDICATORS);
+    expect(v.errors).toEqual([]);
+    expect(v.ok).toBe(true);
   });
 });
