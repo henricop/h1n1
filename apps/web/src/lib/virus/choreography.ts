@@ -240,3 +240,17 @@ export function ambient(t: number): Ambient {
 
 /** Velocidade angular (rad/s) do giro ambiente quando `spin` = 1. */
 export const SPIN_RATE = 0.22;
+
+/** Núcleo sugerido da célula (quadro micro): destino das RNPs em `release`. */
+export const NUCLEUS = { x: 4.2, y: -0.3, z: -0.9 } as const;
+/** Raio da vesícula que envolve o vírion em `engulf` (cabe o vírion com espinhos). */
+export const VESICLE_RADIUS = 1.5;
+/** Posição dos brotos (novos vírions) na face externa da membrana, em `bud` (quadro micro). */
+export const BUD_SPOTS: ReadonlyArray<{ x: number; y: number; z: number }> = [
+  { x: 1.1, y: 1.6, z: 0.2 },
+  { x: 1.3, y: -1.7, z: -0.3 },
+  { x: 0.9, y: 2.3, z: -0.9 },
+  { x: 1.5, y: -2.4, z: 0.6 },
+  { x: 1.2, y: 1.1, z: -1.3 },
+  { x: 1.6, y: -1.2, z: 1.2 },
+];
