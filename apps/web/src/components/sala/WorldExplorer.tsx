@@ -10,6 +10,7 @@ import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
 import { GlobePanel } from './GlobePanel';
 import { HudCounters } from './HudCounters';
 import { TimelineProvider, useTimeline } from './TimelineContext';
+import { defaultWeekIndex } from '@/lib/timeline';
 import { TimeScrubber } from './TimeScrubber';
 
 const EChart = dynamic(() => import('@/components/charts/EChart'), { ssr: false, loading: () => <ChartSkeleton height={320} /> });
@@ -19,7 +20,7 @@ const LINE_COLORS = ['#2451d6', '#d6007f', '#6d5df6', '#0f9f93', '#f29a0a'];
 /** /dados/mundo: globo + scrubber, tabela por país da semana e comparação de até 5 países ao longo do tempo. */
 export function WorldExplorer({ data, max, poster }: { data: GlobeResult; max: number; poster: ReactNode }) {
   return (
-    <TimelineProvider weeks={data.weeks}>
+    <TimelineProvider weeks={data.weeks} initialWeek={data.weeks[defaultWeekIndex(data.weeks, data.countries)]}>
       <div className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-7">
           <GlobePanel countries={data.countries} max={max} dataAsOf={data.meta.data_as_of} universeNote={data.meta.universe_note} poster={poster} />

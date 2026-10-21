@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getFreshness, getGlobe } from '@/lib/api';
 import { formatDateBR } from '@/lib/format';
 import { globalMax } from '@/lib/hud';
-import { TIMELINE_START } from '@/lib/timeline';
+import { TIMELINE_START, defaultWeekIndex } from '@/lib/timeline';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { DataUnavailable, FreshnessNote } from '@/components/Notices';
 import { freshnessState } from '@/lib/api';
@@ -47,7 +47,7 @@ export default async function MundoPage() {
           <WorldExplorer
             data={globe.data}
             max={globalMax(globe.data.countries)}
-            poster={<GlobePoster countries={globe.data.countries} weekIndex={globe.data.weeks.length - 1} week={globe.data.weeks[globe.data.weeks.length - 1] ?? ''} max={globalMax(globe.data.countries)} dataAsOf={globe.data.meta.data_as_of} indicatorName={globe.data.indicator.name} />}
+            poster={<GlobePoster countries={globe.data.countries} weekIndex={defaultWeekIndex(globe.data.weeks, globe.data.countries)} week={globe.data.weeks[defaultWeekIndex(globe.data.weeks, globe.data.countries)] ?? ''} max={globalMax(globe.data.countries)} dataAsOf={globe.data.meta.data_as_of} indicatorName={globe.data.indicator.name} />}
           />
           <p className="mt-8 rounded-2xl border border-primary-100 bg-primary-50 p-4 text-[15px] text-ink">{globe.data.meta.universe_note}</p>
           <dl className="mt-4 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">

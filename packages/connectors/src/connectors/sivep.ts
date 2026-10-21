@@ -282,7 +282,16 @@ class Aggregator {
     ];
     for (let week = 1; week <= this.maxWeek; week++) {
       const period = weekPeriodId(this.year, week);
-      const update_status: UpdateStatus = week > this.maxWeek - PROVISIONAL_WEEKS ? 'provisional' : 'final';
+      // Provisório = semanas cujo fim está a menos de PROVISIONAL_WEEKS semanas da data da base (atraso de digitação);
+      // sem data_as_of, cai na regra relativa à última semana do arquivo.
+      const weekEnd = new Date(epiWeekStart(this.year, week).getTime() + 6 * DAY);
+      const update_status: UpdateStatus = this.delayWindow
+        ? weekEnd.getTime() >= parseIsoDate(this.delayWindow.data_as_of).getTime() - PROVISIONAL_WEEKS * 7 * DAY
+          ? 'provisional'
+          : 'final'
+        : week > this.maxWeek - PROVISIONAL_WEEKS
+          ? 'provisional'
+          : 'final';
       // uf_ignored só nas semanas em que houve linhas sem UF válida, no total nacional e nos seus estratos
       const natFlags = this.ufIgnoredWeeks.has(week) ? ['uf_ignored'] : [];
       for (const rule of COUNT_RULES) {

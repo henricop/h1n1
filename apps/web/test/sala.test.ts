@@ -244,3 +244,16 @@ describe('componentes da sala (SSR)', () => {
     expect(html).toContain('Nenhuma execução antiga');
   });
 });
+
+import { defaultWeekIndex } from '@/lib/timeline';
+
+describe('defaultWeekIndex', () => {
+  it('escolhe a última semana com cobertura razoável de países, não a última semana ISO', () => {
+    const weeks = Array.from({ length: 10 }, (_, i) => `2026-W${String(i + 1).padStart(2, '0')}`);
+    // 20 países reportam até W08; em W09 só 3 e em W10 só 1
+    const countries = Array.from({ length: 20 }, (_, c) => ({ values: weeks.map((_, i) => (i <= 7 ? 1 : c < (i === 8 ? 3 : 1) ? 1 : null)) }));
+    expect(defaultWeekIndex(weeks, countries)).toBe(7);
+    expect(defaultWeekIndex(weeks, [])).toBe(9);
+    expect(defaultWeekIndex([], countries)).toBe(0);
+  });
+});

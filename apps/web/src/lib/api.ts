@@ -471,7 +471,17 @@ const EarsSchema = z
   .object({
     indicator: IndicatorRefSchema,
     meta: PanelMetaSchema,
-    method: z.object({ name: z.string(), baseline: z.string(), guard: z.string(), thresholds: z.string(), note: z.string() }).passthrough(),
+    method: z
+      .object({
+        name: z.string(),
+        baseline: z.union([z.string(), z.number()]).transform((v) => String(v)),
+        guard: z.union([z.string(), z.number()]).transform((v) => String(v)),
+        thresholds: z
+          .union([z.string(), z.record(z.string(), z.number())])
+          .transform((v) => (typeof v === 'string' ? v : Object.entries(v).map(([k, n]) => `${k.toUpperCase()} > ${n}`).join(' · '))),
+        note: z.string(),
+      })
+      .passthrough(),
     results: z.array(
       z
         .object({ geo_code: z.string(), name: z.string(), period: z.string(), value: z.number().nullable(), provisional: z.boolean(), c1: z.number().nullable(), c2: z.number().nullable(), c3: z.number().nullable(), flags: z.array(z.string()).default([]) })
@@ -504,9 +514,30 @@ const RunsSchema = z
   })
   .passthrough();
 
-const LatestSchema = z
+const LatestFlatSchema = z
   .object({ indicator: IndicatorRefSchema, geo_code: z.string(), period: z.string(), period_end: z.string(), value: z.number().nullable(), suppressed: z.boolean(), provisional: z.boolean(), trend_pct_vs_4w: z.number().nullable(), data_as_of: nullableString })
   .passthrough();
+
+/**
+ * A API /v1/indicators/:id/latest devolve { indicator, meta, geo_code, latest: {...} | null, trend: {...} | null };
+ * as fixtures (e versões anteriores) usam o formato plano. Aceitamos os dois e normalizamos para o plano.
+ */
+const LatestSchema = z.preprocess((raw) => {
+  if (!raw || typeof raw !== 'object' || !('latest' in raw)) return raw;
+  const d = raw as { indicator: unknown; geo_code: string; meta?: { data_as_of?: string | null }; latest: null | { period: string; period_end: string; value: number | null; provisional?: boolean; suppressed?: boolean }; trend?: null | { change_pct?: number | null } };
+  const l = d.latest;
+  return {
+    indicator: d.indicator,
+    geo_code: d.geo_code,
+    period: l?.period ?? '',
+    period_end: l?.period_end ?? '',
+    value: l ? l.value : null,
+    suppressed: l?.suppressed ?? false,
+    provisional: l?.provisional ?? false,
+    trend_pct_vs_4w: d.trend?.change_pct ?? null,
+    data_as_of: d.meta?.data_as_of ?? null,
+  };
+}, LatestFlatSchema);
 
 const SAFE_ID = /^[a-z0-9_]+$/;
 const SAFE_GEO = /^[A-Z]{2,3}(-[A-Z]{2})?$/;

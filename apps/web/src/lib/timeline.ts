@@ -82,3 +82,20 @@ export function shortWeek(id: string): string {
   const p = parseWeek(id);
   return p ? `S${String(p.week).padStart(2, '0')}/${p.year}` : id;
 }
+
+/**
+ * Semana inicial do scrubber: a última semana com cobertura razoável de países (≥ 30% do máximo de países
+ * que reportaram nas 52 semanas anteriores, mínimo 5). As últimas semanas ISO do FluNet chegam com poucos
+ * países reportando e dariam uma leitura enganosa ("1 detecção no mundo").
+ */
+export function defaultWeekIndex(weeks: string[], countries: Array<{ values: (number | null)[] }>): number {
+  const last = weeks.length - 1;
+  if (last < 0 || countries.length === 0) return Math.max(0, last);
+  const reporting = (i: number) => countries.reduce((n, c) => n + (c.values[i] !== null && c.values[i] !== undefined ? 1 : 0), 0);
+  const from = Math.max(0, last - 52);
+  let maxReporting = 0;
+  for (let i = from; i <= last; i++) maxReporting = Math.max(maxReporting, reporting(i));
+  const threshold = Math.max(5, Math.ceil(maxReporting * 0.3));
+  for (let i = last; i >= from; i--) if (reporting(i) >= threshold) return i;
+  return last;
+}

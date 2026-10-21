@@ -153,14 +153,25 @@ describe('sivep normalize (agregação em streaming)', () => {
     expect(obs.filter((o) => o.indicator_id === 'sivep_srag_influenza_subtype_completeness' && o.geo_code !== 'BRA')).toHaveLength(0);
   });
 
-  it('período epi e status provisório nas 8 últimas semanas', () => {
+  it('período epi e status provisório relativo à data da base (8 semanas antes de data_as_of)', async () => {
     const o = get('sivep_srag_notifications', 'BRA', '2026-W01')!;
     expect(o.period_type).toBe('epiweek');
     expect(o.period_start).toBe('2025-12-28');
     expect(o.period_end).toBe('2026-01-03');
+    // data_as_of = 2026-10-19: todas as semanas do fixture (até W12) estão a mais de 8 semanas → final
     expect(o.update_status).toBe('final');
-    expect(get('sivep_srag_notifications', 'BRA', '2026-W04')!.update_status).toBe('final');
-    expect(get('sivep_srag_notifications', 'BRA', '2026-W05')!.update_status).toBe('provisional');
+    expect(get('sivep_srag_notifications', 'BRA', '2026-W12')!.update_status).toBe('final');
+    // data_as_of = 2026-03-28: provisório a partir da semana cujo fim é >= 2026-01-31 (W05 termina em 31/01)
+    const r = await aggregateSivepCsv(fixture, 2026, { dataAsOf: '2026-03-28' });
+    const st = (w: string) => r.observations.find((x) => x.indicator_id === 'sivep_srag_notifications' && x.geo_code === 'BRA' && x.period === w && Object.keys(x.stratum).length === 0)!.update_status;
+    expect(st('2026-W04')).toBe('final');
+    expect(st('2026-W05')).toBe('provisional');
+    expect(st('2026-W12')).toBe('provisional');
+    // sem data_as_of: regra relativa à última semana do arquivo (8 últimas)
+    const r2 = await aggregateSivepCsv(fixture, 2026);
+    const st2 = (w: string) => r2.observations.find((x) => x.indicator_id === 'sivep_srag_notifications' && x.geo_code === 'BRA' && x.period === w && Object.keys(x.stratum).length === 0)!.update_status;
+    expect(st2('2026-W04')).toBe('final');
+    expect(st2('2026-W05')).toBe('provisional');
   });
 
   it('flag uf_ignored só nas semanas com linhas sem UF válida, no total nacional e nos estratos', () => {

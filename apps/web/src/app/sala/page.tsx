@@ -7,7 +7,7 @@ import { globalMax } from '@/lib/hud';
 import { indicatorLabel } from '@/lib/observatory';
 import { sliceInterval, totalSeries } from '@/lib/series';
 import { SITE, absoluteUrl } from '@/lib/site';
-import { GLOBE_WINDOW_WEEKS, TIMELINE_START } from '@/lib/timeline';
+import { GLOBE_WINDOW_WEEKS, TIMELINE_START, defaultWeekIndex } from '@/lib/timeline';
 import { JsonLd } from '@/components/JsonLd';
 import { DataUnavailable, FreshnessNote, NoDataPublished } from '@/components/Notices';
 import { freshnessState } from '@/lib/api';
@@ -91,7 +91,8 @@ export default async function SalaDeDados() {
   // eixo do scrubber: semanas do globo (2009-W01 → última semana FluNet); sem globo, eixo das semanas do mapa
   const weeks = globe.ok ? globe.data.weeks : (maps[0]?.ok ? maps[0].data.weeks : []);
   const globeMax = globe.ok ? globalMax(globe.data.countries) : 0;
-  const lastIndex = Math.max(0, weeks.length - 1);
+  // semana inicial: última com cobertura razoável de países (as últimas semanas ISO chegam incompletas)
+  const lastIndex = globe.ok ? defaultWeekIndex(weeks, globe.data.countries) : Math.max(0, weeks.length - 1);
   // Payload do RSC (achado m): só as últimas GLOBE_WINDOW_WEEKS semanas vão ao cliente; o histórico é carregado sob demanda em /api/globe.
   const globeOffset = Math.max(0, weeks.length - GLOBE_WINDOW_WEEKS);
   const globeWindow = globe.ok ? globe.data.countries.map((c) => ({ ...c, values: c.values.slice(globeOffset) })) : [];
@@ -120,7 +121,7 @@ export default async function SalaDeDados() {
   const csv = seriesCsvUrl({ indicator: NATIONAL, geo_level: 'country', geo_code: 'BRA' });
 
   return (
-    <TimelineProvider weeks={weeks}>
+    <TimelineProvider weeks={weeks} initialWeek={weeks[lastIndex]}>
       <JsonLd
         data={{
           '@context': 'https://schema.org',
