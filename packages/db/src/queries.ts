@@ -251,8 +251,14 @@ export async function rejectPublication(db: Db, indicatorId: string, snapshotId:
   );
 }
 
-/** Compara a mesma célula entre duas snapshots (pesquisa R07: revisões retrospectivas). */
+/**
+ * Compara a mesma célula entre duas snapshots (pesquisa R07: revisões retrospectivas).
+ * Aplica a mesma supressão de célula pequena da publicação: recortes subnacionais ou estratificados
+ * com valor abaixo do limiar do indicador saem como null com suppressed = true, em ambas as versões.
+ */
 export async function diffSnapshots(db: Db, indicatorId: string, snapshotA: string, snapshotB: string, limit = 5000) {
+  const indicator = await getIndicatorRow(db, indicatorId);
+  const threshold = indicator?.suppression_threshold ?? 0;
   const sql = `
     select coalesce(a.geo_level, b.geo_level) as geo_level, coalesce(a.geo_code, b.geo_code) as geo_code,
       coalesce(a.period, b.period) as period, coalesce(a.stratum_key, b.stratum_key) as stratum_key,
@@ -262,6 +268,18 @@ export async function diffSnapshots(db: Db, indicatorId: string, snapshotA: stri
       on a.geo_level = b.geo_level and a.geo_code = b.geo_code and a.period = b.period and a.stratum_key = b.stratum_key
     where a.value is distinct from b.value
     order by 3, 2, 4 limit $4`;
-  return (await db.query<{ geo_level: string; geo_code: string; period: string; stratum_key: string; value_a: unknown; value_b: unknown }>(sql, [indicatorId, snapshotA, snapshotB, limit])).rows
-    .map((r) => ({ ...r, value_a: num(r.value_a), value_b: num(r.value_b) }));
+  const rows = (await db.query<{ geo_level: string; geo_code: string; period: string; stratum_key: string; value_a: unknown; value_b: unknown }>(sql, [indicatorId, snapshotA, snapshotB, limit])).rows;
+  const sensitive = (r: { geo_level: string; stratum_key: string }) =>
+    threshold > 0 && (r.geo_level !== 'country' || r.stratum_key !== '');
+  const mask = (v: number | null, r: { geo_level: string; stratum_key: string }) =>
+    v !== null && v > 0 && v < threshold && sensitive(r) ? null : v;
+  return rows
+    .map((r) => {
+      const va = num(r.value_a);
+      const vb = num(r.value_b);
+      const a = mask(va, r);
+      const b = mask(vb, r);
+      return { ...r, value_a: a, value_b: b, suppressed: a !== va || b !== vb };
+    })
+    .filter((r) => !(r.suppressed && r.value_a === null && r.value_b === null && num(r.value_a) === num(r.value_b)));
 }

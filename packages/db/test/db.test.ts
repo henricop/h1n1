@@ -58,7 +58,10 @@ describe('db', () => {
     expect(JSON.stringify(sc)).not.toContain('"value":3');
 
     const diff = await diffSnapshots(db, 'sivep_srag_ah1n1pdm09_confirmed', s1, s2);
-    expect(diff.find((d) => d.geo_code === 'BRA')).toMatchObject({ value_a: 10, value_b: 12 });
+    expect(diff.find((d) => d.geo_code === 'BRA')).toMatchObject({ value_a: 10, value_b: 12, suppressed: false });
+    // células estaduais pequenas não vazam pelo diff
+    expect(JSON.stringify(diff.filter((d) => d.geo_code === 'BR-SC'))).not.toMatch(/"value_[ab]":[123]\b/);
+    for (const d of diff.filter((d) => d.geo_code === 'BR-SC')) expect(d.suppressed).toBe(true);
 
     const fresh = await getFreshness(db);
     const row = fresh.find((f) => f.indicator_id === 'sivep_srag_ah1n1pdm09_confirmed')!;
