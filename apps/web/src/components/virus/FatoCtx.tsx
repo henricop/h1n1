@@ -10,9 +10,14 @@ export function FatoCtx({ id, ctx }: { id: string; ctx: string }) {
   return (
     <span className="fato">
       {f.claim}
-      <sup className="ml-0.5">
-        <a href={`#${noteId}`} aria-describedby={noteId} className="no-underline">
-          [{id}]
+      <sup className="ml-1">
+        <a
+          href={`#${noteId}`}
+          aria-describedby={noteId}
+          title="Ver fonte desta afirmação"
+          className="rounded-full bg-primary-50 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-primary-700 no-underline hover:bg-primary-100"
+        >
+          fonte
         </a>
       </sup>
       <span id={noteId} role="note" className="mt-1 block text-xs text-muted">

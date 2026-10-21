@@ -71,8 +71,10 @@ body {
   outline-offset: 2px;
 }
 
-a {
-  @apply text-primary-600 underline underline-offset-2 decoration-line-strong hover:decoration-primary-600;
+@layer base {
+  a {
+    @apply text-primary-600 underline underline-offset-2 decoration-line-strong hover:decoration-primary-600;
+  }
 }
 
 /* ====== Utilitários do sistema de design claro ====== */
