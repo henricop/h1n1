@@ -6,6 +6,8 @@
 import { isoWeek, weekPeriodId } from '@h1n1/core';
 
 export const TIMELINE_START = '2009-W01';
+/** Semanas do globo enviadas no RSC de /sala/; o histórico anterior é carregado sob demanda em /api/globe (ver GlobeHero). */
+export const GLOBE_WINDOW_WEEKS = 160;
 /** Replay da pandemia de 2009: da declaração de emergência (SE 17) até a declaração de fim (SE 33 de 2010). */
 export const PANDEMIC_REPLAY = { from: '2009-W17', to: '2010-W33' } as const;
 

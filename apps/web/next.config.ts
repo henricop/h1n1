@@ -1,5 +1,31 @@
 import type { NextConfig } from 'next';
 
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/\/$/, '');
+const DEV = process.env.NODE_ENV !== 'production';
+
+/**
+ * Content-Security-Policy (achado e). `unsafe-inline` em script-src é exigido pelo bootstrap do Next e pelo JSON-LD;
+ * `unsafe-eval` só em desenvolvimento (React Refresh). Imagens/fonts locais ou data:/blob: (globo WebGL, next/font);
+ * conexões só ao próprio site, à API e ao Nextstrain (iframe sob demanda).
+ */
+export function buildCsp(apiUrl = API_URL, dev = DEV): string {
+  const directives = [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    `connect-src 'self' ${apiUrl} https://nextstrain.org${dev ? ' ws: wss:' : ''}`,
+    'frame-src https://nextstrain.org',
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ];
+  return directives.join('; ');
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   trailingSlash: true,
@@ -12,9 +38,11 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
+          { key: 'Content-Security-Policy', value: buildCsp() },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
     ];

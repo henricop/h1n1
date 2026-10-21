@@ -1,27 +1,15 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import type { ApiResult, RunsResult } from '@/lib/api';
 import { formatDateTimeBR } from '@/lib/format';
 
 const nf = new Intl.NumberFormat('pt-BR');
+const STATUS_LABEL: Record<string, string> = { ok: 'concluída', failed: 'falhou', skipped: 'pulada' };
 
-/** Console de ingestão: últimas execuções dos conectores (estilo terminal). Sempre "última execução", nunca um estado corrente. */
+/**
+ * Console de ingestão: últimas execuções dos conectores como lista limpa. Todas as linhas vão no SSR (sem estado);
+ * a entrada escalonada é só CSS (.console-line com --delay) e some em prefers-reduced-motion.
+ * Sempre "última execução", nunca um estado corrente.
+ */
 export function IngestConsole({ runs }: { runs: ApiResult<RunsResult> }) {
-  const reduced = useReducedMotion();
-  const lines = runs.ok ? runs.data.data : [];
-  const [shown, setShown] = useState(() => (reduced ? lines.length : 0));
-
-  useEffect(() => {
-    if (reduced || shown >= lines.length) return;
-    const id = window.setTimeout(() => setShown((s) => s + 1), 55);
-    return () => window.clearTimeout(id);
-  }, [reduced, shown, lines.length]);
-
-  useEffect(() => {
-    if (reduced) setShown(lines.length);
-  }, [reduced, lines.length]);
-
   if (!runs.ok) {
     return (
       <div className="console" role="status">
@@ -32,28 +20,28 @@ export function IngestConsole({ runs }: { runs: ApiResult<RunsResult> }) {
       </div>
     );
   }
+  const lines = runs.data.data;
   const last = lines[0];
   return (
-    <div className="console" aria-live="off">
+    <div className="console">
       <p className="text-faint">
-        $ h1n1 runs --limit {lines.length} <span className="text-muted">· última execução registrada: {last ? formatDateTimeBR(last.finished_at ?? last.started_at) : '—'}</span>
+        {lines.length} execuções registradas · última: <span className="text-muted">{last ? formatDateTimeBR(last.finished_at ?? last.started_at) : '—'}</span>
       </p>
-      <ol className="mt-1 max-h-72 overflow-auto hud-scroll" aria-label="Últimas execuções dos conectores">
-        {lines.slice(0, shown).map((r) => (
-          <li key={r.id} className="grid grid-cols-[1.2rem_9.5rem_7rem_6rem_1fr] gap-x-2 whitespace-nowrap">
+      <ol className="mt-2 max-h-72 overflow-auto scroll-thin" aria-label="Últimas execuções dos conectores">
+        {lines.map((r, i) => (
+          <li key={r.id} className="console-line grid grid-cols-[1.2rem_9.5rem_7rem_6rem_1fr] gap-x-2 whitespace-nowrap py-0.5" style={{ ['--delay' as string]: `${Math.min(i, 30) * 40}ms` }}>
             <span className={r.status} aria-hidden="true">
               {r.status === 'ok' ? '●' : r.status === 'failed' ? '✗' : '○'}
             </span>
-            <span className="text-faint">{formatDateTimeBR(r.finished_at ?? r.started_at).replace(' (UTC)', 'Z')}</span>
+            <span className="font-mono text-[12px] text-faint">{formatDateTimeBR(r.finished_at ?? r.started_at).replace(' (UTC)', 'Z')}</span>
             <span className="text-ink">{r.connector}</span>
-            <span className={r.status}>{r.status}</span>
+            <span className={r.status}>{STATUS_LABEL[r.status] ?? r.status}</span>
             <span className="truncate">
               {r.error ? r.error : `${nf.format(r.rows_in ?? 0)} linhas lidas → ${nf.format(r.rows_out ?? 0)} publicadas`}
             </span>
           </li>
         ))}
       </ol>
-      {shown < lines.length && <p className="cursor-blink" aria-hidden="true" />}
     </div>
   );
 }

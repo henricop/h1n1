@@ -10,10 +10,11 @@ const read = (p: string) => readFileSync(path.join(APP, p), 'utf8');
  * Política de cache: páginas de dados usam ISR com o mesmo valor de API_REVALIDATE_SECONDS. O Next exige literal
  * em `export const revalidate`, então este teste garante que o literal não diverge da constante da lib.
  * Páginas que leem searchParams permanecem `force-dynamic` (documentado no próprio arquivo).
+ * A home (`page.tsx`) é a página 3D de outro fluxo e fica fora desta verificação.
  */
 describe('política de cache', () => {
   it('páginas ISR exportam revalidate igual a API_REVALIDATE_SECONDS', () => {
-    for (const f of ['page.tsx', 'dados/mundo/page.tsx', 'dados/fontes/[idOrSlug]/page.tsx', 'dados/metodologia/page.tsx', '[...slug]/page.tsx', 'sitemap.ts']) {
+    for (const f of ['sala/page.tsx', 'dados/mundo/page.tsx', 'dados/fontes/[idOrSlug]/page.tsx', 'dados/metodologia/page.tsx', '[...slug]/page.tsx', 'sitemap.ts']) {
       const src = read(f);
       const m = /export const revalidate = (\d+);/.exec(src);
       expect(m, `${f} deve exportar revalidate literal`).not.toBeNull();

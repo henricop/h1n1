@@ -1,6 +1,9 @@
 /**
- * Rate limit em memória por IP (janela deslizante). IPs ficam só em memória, nunca persistidos (LGPD).
- * Padrão: 20 requisições por 10 minutos.
+ * Rate limit em memória por chave (janela deslizante). Chaves ficam só em memória, nunca persistidas (LGPD).
+ * Padrão do assistente: 20 requisições por 10 minutos.
+ *
+ * Limites: o contador é POR INSTÂNCIA do processo Node (sem Redis). Com várias réplicas, cada uma conta
+ * separadamente; o limite efetivo é `max × réplicas`. Para limite global, troque por um armazenamento compartilhado.
  */
 
 export interface RateLimitOptions {
@@ -9,6 +12,8 @@ export interface RateLimitOptions {
 }
 
 export const DEFAULT_RATE_LIMIT: RateLimitOptions = { max: 20, windowMs: 10 * 60 * 1000 };
+/** Terminal: consultas baratas à API, mas sem persistência; 60 por 10 minutos por IP. */
+export const TERMINAL_RATE_LIMIT: RateLimitOptions = { max: 60, windowMs: 10 * 60 * 1000 };
 
 export interface RateLimitDecision {
   allowed: boolean;
@@ -48,14 +53,26 @@ export class MemoryRateLimiter {
   }
 }
 
-/** IP do cliente: primeiro valor de x-forwarded-for, senão x-real-ip, senão 'unknown'. */
-export function clientIp(req: Request): string {
+/** Chave usada quando não há proxy confiável: o Next não expõe o socket, então todos dividem um balde. */
+export const DIRECT_CLIENT_KEY = 'direct';
+
+/**
+ * IP do cliente para o rate limit.
+ * - `TRUST_PROXY=true` (atrás de um proxy reverso que sobrescreve o header): ÚLTIMO valor de `x-forwarded-for`
+ *   (o único acrescentado pelo proxy e, portanto, não forjável pelo cliente), senão `x-real-ip`.
+ * - Caso contrário o header é IGNORADO (qualquer cliente poderia forjá-lo para escapar do limite) e usa-se a chave fixa
+ *   `direct`: sem proxy, o Next não expõe o IP do socket. Em produção atrás de proxy, defina TRUST_PROXY=true.
+ */
+export function clientIp(req: Request, env: Record<string, string | undefined> = process.env): string {
+  if (env.TRUST_PROXY?.trim().toLowerCase() !== 'true') return DIRECT_CLIENT_KEY;
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {
-    const first = xff.split(',')[0]?.trim();
-    if (first) return first;
+    const parts = xff.split(',').map((s) => s.trim()).filter(Boolean);
+    const last = parts[parts.length - 1];
+    if (last) return last;
   }
-  return req.headers.get('x-real-ip')?.trim() || 'unknown';
+  return req.headers.get('x-real-ip')?.trim() || DIRECT_CLIENT_KEY;
 }
 
 export const chatRateLimiter = new MemoryRateLimiter(DEFAULT_RATE_LIMIT);
+export const terminalRateLimiter = new MemoryRateLimiter(TERMINAL_RATE_LIMIT);

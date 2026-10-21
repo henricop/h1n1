@@ -1,41 +1,18 @@
-# H1N1 · Sala de Situação — direção de design
+# H1N1 · direção de design v2 — "claro, forte, humano"
 
-**Conceito:** um centro de comando epidemiológico público. Escuro, denso em dados, tipografia monoespaçada para leituras e display geométrica para títulos. Tudo que pulsa, anima ou brilha representa um dado real com data e fonte. Nada de "tempo real": o HUD mostra sempre `base de DD/MM/AAAA`.
+**Para quem:** pessoas comuns que querem entender e decidir, não especialistas. **Sensação:** tecnologia de ponta a serviço de clareza. Referências de polimento: Apple Health, Stripe, Linear, explicadores do NYT/Reuters Graphics. **Não é:** painel escuro, HUD, "tempo real", alarmismo.
 
 ## Tokens (apps/web/src/app/globals.css, Tailwind 4 `@theme`)
-- Fundos: `bg-bg-950` (página), `bg-bg-900` (painel), `bg-bg-800` (elevado), `bg-bg-700` (hover). Bordas: `border-line`, `border-line-strong`.
-- Texto: `text-ink` (principal), `text-muted` (secundário), `text-faint` (eixos/legendas).
-- Cores de dado: `signal` (ciano, dado/foco/links), `h1n1` (magenta, A(H1N1)pdm09), `h3` (violeta, A(H3)), `infb` (verde-água, influenza B), `srag` (âmbar, SRAG total e semanas provisórias), `urgent-700` (só emergência), `ok-700`.
-- Fontes: `font-display` (títulos), `font-mono` (valores, rótulos HUD, terminal), `font-sans` (corpo). Carregar via `next/font/google`: Space Grotesk, JetBrains Mono, Inter.
-- Utilitários: `.hud-grid` (grade de fundo), `.hud-panel` (painel com brilho sutil), `.hud-label`, `.hud-value`, `.glow-signal`, `.glow-h1n1`, `.scanlines` (overlay sutil em containers `relative`), `.pulse-ring`.
+- Fundos: `bg-bg` (branco), `bg-bg-soft` (cinza-azulado leve para seções alternadas), `bg-bg-tint` (tint do primário), `bg-card`. Bordas `border-line` / `border-line-strong`.
+- Texto: `text-ink`, `text-muted`, `text-faint` (≥ 12 px).
+- Cor primária cobalto `primary-600` (ações, links, dado principal), `primary-50/100` para fundos de destaque. Dados: `h1n1` (rosa forte), `h3` (violeta), `infb` (verde-água), `srag` (âmbar, também provisório), `urgent-700` só emergência, `ok-700`.
+- Fontes: `font-display` (Manrope, títulos grandes, peso 700/800, tracking -0.02em), `font-sans` (Inter, corpo 17–18 px, line-height 1.6), `font-mono` (JetBrains Mono apenas para valores tabulares e código).
+- Raio: cartões 20–24 px, botões pílula (999 px). Sombra: `shadow-[0_8px_30px_-12px_rgba(11,18,32,.18)]`. Espaço generoso: seções com `py-20 md:py-28`, container `max-w-6xl`.
 
 ## Regras
-1. Todo número: `tabular-nums`, fonte, `base de`, texto de universo acessível (tooltip + texto visível abaixo do painel).
-2. Semanas provisórias em âmbar tracejado; células suprimidas como `<5`; sinal EARS rotulado "sinal estatístico, não surto confirmado".
-3. Animações respeitam `prefers-reduced-motion`; globo 3D só no cliente, carregado sob demanda, com pôster estático como fallback; em telas < 768 px o globo começa pausado.
-4. Contraste AA: `ink`/`muted` sobre `bg-900/950`; `signal` sobre `bg-950` ≥ 7:1; nunca texto `faint` menor que 11 px.
-5. Layout: HUD de 12 colunas; painéis com `.hud-label` no topo e rodapé de metadados (fonte · licença · base · método).
-6. Sem alarmismo: vermelho reservado para o aviso de emergência/sinais de alerta.
-
-## Componentes da sala de situação (src/components/sala/)
-| Componente | Tipo | Função |
-|---|---|---|
-| `TimelineContext` (`TimelineProvider`, `useTimeline`) | client | Estado único do scrubber (semanas ISO, índice, play/pause, velocidade, replay 2009-W17→2010-W33). Sem autoplay; `prefers-reduced-motion` desliga animações automáticas. |
-| `TimeScrubber` | client | Range + rótulo grande da semana ISO + play/pause + velocidade + "Replay da pandemia de 2009" + "Última semana". |
-| `GlobePanel` → `Globe3D` (dynamic, ssr:false) | client | Globo WebGL (react-globe.gl): hexágonos dos países (world-atlas), pontos e anéis magenta ∝ √detecções; atmosfera ciana; sem textura fotográfica. Em < 768 px mostra o pôster com "Ativar globo 3D"; sem WebGL cai no pôster. |
-| `GlobePoster` | server | Pôster SVG (projeção ortográfica voltada para o Brasil, d3-geo) com pontos da última semana: fallback, LCP e estado de carregamento. |
-| `HudCounters` + `CountUp` | client | Quatro contadores animados (framer-motion) derivados de `/v1/globe` para a semana: mundo, países reportando, Brasil, posição do Brasil. Rodapé "FluNet · OMS · base de". |
-| `BrazilStrip` → `BrazilMap` | client | Seletor de indicador, mapa de UFs (SVG, d3-geo Mercator, malha IBGE) colorido pela semana do scrubber, hachura para "<5"/sem dado, tooltip, legenda; ranking de UFs. Semana fora da cobertura carregada é explicitada. |
-| `EarsTable` | server | Sinais EARS C1/C2/C3 por UF, rotulados "sinal estatístico, não surto confirmado". |
-| `TrendChart` | client (ECharts dynamic) | Série nacional 52 semanas, provisório tracejado em âmbar + markArea, nowcast (faixa + estimativa pontilhada), tabela equivalente em `<details>`. |
-| `SeasonsChart` | client (ECharts) | Sobreposição de temporadas 2019..ano corrente (ano corrente em magenta). |
-| `CompositionChart` | client (ECharts) | Área empilhada FluNet Brasil (H1N1pdm09 magenta, A(H3) violeta, não subtipada cinza, B verde-água) + positividade (linha âmbar, eixo direito). |
-| `NextstrainPanel` | client | iframe do Nextstrain carregado só ao clicar; crédito e link; fallback sem parâmetros. |
-| `IngestConsole` | client | Últimas execuções de `/v1/runs` em estilo terminal, "digitação" só na primeira renderização (reduced-motion desliga). |
-| `HudTopbar`, `HudFooter`, `Panel`, `CommandPaletteButton` | server/client | Marca + relógio de base (/v1/freshness) + ⌘K + "Entenda o H1N1"; rodapé de transparência; moldura de painel com rótulo e metadados; botão que despacha o atalho ⌘K/Ctrl+K e o evento `h1n1:command-palette`. |
-| `WorldExplorer` | client | `/dados/mundo/`: globo + scrubber + tabela por país da semana + comparação de até 5 países (ECharts, dataZoom). |
-| `charts/EChart`, `charts/ChartSkeleton` | client | Wrapper do ECharts (tema `h1n1-hud` registrado a partir de `src/lib/echarts-theme.ts`); esqueleto que reserva a altura. |
-
-Libs puras (testadas em `test/sala.test.ts`): `src/lib/timeline.ts` (semanas ISO, alinhamento, cobertura, replay), `src/lib/map-scale.ts` (escala √ magenta←ciano, hachura para nulo/suprimido), `src/lib/hud.ts` (contadores e ranking), `src/lib/geo-assets.ts` (malhas em `public/geo/`).
-
-Assets: `public/geo/br-uf.geojson` (IBGE, `codarea` → `BR_STATES`), `public/geo/countries-110m.json` (world-atlas). Baixados uma vez; nunca buscados de outra origem em runtime.
+1. Um pensamento por tela: título grande (display 40–64 px) + uma frase + um elemento visual. Linguagem simples; termos técnicos explicados na primeira vez (componente `<Glossario>`).
+2. Todo número: `tabular-nums`, fonte, "base de DD/MM/AAAA", texto de universo visível. Provisório em âmbar; suprimido como "<5".
+3. 3D (react-three-fiber): fundo claro, materiais físicos suaves (translúcido/fosco), luz de estúdio, sem neon. Canvas sempre com alternativa textual e pôster estático; `prefers-reduced-motion` desliga animação contínua; DPR ≤ 1.5; em mobile reduzir instâncias.
+4. Acessibilidade AA: foco visível `outline primary-600`, alvos ≥ 44 px, contraste verificado, navegação por teclado em tudo (inclusive capítulos 3D: botões "próximo/anterior").
+5. Nada de grade de fundo, scanlines, brilho neon, caixa alta monoespaçada em rótulos. Rótulos em caixa normal, pequenos e discretos.
+6. Vermelho só no aviso de emergência; aviso médico sempre presente em conteúdo clínico, com tom calmo.

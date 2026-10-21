@@ -30,7 +30,7 @@ export function CompositionChart({ weeks, layers, positivity, provisionalFrom, t
         const list = Array.isArray(params) ? params : [params];
         const idx = (list[0] as { dataIndex: number }).dataIndex;
         const w = weeks[idx] ?? '';
-        const lines = [`<strong>${formatPeriod(w, 'isoweek')}</strong>${idx >= provisionalFrom ? ' · <span style="color:#ffd166">provisório</span>' : ''}`];
+        const lines = [`<strong>${formatPeriod(w, 'isoweek')}</strong>${provisionalFrom >= 0 && idx >= provisionalFrom ? ' · <span style="color:#9a5b00">provisório</span>' : ''}`];
         for (const l of layers) lines.push(`<span style="color:${l.color}">■</span> ${l.name}: ${formatNumberBR(l.values[idx] ?? null, 'detections')}`);
         if (positivity) lines.push(`<span style="color:${HUD_COLORS.srag}">━</span> positividade: ${formatNumberBR(positivity[idx] ?? null, 'percent')}`);
         return lines.join('<br/>');
@@ -49,13 +49,13 @@ export function CompositionChart({ weeks, layers, positivity, provisionalFrom, t
         type: 'line' as const,
         stack: 'flunet',
         data: l.values,
-        areaStyle: { color: l.color, opacity: 0.55 },
+        areaStyle: { color: l.color, opacity: 0.45 },
         lineStyle: { width: 1, color: l.color },
         itemStyle: { color: l.color },
         symbol: 'none',
         emphasis: { focus: 'series' as const },
         ...(i === 0 && provisionalFrom >= 0 && provisionalFrom < weeks.length
-          ? { markArea: { silent: true, itemStyle: { color: HUD_COLORS.srag, opacity: 0.08 }, data: [[{ xAxis: weeks[provisionalFrom] }, { xAxis: weeks[weeks.length - 1] }] as [{ xAxis: string | undefined }, { xAxis: string | undefined }]] } }
+          ? { markArea: { silent: true, itemStyle: { color: HUD_COLORS.srag, opacity: 0.12 }, data: [[{ xAxis: weeks[provisionalFrom] }, { xAxis: weeks[weeks.length - 1] }] as [{ xAxis: string | undefined }, { xAxis: string | undefined }]] } }
           : {}),
       })),
       ...(positivity
@@ -67,8 +67,8 @@ export function CompositionChart({ weeks, layers, positivity, provisionalFrom, t
     <div>
       <EChart option={option} height={height} ariaLabel="Composição das detecções de influenza no Brasil (FluNet) por tipo e subtipo, área empilhada por semana, com positividade em linha. Tabela equivalente abaixo." tableId={tableId} />
       <details className="mt-3 text-sm">
-        <summary className="touch inline-flex cursor-pointer items-center font-mono text-xs uppercase tracking-wider text-signal">Tabela equivalente</summary>
-        <div className="mt-2 max-h-80 overflow-auto hud-scroll">
+        <summary className="touch inline-flex cursor-pointer items-center text-[14px] font-medium text-primary-600">Tabela equivalente</summary>
+        <div className="mt-2 max-h-80 overflow-auto scroll-thin">
           <table id={tableId} className="data-table text-xs">
             <caption>Detecções FluNet Brasil por semana ISO e (sub)tipo; positividade em %</caption>
             <thead>
@@ -89,7 +89,7 @@ export function CompositionChart({ weeks, layers, positivity, provisionalFrom, t
                     <td key={l.id} className="num">{formatNumberBR(l.values[i] ?? null, 'detections')}</td>
                   ))}
                   {positivity && <td className="num">{formatNumberBR(positivity[i] ?? null, 'percent')}</td>}
-                  <td>{i >= provisionalFrom ? 'provisória' : 'consolidada'}</td>
+                  <td>{provisionalFrom >= 0 && i >= provisionalFrom ? 'provisória' : 'consolidada'}</td>
                 </tr>
               ))}
             </tbody>

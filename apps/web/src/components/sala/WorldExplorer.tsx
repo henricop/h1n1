@@ -14,7 +14,7 @@ import { TimeScrubber } from './TimeScrubber';
 
 const EChart = dynamic(() => import('@/components/charts/EChart'), { ssr: false, loading: () => <ChartSkeleton height={320} /> });
 const MAX_COMPARE = 5;
-const LINE_COLORS = ['#35e0ff', '#ff4fd8', '#8b7cff', '#4fd1a5', '#ffd166'];
+const LINE_COLORS = ['#2451d6', '#d6007f', '#6d5df6', '#0f9f93', '#f29a0a'];
 
 /** /dados/mundo: globo + scrubber, tabela por país da semana e comparação de até 5 países ao longo do tempo. */
 export function WorldExplorer({ data, max, poster }: { data: GlobeResult; max: number; poster: ReactNode }) {
@@ -47,20 +47,20 @@ function Explorer({ data }: { data: GlobeResult }) {
     tooltip: { trigger: 'axis', valueFormatter: (v) => formatNumberBR(typeof v === 'number' ? v : null) },
     legend: { bottom: 0 },
     grid: { left: 56, right: 16, top: 20, bottom: 72 },
-    dataZoom: [{ type: 'slider', bottom: 28, height: 16, start: Math.max(0, 100 - (156 / data.weeks.length) * 100), end: 100, textStyle: { color: '#6b7a93' } }],
+    dataZoom: [{ type: 'slider', bottom: 28, height: 16, start: Math.max(0, 100 - (156 / data.weeks.length) * 100), end: 100, textStyle: { color: '#64707f' } }],
     xAxis: { type: 'category', data: data.weeks, axisLabel: { formatter: (v: string) => shortWeek(v) } },
     yAxis: { type: 'value', min: 0, axisLabel: { formatter: (v: number) => formatNumberBR(v) } },
-    series: chosen.map((c, i) => ({ name: c.name, type: 'line' as const, data: c.values, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: LINE_COLORS[i % LINE_COLORS.length] }, itemStyle: { color: LINE_COLORS[i % LINE_COLORS.length] }, markLine: i === 0 ? { silent: true, symbol: 'none', lineStyle: { color: '#ffd166', type: 'dashed' }, data: [{ xAxis: t.week }], label: { formatter: shortWeek(t.week), color: '#ffd166' } } : undefined })),
+    series: chosen.map((c, i) => ({ name: c.name, type: 'line' as const, data: c.values, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: LINE_COLORS[i % LINE_COLORS.length] }, itemStyle: { color: LINE_COLORS[i % LINE_COLORS.length] }, markLine: i === 0 ? { silent: true, symbol: 'none', lineStyle: { color: '#9a5b00', type: 'dashed' }, data: [{ xAxis: t.week }], label: { formatter: shortWeek(t.week), color: '#9a5b00' } } : undefined })),
   };
   const foot = `FluNet · OMS · base de ${formatDateBR(data.meta.data_as_of)}`;
   return (
     <div className="mt-6 grid gap-4 lg:grid-cols-12">
-      <section aria-labelledby="h-tabela-paises" className="hud-panel hud-corner p-4 lg:col-span-5">
-        <p id="h-tabela-paises" className="hud-label">
+      <section aria-labelledby="h-tabela-paises" className="card p-5 lg:col-span-5">
+        <p id="h-tabela-paises" className="label">
           Países na semana {shortWeek(t.week)} · {reporting} reportando
         </p>
         <p className="mt-1 text-xs text-muted">Marque até {MAX_COMPARE} países para comparar no gráfico ao lado.</p>
-        <div className="mt-2 max-h-[420px] overflow-auto hud-scroll">
+        <div className="mt-2 max-h-[420px] overflow-auto scroll-thin">
           <table className="data-table text-xs">
             <caption className="sr-only">Detecções de A(H1N1)pdm09 por país na semana selecionada</caption>
             <thead>
@@ -81,7 +81,7 @@ function Explorer({ data }: { data: GlobeResult }) {
                 const c = data.countries.find((x) => x.iso3 === r.iso3)!;
                 const on = selected.includes(r.iso3);
                 return (
-                  <tr key={r.iso3} className={r.iso3 === 'BRA' ? 'text-signal' : undefined}>
+                  <tr key={r.iso3} className={r.iso3 === 'BRA' ? 'text-primary-600' : undefined}>
                     <td>
                       <input type="checkbox" aria-label={`Comparar ${r.name}`} checked={on} disabled={!on && selected.length >= MAX_COMPARE} onChange={() => toggle(r.iso3)} />
                     </td>
@@ -112,15 +112,15 @@ function Explorer({ data }: { data: GlobeResult }) {
             </tbody>
           </table>
         </div>
-        <p className="hud-meta">{foot} · países sem valor na semana não aparecem · total da semana {formatNumberBR(h.worldTotal)}</p>
+        <p className="meta">{foot} · países sem valor na semana não aparecem · total da semana {formatNumberBR(h.worldTotal)}</p>
       </section>
-      <section aria-labelledby="h-comparar" className="hud-panel hud-corner p-4 lg:col-span-7">
-        <p id="h-comparar" className="hud-label">
+      <section aria-labelledby="h-comparar" className="card p-5 lg:col-span-7">
+        <p id="h-comparar" className="label">
           Comparação · {chosen.length} de {MAX_COMPARE} países · 2009 → hoje
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           {chosen.map((c, i) => (
-            <button key={c.iso3} type="button" className="hud-btn" style={{ borderColor: LINE_COLORS[i % LINE_COLORS.length], color: LINE_COLORS[i % LINE_COLORS.length] }} onClick={() => toggle(c.iso3)} aria-label={`Remover ${c.name} da comparação`}>
+            <button key={c.iso3} type="button" className="btn btn-sm" style={{ borderColor: LINE_COLORS[i % LINE_COLORS.length], color: LINE_COLORS[i % LINE_COLORS.length] }} onClick={() => toggle(c.iso3)} aria-label={`Remover ${c.name} da comparação`}>
               {c.name} ×
             </button>
           ))}
@@ -131,8 +131,8 @@ function Explorer({ data }: { data: GlobeResult }) {
         </div>
         {chosen.length > 0 && (
           <details className="mt-3 text-sm">
-            <summary className="touch inline-flex cursor-pointer items-center font-mono text-xs uppercase tracking-wider text-signal">Tabela equivalente (últimas 52 semanas)</summary>
-            <div className="mt-2 max-h-80 overflow-auto hud-scroll">
+            <summary className="touch inline-flex cursor-pointer items-center text-[14px] font-medium text-primary-600">Tabela equivalente (últimas 52 semanas)</summary>
+            <div className="mt-2 max-h-80 overflow-auto scroll-thin">
               <table id="tabela-comparacao" className="data-table text-xs">
                 <caption>Detecções semanais de A(H1N1)pdm09 por país, últimas 52 semanas</caption>
                 <thead>
@@ -166,7 +166,7 @@ function Explorer({ data }: { data: GlobeResult }) {
             </div>
           </details>
         )}
-        <p className="hud-meta">{foot} · {data.meta.universe_note}</p>
+        <p className="meta">{foot} · {data.meta.universe_note}</p>
       </section>
     </div>
   );

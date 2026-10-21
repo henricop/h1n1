@@ -7,10 +7,12 @@ import { polygonToCells } from 'h3-js';
 import type { Feature, Geometry } from 'geojson';
 import type { GlobeCountry } from '@/lib/api';
 import { COUNTRIES_TOPOJSON_URL } from '@/lib/geo-urls';
+import { escapeHtml } from '@/lib/html';
 import { sqrtRadius } from '@/lib/map-scale';
 
 interface Props {
   countries: GlobeCountry[];
+  /** Índice relativo ao array `values` dos países (já descontado o deslocamento da janela carregada). */
   weekIndex: number;
   week: string;
   max: number;
@@ -35,7 +37,7 @@ interface Point { iso3: string; name: string; lat: number; lng: number; value: n
 
 const nf = new Intl.NumberFormat('pt-BR');
 
-/** Globo WebGL (react-globe.gl): hexágonos dos países, pontos/anéis magenta ∝ √detecções na semana. */
+/** Globo WebGL (react-globe.gl) em fundo claro: esfera cinza-azulada fosca, hexágonos cobalto para o Brasil, pontos rosa ∝ √detecções. */
 export default function Globe3D({ countries, weekIndex, week, max, reducedMotion, playing, dataAsOf, onReady }: Props) {
   const ref = useRef<GlobeMethods | undefined>(undefined);
   const box = useRef<HTMLDivElement>(null);
@@ -70,10 +72,12 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
     return () => ro.disconnect();
   }, []);
 
-  const material = useMemo(() => new MeshPhongMaterial({ color: '#0d1526', emissive: '#05080f', shininess: 4 }), []);
+  // Esfera cinza-azulada clara e fosca (sem emissivo, sem brilho): "luz de estúdio" do DESIGN.md.
+  const material = useMemo(() => new MeshPhongMaterial({ color: '#dfe6f2', emissive: '#f5f7fb', emissiveIntensity: 0.35, shininess: 2 }), []);
 
   const points = useMemo<Point[]>(() => {
     const out: Point[] = [];
+    if (weekIndex < 0) return out;
     for (const c of countries) {
       const v = c.values[weekIndex] ?? null;
       if (v === null || v <= 0) continue;
@@ -82,7 +86,7 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
     return out;
   }, [countries, weekIndex, max]);
 
-  const rings = useMemo(() => (reducedMotion ? [] : [...points].sort((a, b) => b.value - a.value).slice(0, 14)), [points, reducedMotion]);
+  const rings = useMemo(() => (reducedMotion ? [] : [...points].sort((a, b) => b.value - a.value).slice(0, 10)), [points, reducedMotion]);
 
   const onGlobeReady = () => {
     const g = ref.current;
@@ -91,7 +95,7 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
     const c = g.controls();
     c.enableZoom = false;
     c.autoRotate = !reducedMotion;
-    c.autoRotateSpeed = 0.35;
+    c.autoRotateSpeed = 0.3;
     onReady?.();
   };
 
@@ -105,6 +109,9 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
     }
   }, [reducedMotion, playing]);
 
+  const safeWeek = escapeHtml(week);
+  const safeAsOf = escapeHtml(dataAsOf);
+
   return (
     <div ref={box} className="absolute inset-0" aria-hidden="true">
       <Globe
@@ -115,35 +122,35 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
         globeImageUrl={null}
         globeMaterial={material}
         showAtmosphere
-        atmosphereColor="#35e0ff"
-        atmosphereAltitude={0.16}
+        atmosphereColor="#9db7ff"
+        atmosphereAltitude={0.12}
         hexPolygonsData={land}
         hexPolygonResolution={3}
-        hexPolygonMargin={0.62}
+        hexPolygonMargin={0.55}
         hexPolygonUseDots
         hexPolygonAltitude={0.004}
-        hexPolygonColor={(d: object) => ((d as Feature).id === '076' ? 'rgba(53,224,255,0.75)' : 'rgba(111,135,170,0.42)')}
+        hexPolygonColor={(d: object) => ((d as Feature).id === '076' ? '#2451d6' : '#b9c6dc')}
         hexPolygonsTransitionDuration={0}
         pointsData={points}
         pointLat="lat"
         pointLng="lng"
-        pointAltitude={(d: object) => 0.02 + (d as Point).t * 0.45}
+        pointAltitude={(d: object) => 0.02 + (d as Point).t * 0.4}
         pointRadius={(d: object) => 0.25 + (d as Point).t * 1.1}
-        pointColor={() => 'rgba(255,79,216,0.85)'}
+        pointColor={() => 'rgba(214,0,127,0.85)'}
         pointsMerge={false}
         pointsTransitionDuration={reducedMotion ? 0 : 220}
         pointLabel={(d: object) => {
           const p = d as Point;
-          return `<div style="font-family:ui-monospace,monospace;font-size:12px;background:rgba(10,15,26,.96);border:1px solid #34507a;padding:8px 10px;border-radius:4px;color:#e6edf7"><strong>${p.name}</strong><br/>${nf.format(p.value)} detecções A(H1N1)pdm09<br/><span style="color:#9fb0c7">${week} · FluNet · OMS · base de ${dataAsOf}</span></div>`;
+          return `<div style="font-family:Inter,system-ui,sans-serif;font-size:13px;background:#ffffff;border:1px solid #e3e8f0;padding:8px 10px;border-radius:12px;color:#0b1220;box-shadow:0 8px 30px -12px rgba(11,18,32,.18)"><strong>${escapeHtml(p.name)}</strong><br/>${nf.format(p.value)} detecções A(H1N1)pdm09<br/><span style="color:#4a5568">${safeWeek} · FluNet · OMS · base de ${safeAsOf}</span></div>`;
         }}
         ringsData={rings}
         ringLat="lat"
         ringLng="lng"
         ringAltitude={0.01}
-        ringMaxRadius={(d: object) => 1.2 + (d as Point).t * 7}
-        ringPropagationSpeed={(d: object) => 0.8 + (d as Point).t * 1.4}
-        ringRepeatPeriod={900}
-        ringColor={() => (t: number) => `rgba(255,79,216,${Math.max(0, 0.7 - t * 0.7)})`}
+        ringMaxRadius={(d: object) => 1.2 + (d as Point).t * 6}
+        ringPropagationSpeed={(d: object) => 0.8 + (d as Point).t * 1.2}
+        ringRepeatPeriod={1100}
+        ringColor={() => (t: number) => `rgba(214,0,127,${Math.max(0, 0.45 - t * 0.45)})`}
         ringResolution={48}
         rendererConfig={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
         onGlobeReady={onGlobeReady}

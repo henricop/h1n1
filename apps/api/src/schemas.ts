@@ -202,6 +202,7 @@ export const seasonsQuery = z.object({
   indicator: indicatorId,
   geo_code: geoCode.optional(),
   from_year: z.coerce.number().int().min(1990).max(2100).optional(),
+  group: z.enum(['calendar', 'season']).optional(),
 });
 
 export const runsQuery = z.object({

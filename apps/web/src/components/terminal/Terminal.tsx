@@ -18,7 +18,7 @@ interface Entry {
 }
 
 const BANNER: OutputBlock[] = [
-  { kind: 'ok', lines: ['H1N1 · SALA DE SITUAÇÃO · terminal de consulta epidemiológica'] },
+  { kind: 'ok', lines: ['H1N1 · terminal de consulta epidemiológica'] },
   { kind: 'meta', lines: ['dados oficiais (SIVEP-Gripe, FluNet) via API /v1 · este painel não é "tempo real": cada saída mostra "base de DD/MM/AAAA".', 'digite help para os comandos. Exemplos: series sivep_srag_ah1n1pdm09_confirmed geo=BR-SP · top uf sivep_srag_notifications · status'] },
 ];
 
@@ -26,9 +26,9 @@ const KIND_CLASS: Record<OutputBlock['kind'], string> = {
   text: 'text-ink',
   table: 'text-ink',
   meta: 'text-muted',
-  warn: 'text-srag',
+  warn: 'text-attention-700',
   error: 'text-urgent-700',
-  ok: 'text-signal glow-signal',
+  ok: 'font-semibold text-primary-600',
 };
 
 function localExecute(line: string): CommandOutput | null {
@@ -152,22 +152,22 @@ export function Terminal() {
 
   return (
     <section
-      className="scanlines relative flex min-h-[calc(100vh-10rem)] flex-col rounded-md border border-line bg-bg-950 font-mono text-[13px] leading-relaxed text-ink shadow-[0_0_0_1px_rgba(53,224,255,0.08)]"
+      className="card relative flex min-h-[calc(100vh-12rem)] flex-col overflow-hidden bg-bg-soft font-mono text-[13px] leading-relaxed text-ink md:text-[14px]"
       aria-label="Terminal de consulta epidemiológica"
       onClick={() => inputRef.current?.focus()}
     >
-      <header className="flex items-center justify-between border-b border-line px-3 py-2">
-        <span className="hud-label">h1n1 · terminal · API /v1</span>
-        <span className="hud-label" aria-live="polite">
+      <header className="flex items-center justify-between border-b border-line bg-card px-4 py-2 font-sans">
+        <span className="label">Terminal · API /v1</span>
+        <span className="label" aria-live="polite">
           {busy ? 'consultando…' : 'pronto'}
         </span>
       </header>
-      <div className="flex-1 overflow-x-auto px-3 py-2" role="log" aria-live="polite" aria-relevant="additions">
+      <div className="flex-1 overflow-x-auto px-4 py-3" role="log" aria-live="polite" aria-relevant="additions">
         {entries.map((e) => (
           <div key={e.id} className="mb-2">
             {e.input !== undefined && (
               <div className="whitespace-pre">
-                <span className="text-signal">h1n1&gt;</span> <span className="text-ink">{e.input}</span>
+                <span className="font-semibold text-primary-600">h1n1&gt;</span> <span className="text-ink">{e.input}</span>
               </div>
             )}
             {e.blocks.map((b, i) => (
@@ -180,13 +180,13 @@ export function Terminal() {
         <div ref={endRef} />
       </div>
       <form
-        className="flex items-center gap-2 border-t border-line px-3 py-2"
+        className="flex items-center gap-2 border-t border-line bg-card px-4 py-2"
         onSubmit={(e) => {
           e.preventDefault();
           if (!busy) void run(input);
         }}
       >
-        <label htmlFor="terminal-input" className="text-signal">
+        <label htmlFor="terminal-input" className="font-semibold text-primary-600">
           h1n1&gt;
         </label>
         <input
@@ -202,10 +202,10 @@ export function Terminal() {
           disabled={busy}
           aria-label="Comando do terminal"
           placeholder="help"
-          className="min-h-[36px] flex-1 bg-transparent font-mono text-ink outline-none placeholder:text-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal"
+          className="min-h-[44px] flex-1 bg-transparent font-mono text-ink outline-none placeholder:text-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
         />
-        <button type="submit" className="touch rounded border border-line px-3 text-muted hover:bg-bg-700" disabled={busy}>
-          executar
+        <button type="submit" className="btn btn-sm font-sans" disabled={busy}>
+          Executar
         </button>
       </form>
     </section>

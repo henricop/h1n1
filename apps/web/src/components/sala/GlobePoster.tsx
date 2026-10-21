@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * Pôster estático do globo (SVG renderizado no servidor, projeção ortográfica voltada para o Brasil):
+ * Pôster estático do globo (SVG renderizado no servidor, projeção ortográfica voltada para o Brasil), em tema claro:
  * fallback em telas pequenas, dispositivos sem WebGL e enquanto o globo 3D carrega. Sem rede em runtime.
  */
 export async function GlobePoster({ countries, weekIndex, week, max, dataAsOf, indicatorName }: Props) {
@@ -34,9 +34,6 @@ export async function GlobePoster({ countries, weekIndex, week, max, dataAsOf, i
       const v = c.values[weekIndex] ?? null;
       const p = projection([c.lon, c.lat]);
       if (!p || v === null || v <= 0) return null;
-      // só o hemisfério visível
-      const center = projection.invert?.([size / 2, size / 2]);
-      if (!center) return null;
       const r = sqrtRadius(v, max, 26, 2.5);
       return { iso3: c.iso3, name: c.name, x: p[0], y: p[1], r, v, visible: isVisible(c.lon, c.lat, -53, -12) };
     })
@@ -47,31 +44,31 @@ export async function GlobePoster({ countries, weekIndex, week, max, dataAsOf, i
       <svg viewBox={`0 0 ${size} ${size}`} className="h-auto w-full" role="img" aria-label={`${indicatorName} por país na semana ${week}, pôster estático do globo voltado para o Brasil; valores na tabela abaixo.`}>
         <defs>
           <radialGradient id="poster-sphere" cx="38%" cy="32%" r="75%">
-            <stop offset="0%" stopColor="#15213a" />
-            <stop offset="70%" stopColor="#0a0f1a" />
-            <stop offset="100%" stopColor="#05080f" />
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="70%" stopColor="#e9eef7" />
+            <stop offset="100%" stopColor="#d5dde9" />
           </radialGradient>
           <radialGradient id="poster-atmo" cx="50%" cy="50%" r="50%">
-            <stop offset="86%" stopColor="#35e0ff" stopOpacity="0" />
-            <stop offset="100%" stopColor="#35e0ff" stopOpacity="0.45" />
+            <stop offset="86%" stopColor="#9db7ff" stopOpacity="0" />
+            <stop offset="100%" stopColor="#9db7ff" stopOpacity="0.35" />
           </radialGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={size / 2 - 2} fill="url(#poster-atmo)" />
-        <path d={sphere} fill="url(#poster-sphere)" stroke="#34507a" strokeWidth={1} />
-        <path d={graticule} fill="none" stroke="#233047" strokeWidth={0.5} />
+        <path d={sphere} fill="url(#poster-sphere)" stroke="#c7d0de" strokeWidth={1} />
+        <path d={graticule} fill="none" stroke="#e3e8f0" strokeWidth={0.5} />
         {land.map((f) => (
-          <path key={f.id} d={f.d} fill={f.id === '076' ? '#1aa7c2' : '#1a2334'} fillOpacity={f.id === '076' ? 0.55 : 1} stroke="#34507a" strokeWidth={0.5} />
+          <path key={f.id} d={f.d} fill={f.id === '076' ? '#2451d6' : '#c3cfe0'} fillOpacity={f.id === '076' ? 0.85 : 1} stroke="#ffffff" strokeWidth={0.5} />
         ))}
         {dots.map((d) => (
           <g key={d.iso3}>
-            <circle cx={d.x} cy={d.y} r={d.r * 1.8} fill="#ff4fd8" fillOpacity={0.12} />
-            <circle cx={d.x} cy={d.y} r={d.r} fill="#ff4fd8" fillOpacity={0.75} stroke="#ffd1f3" strokeWidth={0.6}>
+            <circle cx={d.x} cy={d.y} r={d.r * 1.8} fill="#d6007f" fillOpacity={0.1} />
+            <circle cx={d.x} cy={d.y} r={d.r} fill="#d6007f" fillOpacity={0.75} stroke="#ffffff" strokeWidth={0.8}>
               <title>{`${d.name}: ${new Intl.NumberFormat('pt-BR').format(d.v)} detecções na semana ${week}`}</title>
             </circle>
           </g>
         ))}
       </svg>
-      <figcaption className="mt-2 font-mono text-[11px] text-faint">
+      <figcaption className="mt-2 text-[12px] text-faint">
         Pôster estático · {week} · raio ∝ √detecções · FluNet · OMS · base de {formatDateBR(dataAsOf)}
       </figcaption>
     </figure>

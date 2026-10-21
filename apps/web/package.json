@@ -16,6 +16,8 @@
     "@ai-sdk/anthropic": "^4.0.85",
     "@ai-sdk/react": "^4.0.152",
     "@h1n1/core": "workspace:*",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
     "ai": "^7.0.148",
     "cmdk": "^1.1.1",
     "d3-array": "^3.2.4",

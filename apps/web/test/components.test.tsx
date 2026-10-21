@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ApiResult, FreshnessState, SeriesObservation, SeriesResult } from '@/lib/api';
 import { IndicatorCard } from '@/components/IndicatorCard';
-import { FreshnessNote } from '@/components/Notices';
+import { DataUnavailable, FreshnessNote, NoDataPublished } from '@/components/Notices';
+import { CommandPaletteButton } from '@/components/sala/CommandPaletteButton';
 import { LineChart } from '@/components/charts/LineChart';
 import { SeriesTable } from '@/components/charts/SeriesTable';
 import { Sparkline } from '@/components/charts/Sparkline';
@@ -55,6 +56,25 @@ describe('FreshnessNote', () => {
     const stale = renderToStaticMarkup(<FreshnessNote state={{ verified: true, stale: true, row: { indicator_id: 'x', source_id: 's', snapshot_id: null, data_as_of: null, fetched_at: null, published_at: null, age_days: 20, last_run_status: 'ok', last_run_finished_at: null } }} />);
     expect(stale).toContain('Dado defasado');
     expect(stale).toContain('20 dias');
+  });
+});
+
+describe('avisos de dado (achado i) e botão da paleta (achado l)', () => {
+  it('DataUnavailable usa o attemptedAt real; NoDataPublished distingue ausência de falha', () => {
+    const html = renderToStaticMarkup(<DataUnavailable attemptedAt="2026-10-20T10:05:00Z" />);
+    expect(html).toContain('10:05 UTC de 20/10/2026');
+    const empty = renderToStaticMarkup(<NoDataPublished what="as últimas 52 semanas" />);
+    expect(empty).toContain('Sem dado publicado');
+    expect(empty).toContain('Ausência de dado não é zero');
+    expect(empty).not.toContain('Dados indisponíveis');
+  });
+
+  it('CommandPaletteButton é uma pílula "Buscar ⌘K" sem classes do HUD', () => {
+    const html = renderToStaticMarkup(<CommandPaletteButton />);
+    expect(html).toContain('Buscar');
+    expect(html).toContain('⌘K');
+    expect(html).toMatch(/class="btn/);
+    expect(html).not.toMatch(/hud-|scanlines|glow-/);
   });
 });
 

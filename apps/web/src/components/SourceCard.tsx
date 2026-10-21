@@ -14,8 +14,8 @@ export function ApiVerifiedBadge({ date }: { date: string }) {
 
 export function SourceCard({ source: s }: { source: SourceRow }) {
   return (
-    <article className="flex h-full flex-col rounded-md border border-line bg-paper p-4 text-sm" aria-labelledby={`src-${s.id}`}>
-      <h3 id={`src-${s.id}`} className="text-base font-semibold text-ink">
+    <article className="card flex h-full flex-col p-5 text-[15px]" aria-labelledby={`src-${s.id}`}>
+      <h3 id={`src-${s.id}`} className="font-display text-lg font-bold text-ink">
         <Link href={`/dados/fontes/${s.slug}/`}>{s.name}</Link>
       </h3>
       <p className="mt-1 text-muted">

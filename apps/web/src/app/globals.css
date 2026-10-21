@@ -1,49 +1,52 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Inter', 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans: var(--font-inter), 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: var(--font-display-face), 'Manrope', 'Inter', system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* ====== SALA DE SITUAÇÃO · tema escuro de comando ======
-     Fundo quase preto azulado, "fósforo" ciano como cor de dado, âmbar para provisório/atenção,
-     magenta para H1N1 em destaque, vermelho só para emergência. Contraste AA garantido nos pares
-     text-* sobre bg-*. Use tabular-nums em qualquer número. */
-  --color-bg-950: #05080f;      /* fundo da página */
-  --color-bg-900: #0a0f1a;      /* painéis */
-  --color-bg-800: #111827;      /* painéis elevados */
-  --color-bg-700: #1a2334;      /* bordas suaves / hover */
-  --color-line: #233047;        /* linhas de grade e bordas */
-  --color-line-strong: #34507a;
-  --color-ink: #e6edf7;         /* texto principal (AA sobre bg-950) */
-  --color-muted: #9fb0c7;       /* texto secundário (AA sobre bg-900) */
-  --color-faint: #6b7a93;       /* rótulos de eixo, legendas */
-  --color-signal: #35e0ff;      /* ciano fósforo: dado, foco, links */
-  --color-signal-dim: #1aa7c2;
-  --color-h1n1: #ff4fd8;        /* magenta: série A(H1N1)pdm09 */
-  --color-h3: #8b7cff;          /* violeta: A(H3) */
-  --color-infb: #4fd1a5;        /* verde-água: influenza B */
-  --color-srag: #ffd166;        /* âmbar: SRAG total / provisório */
-  --color-attention-700: #ffc24d;
-  --color-attention-100: #3a2a06;
-  --color-urgent-700: #ff5c5c;
-  --color-urgent-50: #3a0d0d;
-  --color-ok-700: #4fe3a3;
-  --color-ok-100: #0c2a1e;
-  /* compatibilidade com componentes anteriores */
-  --color-navy-950: #05080f;
-  --color-navy-900: #0a0f1a;
-  --color-navy-800: #111827;
-  --color-navy-700: #35e0ff;
-  --color-navy-600: #1aa7c2;
-  --color-navy-100: #233047;
-  --color-navy-50: #111827;
-  --color-paper: #0a0f1a;
-  --color-canvas: #05080f;
+  /* ====== TEMA CLARO · "claro, forte, humano" (DESIGN.md v2) ======
+     Fundo branco e cinza-azulado muito leve; tinta quase preta; uma cor primária forte (cobalto)
+     para ação e dado principal; rosa forte para A(H1N1)pdm09; verde-água para influenza B;
+     violeta para A(H3); âmbar para provisório/atenção; vermelho só para emergência.
+     Contraste AA (WCAG, calculado): ink (#0b1220) 18.7:1, muted (#4a5568) 7.5:1 e faint (#64707f) 5.0:1 sobre branco
+     (4.7:1 sobre bg-soft); primary-600 (#2451d6) 6.5:1 sobre branco e branco 6.5:1 sobre primary-600; primary-700 7.9:1
+     sobre primary-50; attention-700 (#9a5b00) 4.9:1 sobre attention-100 e 5.4:1 sobre branco; urgent-700 (#b42318) 5.8:1
+     sobre urgent-50; ok-700 (#126e42) 5.5:1 sobre ok-100; h1n1 (#d6007f) 5.0:1 sobre branco (texto grande/dados);
+     h1n1-700 (#b8006d) 5.3:1 sobre h1n1-soft (texto pequeno em botões/chips rosa). */
+  --color-bg: #ffffff;
+  --color-bg-soft: #f5f7fb;        /* seções alternadas */
+  --color-bg-tint: #eef3ff;        /* tint do primário para destaques */
+  --color-card: #ffffff;
+  --color-line: #e3e8f0;
+  --color-line-strong: #c7d0de;
+  --color-ink: #0b1220;
+  --color-muted: #4a5568;
+  --color-faint: #64707f;
+  --color-primary-700: #1e3fae;
+  --color-primary-600: #2451d6;    /* cobalto: botões, links, dado principal */
+  --color-primary-500: #3b6cf0;
+  --color-primary-100: #dbe5ff;
+  --color-primary-50: #eef3ff;
+  --color-h1n1: #d6007f;           /* rosa forte: A(H1N1)pdm09 */
+  --color-h1n1-soft: #ffe1f1;
+  --color-h1n1-700: #b8006d;      /* texto pequeno sobre h1n1-soft */
+  --color-h3: #6d5df6;             /* violeta: A(H3) */
+  --color-infb: #0f9f93;           /* verde-água: influenza B */
+  --color-srag: #f29a0a;           /* âmbar: SRAG total / provisório (em gráficos) */
+  --color-attention-700: #9a5b00;  /* âmbar legível em texto */
+  --color-attention-100: #fff1d6;
+  --color-urgent-700: #b42318;
+  --color-urgent-50: #fdecea;
+  --color-ok-700: #126e42;
+  --color-ok-100: #dff5e8;
+
+  --shadow-card: 0 8px 30px -12px rgba(11, 18, 32, 0.18);
+  --radius-card: 20px;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
@@ -51,57 +54,96 @@ html {
 }
 
 body {
-  @apply bg-canvas text-ink font-sans antialiased;
+  @apply bg-bg text-ink font-sans antialiased;
   font-size: 17px;
   line-height: 1.6;
 }
 
-/* Foco visível e consistente (WCAG 2.4.7) */
+@media (min-width: 768px) {
+  body {
+    font-size: 18px;
+  }
+}
+
+/* Foco visível e consistente (WCAG 2.4.7): cobalto em tudo. */
 :focus-visible {
-  outline: 3px solid var(--color-navy-600);
+  outline: 3px solid var(--color-primary-600);
   outline-offset: 2px;
 }
 
 a {
-  @apply text-signal underline underline-offset-2 decoration-line-strong hover:decoration-signal;
+  @apply text-primary-600 underline underline-offset-2 decoration-line-strong hover:decoration-primary-600;
 }
 
-/* ====== utilitários da sala de situação ====== */
-.hud-grid {
-  background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px);
-  background-size: 48px 48px;
+/* ====== Utilitários do sistema de design claro ====== */
+
+/* Cartão/painel: branco, borda line, raio 20 px, sombra suave. */
+.card {
+  @apply rounded-[20px] border border-line bg-card;
+  box-shadow: var(--shadow-card);
 }
-.hud-panel {
-  @apply rounded-md border border-line bg-bg-900/80 backdrop-blur-sm;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-signal) 8%, transparent), 0 20px 60px -30px rgba(0,0,0,.8);
-}
-.hud-label {
-  @apply font-mono text-[11px] uppercase tracking-[0.18em] text-faint;
-}
-.hud-value {
-  @apply font-display text-3xl font-semibold tabular-nums text-ink md:text-4xl;
-}
-.glow-signal { text-shadow: 0 0 18px color-mix(in srgb, var(--color-signal) 55%, transparent); }
-.glow-h1n1 { text-shadow: 0 0 18px color-mix(in srgb, var(--color-h1n1) 55%, transparent); }
-.scanlines::after {
-  content: '';
-  position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(to bottom, transparent 0 3px, rgba(0,0,0,.08) 3px 4px);
-}
-@keyframes pulse-ring { 0% { transform: scale(.6); opacity: .9 } 100% { transform: scale(1.8); opacity: 0 } }
-.pulse-ring { animation: pulse-ring 1.8s ease-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .pulse-ring { animation: none; }
-  html { scroll-behavior: auto; }
+.card-soft {
+  @apply rounded-[20px] border border-line bg-bg-soft;
 }
 
+/* Rótulo pequeno e discreto (caixa normal, nunca caixa alta). */
+.label {
+  @apply text-[13px] font-medium leading-snug text-muted;
+}
+/* Kicker em cobalto acima de títulos. */
+.kicker {
+  @apply text-[13px] font-semibold leading-snug text-primary-600;
+}
+/* Rodapé de metadados de um painel: fonte · licença · base. */
+.meta {
+  @apply mt-3 border-t border-line pt-2 text-[12px] leading-relaxed text-faint;
+}
+/* Contador em display. */
+.value {
+  @apply font-display text-3xl font-bold tabular-nums tracking-[-0.02em] text-ink md:text-4xl;
+}
+
+/* Botões pílula (alvo ≥ 44 px). */
+.btn {
+  min-height: 44px;
+  @apply inline-flex items-center justify-center gap-2 rounded-full border border-line-strong bg-card px-4 py-2 text-[15px] font-medium text-ink no-underline transition-colors hover:border-primary-600 hover:bg-primary-50 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50;
+}
+.btn[aria-pressed='true'],
+.btn-primary {
+  @apply border-primary-600 bg-primary-600 text-white hover:border-primary-700 hover:bg-primary-700 hover:text-white;
+}
+.btn-h1n1 {
+  @apply border-h1n1 bg-h1n1-soft text-h1n1-700 hover:border-h1n1 hover:bg-h1n1-soft hover:text-h1n1-700;
+}
+.btn-sm {
+  min-height: 36px;
+  @apply px-3 py-1 text-[14px];
+}
+.select-field {
+  min-height: 44px;
+  @apply rounded-full border border-line-strong bg-card px-4 py-2 text-[15px] text-ink;
+}
+.input-field {
+  min-height: 44px;
+  @apply rounded-xl border border-line-strong bg-card px-3 py-2 text-ink placeholder:text-faint;
+}
+.chip {
+  min-height: 36px;
+  @apply inline-flex items-center rounded-full border border-line bg-bg-soft px-3 py-1 text-[14px] text-ink no-underline transition-colors hover:border-primary-600 hover:bg-primary-50 hover:text-primary-700;
+}
+
+/* Faixas de rolagem discretas. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+/* Link "pular para o conteúdo". */
 .skip-link {
   @apply sr-only;
 }
 .skip-link:focus {
-  @apply not-sr-only fixed top-2 left-2 z-50 rounded border border-signal bg-signal/15 px-4 py-3 text-signal no-underline;
+  @apply not-sr-only fixed top-2 left-2 z-50 rounded-full border border-primary-600 bg-primary-50 px-4 py-3 text-primary-700 no-underline;
 }
 
 /* Tipografia do corpo editorial (MDX) */
@@ -109,11 +151,11 @@ a {
   max-width: 68ch;
 }
 .prose h2 {
-  @apply mt-10 mb-3 font-display text-2xl font-semibold text-ink;
+  @apply mt-12 mb-3 font-display text-2xl font-bold tracking-[-0.02em] text-ink md:text-3xl;
   scroll-margin-top: 5rem;
 }
 .prose h3 {
-  @apply mt-8 mb-2 font-display text-xl font-semibold text-ink;
+  @apply mt-8 mb-2 font-display text-xl font-bold text-ink;
 }
 .prose p {
   @apply my-4;
@@ -128,7 +170,7 @@ a {
   @apply my-1;
 }
 .prose blockquote {
-  @apply my-4 border-l-4 border-navy-100 pl-4 text-muted;
+  @apply my-4 border-l-4 border-primary-100 pl-4 text-muted;
 }
 .prose table {
   @apply my-6 w-full border-collapse text-sm;
@@ -138,13 +180,19 @@ a {
   @apply border border-line px-3 py-2 text-left align-top;
 }
 .prose th {
-  @apply bg-navy-50 font-semibold;
+  @apply bg-bg-soft font-semibold;
 }
 .prose code {
-  @apply rounded bg-navy-50 px-1 font-mono text-[0.9em];
+  @apply rounded bg-bg-soft px-1 font-mono text-[0.9em];
 }
 .prose hr {
   @apply my-8 border-line;
+}
+.prose a {
+  color: var(--color-primary-600);
+}
+.prose strong {
+  color: var(--color-ink);
 }
 
 /* Tabelas de dados */
@@ -159,15 +207,15 @@ a {
   @apply border-b border-line px-2 py-2 text-left;
 }
 .data-table th {
-  @apply bg-navy-50 font-semibold text-ink;
+  @apply bg-bg-soft font-semibold text-ink;
 }
 .data-table td.num {
-  @apply text-right tabular-nums;
+  @apply text-right font-mono text-[0.95em] tabular-nums;
 }
 
 /* Tooltip acessível do glossário (hover e foco por teclado) */
 .glossario {
-  @apply relative inline-block cursor-help border-b border-dotted border-navy-600;
+  @apply relative inline-block cursor-help border-b border-dotted border-primary-600;
 }
 .glossario-def {
   @apply sr-only;
@@ -187,11 +235,11 @@ a {
   clip-path: none;
   overflow: visible;
   white-space: normal;
-  border-radius: 0.375rem;
+  border-radius: 12px;
   border: 1px solid var(--color-line);
-  background: var(--color-paper);
+  background: var(--color-card);
   color: var(--color-ink);
-  box-shadow: 0 6px 20px rgba(11, 31, 51, 0.12);
+  box-shadow: var(--shadow-card);
   font-size: 0.9rem;
   line-height: 1.45;
 }
@@ -202,58 +250,8 @@ a {
   min-width: 44px;
 }
 
-/* ====== Sala de situação: extensões (fontes via next/font, HUD, scrubber, mapa, console) ====== */
-:root {
-  /* next/font injeta --font-inter / --font-space-grotesk / --font-jetbrains no <html>; os tokens acima mantêm fallback */
-  --font-sans: var(--font-inter, 'Inter'), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: var(--font-space-grotesk, 'Space Grotesk'), var(--font-inter, 'Inter'), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains, 'JetBrains Mono'), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
+/* ====== Sala de dados: scrubber, mapa, console ====== */
 
-.hud-grid-fade {
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.35) 60%, rgba(0, 0, 0, 0) 100%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.35) 60%, rgba(0, 0, 0, 0) 100%);
-}
-.hud-kicker {
-  @apply font-mono text-[11px] uppercase tracking-[0.22em] text-signal;
-}
-.hud-meta {
-  @apply mt-3 border-t border-line pt-2 font-mono text-[11px] leading-relaxed text-faint;
-}
-.hud-corner {
-  position: relative;
-}
-.hud-corner::before,
-.hud-corner::after {
-  content: '';
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: color-mix(in srgb, var(--color-signal) 55%, transparent);
-  border-style: solid;
-  pointer-events: none;
-}
-.hud-corner::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
-.hud-corner::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
-
-/* Botões do HUD */
-.hud-btn {
-  min-height: 44px; min-width: 44px;
-  @apply inline-flex items-center justify-center gap-2 rounded border border-line-strong bg-bg-800 px-3 py-2 font-mono text-xs uppercase tracking-wider text-ink no-underline transition-colors hover:border-signal hover:text-signal;
-}
-.hud-btn[aria-pressed='true'],
-.hud-btn-primary {
-  @apply border-signal bg-signal/10 text-signal;
-}
-.hud-btn-h1n1 {
-  @apply border-h1n1/60 text-h1n1 hover:border-h1n1 hover:text-h1n1;
-}
-.hud-select {
-  min-height: 44px;
-  @apply rounded border border-line-strong bg-bg-800 px-2 py-2 font-mono text-xs text-ink;
-}
-
-/* Scrubber temporal */
 .scrubber {
   -webkit-appearance: none;
   appearance: none;
@@ -265,7 +263,7 @@ a {
 .scrubber::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 3px;
-  background: linear-gradient(to right, var(--color-signal-dim) var(--progress, 0%), var(--color-line) var(--progress, 0%));
+  background: linear-gradient(to right, var(--color-primary-600) var(--progress, 0%), var(--color-line) var(--progress, 0%));
 }
 .scrubber::-moz-range-track {
   height: 6px;
@@ -275,74 +273,69 @@ a {
 .scrubber::-moz-range-progress {
   height: 6px;
   border-radius: 3px;
-  background: var(--color-signal-dim);
+  background: var(--color-primary-600);
 }
 .scrubber::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
-  margin-top: -6px;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
   border-radius: 50%;
-  background: var(--color-signal);
-  border: 2px solid var(--color-bg-950);
-  box-shadow: 0 0 0 2px var(--color-signal-dim), 0 0 16px color-mix(in srgb, var(--color-signal) 60%, transparent);
+  background: var(--color-primary-600);
+  border: 3px solid var(--color-card);
+  box-shadow: 0 0 0 1px var(--color-primary-600), var(--shadow-card);
 }
 .scrubber::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--color-signal);
-  border: 2px solid var(--color-bg-950);
-  box-shadow: 0 0 0 2px var(--color-signal-dim), 0 0 16px color-mix(in srgb, var(--color-signal) 60%, transparent);
+  background: var(--color-primary-600);
+  border: 3px solid var(--color-card);
+  box-shadow: 0 0 0 1px var(--color-primary-600), var(--shadow-card);
 }
 .scrubber:focus-visible {
-  outline: 3px solid var(--color-signal);
+  outline: 3px solid var(--color-primary-600);
   outline-offset: 4px;
 }
 
 /* Mapa de UFs */
 .uf-path {
-  stroke: var(--color-bg-950);
-  stroke-width: 0.6;
+  stroke: var(--color-card);
+  stroke-width: 0.8;
   transition: fill 220ms linear;
   cursor: default;
 }
 .uf-path:hover,
 .uf-path:focus-visible {
-  stroke: var(--color-signal);
+  stroke: var(--color-ink);
   stroke-width: 1.4;
   outline: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  .uf-path { transition: none; }
-}
 
-/* Console de ingestão */
+/* Console de ingestão: lista limpa, sem efeitos de terminal. */
 .console {
-  @apply rounded border border-line bg-bg-950 p-3 font-mono text-[12px] leading-relaxed text-muted;
+  @apply rounded-2xl border border-line bg-bg-soft p-3 text-[13px] leading-relaxed text-muted;
 }
 .console .ok { color: var(--color-ok-700); }
 .console .failed { color: var(--color-urgent-700); }
-.console .skipped { color: var(--color-srag); }
-.cursor-blink::after {
-  content: '▍';
-  color: var(--color-signal);
-  animation: blink 1s steps(2, start) infinite;
+.console .skipped { color: var(--color-attention-700); }
+.console-line {
+  animation: console-in 240ms ease-out both;
+  animation-delay: var(--delay, 0ms);
 }
-@keyframes blink { to { visibility: hidden; } }
+@keyframes console-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .cursor-blink::after { animation: none; }
+  html { scroll-behavior: auto; }
+  .uf-path { transition: none; }
+  .console-line { animation: none; }
 }
 
-/* Faixas de rolagem horizontal discretas */
-.hud-scroll { scrollbar-width: thin; scrollbar-color: var(--color-line-strong) transparent; }
-
-/* Links em painéis escuros (legibilidade AA) */
-.hud-panel a, .prose a { color: var(--color-signal); }
-.prose strong { color: var(--color-ink); }
-.prose p, .prose li { color: var(--color-ink); }
-
-/* Contraste AA dos banners sobre fundo escuro */
-.bg-attention-100 { color: var(--color-attention-700); }
-select option { background: var(--color-bg-800); color: var(--color-ink); }
+select option {
+  background: var(--color-card);
+  color: var(--color-ink);
+}

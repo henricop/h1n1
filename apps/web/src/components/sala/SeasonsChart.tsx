@@ -8,9 +8,9 @@ import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
 
 const EChart = dynamic(() => import('@/components/charts/EChart'), { ssr: false, loading: () => <ChartSkeleton height={300} /> });
 
-const PALETTE = ['#3b4a66', '#46577a', '#55678f', '#6678a3', '#7a8bb5', '#8b7cff', '#35e0ff'];
+const PALETTE = ['#c7d0de', '#aeb9cc', '#95a3ba', '#7c8da8', '#6478a0', '#6d5df6', '#2451d6'];
 
-/** Sobreposição de temporadas: uma linha por ano (semanas 1..53), ano corrente em destaque magenta. */
+/** Sobreposição de temporadas: uma linha por ano (semanas 1..53), ano corrente em destaque rosa; anos anteriores em cinza-azulado. */
 export function SeasonsChart({ seasons, unit, tableId, height = 300 }: { seasons: SeasonsResult; unit: string; tableId: string; height?: number }) {
   const years = seasons.seasons.map((s) => s.year);
   const current = Math.max(...years);
@@ -40,8 +40,8 @@ export function SeasonsChart({ seasons, unit, tableId, height = 300 }: { seasons
     <div>
       <EChart option={option} height={height} ariaLabel={`${seasons.indicator.name}: sobreposição de temporadas de ${years[0]} a ${current}, por semana do ano; ${current} em destaque. Tabela equivalente abaixo.`} tableId={tableId} />
       <details className="mt-3 text-sm">
-        <summary className="touch inline-flex cursor-pointer items-center font-mono text-xs uppercase tracking-wider text-signal">Tabela equivalente</summary>
-        <div className="mt-2 max-h-80 overflow-auto hud-scroll">
+        <summary className="touch inline-flex cursor-pointer items-center text-[14px] font-medium text-primary-600">Tabela equivalente</summary>
+        <div className="mt-2 max-h-80 overflow-auto scroll-thin">
           <table id={tableId} className="data-table text-xs">
             <caption>{seasons.indicator.name}, por semana do ano e temporada</caption>
             <thead>

@@ -32,9 +32,9 @@ export default async function MundoPage() {
     <>
       <Breadcrumb items={crumbs} />
       <header className="mt-2">
-        <p className="hud-kicker">FluNet · OMS/GISRS</p>
-        <h1 className="font-display text-3xl font-semibold text-ink">H1N1 no mundo</h1>
-        <p className="mt-2 max-w-3xl text-muted">
+        <p className="kicker">FluNet · OMS/GISRS</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-5xl">H1N1 no mundo</h1>
+        <p className="mt-3 max-w-2xl text-muted">
           Detecções laboratoriais de A(H1N1)pdm09 por país e semana ISO, desde 2009. Não é incidência populacional: depende de quantas amostras cada país processa e reporta. {globe.ok && <FreshnessNote state={freshnessState(fresh, INDICATOR)} />}
         </p>
       </header>
@@ -43,13 +43,13 @@ export default async function MundoPage() {
           <DataUnavailable attemptedAt={globe.attemptedAt} detail={globe.error} />
         </div>
       ) : (
-        <div className="mt-6">
+        <div className="mt-8">
           <WorldExplorer
             data={globe.data}
             max={globalMax(globe.data.countries)}
             poster={<GlobePoster countries={globe.data.countries} weekIndex={globe.data.weeks.length - 1} week={globe.data.weeks[globe.data.weeks.length - 1] ?? ''} max={globalMax(globe.data.countries)} dataAsOf={globe.data.meta.data_as_of} indicatorName={globe.data.indicator.name} />}
           />
-          <p className="mt-6 rounded border-l-4 border-signal bg-bg-900 p-4 text-sm text-ink">{globe.data.meta.universe_note}</p>
+          <p className="mt-8 rounded-2xl border border-primary-100 bg-primary-50 p-4 text-[15px] text-ink">{globe.data.meta.universe_note}</p>
           <dl className="mt-4 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
             <dt className="font-medium text-ink">Definição</dt>
             <dd className="text-muted">{globe.data.meta.case_definition}</dd>

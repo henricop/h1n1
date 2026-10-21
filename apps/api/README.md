@@ -46,13 +46,13 @@ Na subida, o servidor aplica migrações e faz `seedAll` se a tabela `sources` e
 | `GET /v1/snapshots?source_id=&limit=` · `GET /v1/snapshots/:id` | snapshots imutáveis (sem `storage_path`) |
 | `GET /v1/diff?indicator=&a=&b=&limit=` | diferenças célula a célula entre duas snapshots — **só total nacional** (ver abaixo) |
 | `GET /v1/geo?level=` | mundo, países, regiões e UFs |
-| `GET /v1/globe?indicator=&from=&to=&origin=` | matriz país × semana (FluNet) com centroides, para o globo |
+| `GET /v1/globe?indicator=&from=&to=&origin=` | matriz país × semana (FluNet, só `measurement=count`) com centroides, para o globo |
 | `GET /v1/map/brazil?indicator=&from=&to=` | matriz UF × semana com supressão aplicada + total nacional, para o mapa |
 | `GET /v1/analytics/ears?indicator=&geo_level=&geo_code=&weeks=&baseline=&guard=` | EARS C1/C2/C3 (CDC) — sinal estatístico |
-| `GET /v1/analytics/nowcast?indicator=&geo_code=&weeks=` | nowcast pela CDF de atraso (`sivep_reporting_delay_cdf`) — estimativa |
-| `GET /v1/analytics/seasons?indicator=&geo_code=&from_year=` | sobreposição de temporadas (1 linha/ano, 53 semanas) |
-| `GET /v1/runs?limit=&source_id=` | execuções de ingestão (`ingestion_runs`), erro truncado e sem caminhos de disco |
-| `GET /v1/indicators/:id/latest?geo_code=` | último período com valor + variação vs 4 semanas (contadores do HUD) |
+| `GET /v1/analytics/nowcast?indicator=&geo_code=&weeks=` | nowcast pela CDF de atraso (`sivep_reporting_delay_cdf`) — estimativa; só os 7 indicadores da população `CLASSI_FIN = 1` (`400 nowcast_not_applicable` fora deles) |
+| `GET /v1/analytics/seasons?indicator=&geo_code=&from_year=&group=` | sobreposição de temporadas (53 semanas): `group=calendar` (1 linha/ano) ou `group=season` (SE 27 → SE 26, rótulo `2025/26`) |
+| `GET /v1/runs?limit=&source_id=` | execuções de ingestão (`ingestion_runs`), erro truncado, sem URLs, credenciais nem caminhos de disco; cache 60 s |
+| `GET /v1/indicators/:id/latest?geo_code=` | último período com valor + variação vs 4 semanas (contadores do HUD); `400` se o nível de `geo_code` não está em `geo_levels` |
 | `GET /openapi.json` · `GET /docs` | especificação OpenAPI 3 e Swagger UI |
 
 Detalhes, formas de resposta e restrições das rotas de visualização/análise: `docs/CONTRATO_API.md` §3.13.
@@ -69,13 +69,17 @@ Detalhes, formas de resposta e restrições das rotas de visualização/análise
   (são os separadores da chave canônica `stratum_key`).
 - `limit`: `meta.truncated: true` (JSON) ou `X-Truncated: true` (CSV) quando o número de observações
   atingiu `limit` — refine a consulta (geo, período) para garantir que nada ficou de fora.
+- Rotas de visualização/análise leem até 100 000 observações por série (`buildApp({ vizRowLimit })` reduz, útil
+  em testes). Ao atingir o limite, `/v1/globe` e `/v1/map/brazil` respondem `200` com `meta.truncated: true`;
+  `/v1/analytics/*` e `/v1/indicators/:id/latest` respondem `400 too_many_rows` (nunca analisam série cortada).
 
 ### Erros
 
 Sempre `{ "error": { "code", "message" } }`, nunca stack trace nem eco da URL:
-`validation_error` 400/413/415, `not_found` 404, `nowcast_unavailable` 404 (sem CDF de atraso publicada
-para a geo), `rate_limited` 429, `client_error` para outros 4xx (o status original é mantido, ex. 414),
-`internal_error` 5xx.
+`validation_error` 400/413/415, `nowcast_not_applicable` 400 (indicador fora da população da CDF de atraso),
+`too_many_rows` 400 (análise sobre série cortada pelo limite de linhas), `not_found` 404, `nowcast_unavailable` 404
+(sem CDF de atraso publicada para a geo), `rate_limited` 429, `client_error` para outros 4xx (o status original é
+mantido, ex. 414), `internal_error` 5xx.
 
 ### Cache e ETag
 
@@ -85,7 +89,8 @@ para a geo), `rate_limited` 429, `client_error` para outros 4xx (o status origin
 | `/v1/sources*`, `/v1/indicators*`, `/v1/geo` | `public, max-age=3600, stale-while-revalidate=86400` |
 | `/v1/freshness` | `public, max-age=60` |
 | `/v1/series`, `/v1/series.csv` | `public, max-age=300, stale-while-revalidate=3600` + `ETag` (sha256 do corpo); `If-None-Match` → `304` |
-| `/v1/globe`, `/v1/map/brazil`, `/v1/analytics/*`, `/v1/runs`, `/v1/indicators/:id/latest` | idem às séries (300 s + `ETag`) |
+| `/v1/globe`, `/v1/map/brazil`, `/v1/analytics/*`, `/v1/indicators/:id/latest` | idem às séries (300 s + `ETag`) |
+| `/v1/runs` | `public, max-age=60` + `ETag` |
 | `/v1/snapshots*`, `/v1/diff` | `public, max-age=300` |
 
 Respostas 4xx/5xx não levam `Cache-Control`. CORS liberado para `GET`/`HEAD`/`OPTIONS` (preflight responde `204`).
@@ -119,9 +124,19 @@ total nacional justamente para não abrir mais um canal.
 `/v1/map/brazil` reutiliza `getSeries` por UF, logo herda a supressão (célula `< 5` → `values[i] = null`,
 `suppressed[i] = true`). `/v1/analytics/ears`, `/v1/analytics/seasons` e `/v1/indicators/:id/latest` tratam
 células suprimidas como `null` (o EARS não calcula estatística para elas; `latest` pula a célula e devolve a
-anterior com valor). `/v1/globe` só serve indicadores FluNet (sem supressão) e usa `getMatrix`, que aplica a
-máscara simples do threshold como defesa em profundidade. `/v1/runs` nunca expõe `params` nem caminhos
-de disco (`error` passa por `sanitizeRunError`: caminhos → `[caminho]`, 200 caracteres).
+anterior com valor). `/v1/globe` só serve indicadores FluNet de contagem (sem supressão) e usa `getMatrix`, que
+aplica a máscara simples do threshold como defesa em profundidade. `/v1/runs` nunca expõe `params`, URLs,
+credenciais nem caminhos de disco (`error` passa por `sanitizeRunError`: URLs → `[url]`, `token=`/`key=`/
+`authorization` → `[redigido]`, caminhos → `[caminho]`, 200 caracteres).
+
+### Nowcast: população da CDF de atraso
+
+`sivep_reporting_delay_cdf` é calculada sobre SRAG por influenza (`CLASSI_FIN = 1`). O nowcast só aceita os
+indicadores dessa população ou de subconjuntos dela (`NOWCAST_INDICATORS` em `src/routes/analytics.ts`:
+influenza confirmada, H1N1, H3N2, A não subtipada, UTI, óbitos por influenza e por H1N1) e declara em `note`
+a aproximação "mesma distribuição de atraso da base de SRAG por influenza". `sivep_srag_notifications` (SRAG de
+qualquer agente), percentuais e FluNet respondem `400 nowcast_not_applicable`; indicador aceito com
+`period_type` não semanal responde `400 validation_error`.
 
 ### `/v1/diff` restrito ao total nacional
 
@@ -138,6 +153,7 @@ curl 'http://localhost:3001/v1/globe?indicator=flunet_ah1n1pdm09_detections&from
 curl 'http://localhost:3001/v1/map/brazil?indicator=sivep_srag_ah1n1pdm09_confirmed&from=2026'
 curl 'http://localhost:3001/v1/analytics/ears?indicator=sivep_srag_ah1n1pdm09_confirmed&geo_level=state&weeks=4'
 curl 'http://localhost:3001/v1/analytics/nowcast?indicator=sivep_srag_ah1n1pdm09_confirmed&geo_code=BRA'
+curl 'http://localhost:3001/v1/analytics/seasons?indicator=sivep_srag_ah1n1pdm09_confirmed&geo_code=BRA&group=season'
 curl 'http://localhost:3001/v1/indicators/sivep_srag_ah1n1pdm09_confirmed/latest?geo_code=BRA'
 ```
 

@@ -55,7 +55,7 @@ export function LineChart({ obs, title, unit, tableId }: Props) {
   const bandX = firstProv > 0 ? x(firstProv) - step / 2 : m.left;
 
   return (
-    <figure className="rounded-md border border-line bg-paper p-3">
+    <figure className="card p-4">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
@@ -85,25 +85,25 @@ export function LineChart({ obs, title, unit, tableId }: Props) {
           Semana ({formatPeriod(obs[0]!.period)} a {formatPeriod(obs[obs.length - 1]!.period)})
         </text>
         {segments.map((s, i) => (
-          <polyline key={i} points={s.pts} fill="none" stroke="var(--color-navy-700)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.provisional ? '6 4' : undefined} />
+          <polyline key={i} points={s.pts} fill="none" stroke="var(--color-primary-600)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.provisional ? '6 4' : undefined} />
         ))}
         {obs.map((o, i) => {
           const v = publishedValue(o);
           return v !== null ? (
-            <circle key={o.period} cx={x(i)} cy={y(v)} r={2.5} fill={o.update_status === 'provisional' ? 'var(--color-paper)' : 'var(--color-navy-700)'} stroke="var(--color-navy-700)" strokeWidth={1.5} />
+            <circle key={o.period} cx={x(i)} cy={y(v)} r={2.5} fill={o.update_status === 'provisional' ? 'var(--color-card)' : 'var(--color-primary-600)'} stroke="var(--color-primary-600)" strokeWidth={1.5} />
           ) : null;
         })}
       </svg>
       <figcaption className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
         <span className="inline-flex items-center gap-2">
           <svg width="28" height="8" aria-hidden="true">
-            <line x1="0" y1="4" x2="28" y2="4" stroke="var(--color-navy-700)" strokeWidth="2.5" />
+            <line x1="0" y1="4" x2="28" y2="4" stroke="var(--color-primary-600)" strokeWidth="2.5" />
           </svg>
           Semana consolidada
         </span>
         <span className="inline-flex items-center gap-2">
           <svg width="28" height="8" aria-hidden="true">
-            <line x1="0" y1="4" x2="28" y2="4" stroke="var(--color-navy-700)" strokeWidth="2.5" strokeDasharray="6 4" />
+            <line x1="0" y1="4" x2="28" y2="4" stroke="var(--color-primary-600)" strokeWidth="2.5" strokeDasharray="6 4" />
           </svg>
           Semana provisória (sujeita a revisão)
         </span>

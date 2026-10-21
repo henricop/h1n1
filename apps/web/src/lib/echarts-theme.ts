@@ -1,40 +1,48 @@
-/** Tema escuro da sala de situação para ECharts (mesmos tokens de globals.css). Registrado uma vez no cliente. */
-export const HUD_COLORS = {
-  bg950: '#05080f',
-  bg900: '#0a0f1a',
-  bg800: '#111827',
-  line: '#233047',
-  lineStrong: '#34507a',
-  ink: '#e6edf7',
-  muted: '#9fb0c7',
-  faint: '#6b7a93',
-  signal: '#35e0ff',
-  signalDim: '#1aa7c2',
-  h1n1: '#ff4fd8',
-  h3: '#8b7cff',
-  infb: '#4fd1a5',
-  srag: '#ffd166',
-  gray: '#7d8aa3',
-  urgent: '#ff5c5c',
+/** Tema claro dos gráficos ECharts (mesmos tokens de globals.css). Registrado uma vez no cliente. */
+export const CHART_COLORS = {
+  bg: '#ffffff',
+  bgSoft: '#f5f7fb',
+  line: '#e3e8f0',
+  lineStrong: '#c7d0de',
+  ink: '#0b1220',
+  muted: '#4a5568',
+  faint: '#64707f',
+  primary: '#2451d6',
+  primaryDark: '#1e3fae',
+  h1n1: '#d6007f',
+  h3: '#6d5df6',
+  infb: '#0f9f93',
+  srag: '#f29a0a',
+  attention: '#9a5b00',
+  gray: '#9aa5b4',
+  urgent: '#b42318',
 } as const;
 
-export const ECHARTS_THEME_NAME = 'h1n1-hud';
+/** Compatibilidade com componentes anteriores (mesmos nomes de chave; cores do tema claro). */
+export const HUD_COLORS = {
+  ...CHART_COLORS,
+  signal: CHART_COLORS.primary,
+  signalDim: CHART_COLORS.primaryDark,
+} as const;
+
+export const ECHARTS_THEME_NAME = 'h1n1-claro';
 
 export const ECHARTS_THEME = {
-  color: [HUD_COLORS.signal, HUD_COLORS.h1n1, HUD_COLORS.h3, HUD_COLORS.infb, HUD_COLORS.srag, HUD_COLORS.gray],
+  color: [CHART_COLORS.primary, CHART_COLORS.h1n1, CHART_COLORS.h3, CHART_COLORS.infb, CHART_COLORS.srag, CHART_COLORS.gray],
   backgroundColor: 'transparent',
-  textStyle: { color: HUD_COLORS.muted, fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11 },
-  title: { textStyle: { color: HUD_COLORS.ink, fontFamily: 'Space Grotesk, Inter, system-ui, sans-serif', fontWeight: 600, fontSize: 14 }, subtextStyle: { color: HUD_COLORS.faint } },
-  legend: { textStyle: { color: HUD_COLORS.muted }, inactiveColor: HUD_COLORS.line, pageTextStyle: { color: HUD_COLORS.muted } },
+  textStyle: { color: CHART_COLORS.muted, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12 },
+  title: { textStyle: { color: CHART_COLORS.ink, fontFamily: 'Manrope, Inter, system-ui, sans-serif', fontWeight: 700, fontSize: 14 }, subtextStyle: { color: CHART_COLORS.faint } },
+  legend: { textStyle: { color: CHART_COLORS.muted }, inactiveColor: CHART_COLORS.lineStrong, pageTextStyle: { color: CHART_COLORS.muted } },
   tooltip: {
-    backgroundColor: 'rgba(10,15,26,0.96)',
-    borderColor: HUD_COLORS.lineStrong,
+    backgroundColor: 'rgba(255,255,255,0.98)',
+    borderColor: CHART_COLORS.line,
     borderWidth: 1,
-    textStyle: { color: HUD_COLORS.ink, fontFamily: 'JetBrains Mono, ui-monospace, monospace', fontSize: 12 },
-    axisPointer: { lineStyle: { color: HUD_COLORS.signalDim }, crossStyle: { color: HUD_COLORS.signalDim } },
+    textStyle: { color: CHART_COLORS.ink, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12 },
+    extraCssText: 'box-shadow: 0 8px 30px -12px rgba(11,18,32,.18); border-radius: 12px;',
+    axisPointer: { lineStyle: { color: CHART_COLORS.lineStrong }, crossStyle: { color: CHART_COLORS.lineStrong } },
   },
-  categoryAxis: { axisLine: { lineStyle: { color: HUD_COLORS.line } }, axisTick: { lineStyle: { color: HUD_COLORS.line } }, axisLabel: { color: HUD_COLORS.faint }, splitLine: { show: false } },
-  valueAxis: { axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: HUD_COLORS.faint }, splitLine: { lineStyle: { color: HUD_COLORS.line, type: 'dashed' } } },
+  categoryAxis: { axisLine: { lineStyle: { color: CHART_COLORS.line } }, axisTick: { lineStyle: { color: CHART_COLORS.line } }, axisLabel: { color: CHART_COLORS.muted }, splitLine: { show: false } },
+  valueAxis: { axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: CHART_COLORS.muted }, splitLine: { lineStyle: { color: CHART_COLORS.line, type: 'solid' } } },
   line: { smooth: false, symbol: 'circle', symbolSize: 4, lineStyle: { width: 2 } },
   grid: { left: 48, right: 16, top: 28, bottom: 36, containLabel: false },
 } as const;

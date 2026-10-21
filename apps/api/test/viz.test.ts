@@ -3,17 +3,20 @@ import type { FastifyInstance } from 'fastify';
 import { createDb, migrate, seedAll, publishIndicator, type Db } from '@h1n1/db';
 import { epiWeekStart, toIsoDate } from '@h1n1/core';
 import { buildApp } from '../src/app.js';
-import { weeksBetween } from '../src/routes/analytics.js';
+import { weeksBetween, NOWCAST_INDICATORS } from '../src/routes/analytics.js';
 import { inferGeoLevel } from '../src/schemas.js';
 
 const SIVEP = 'sivep_srag_ah1n1pdm09_confirmed';
 const FLU = 'flunet_ah1n1pdm09_detections';
+const FLU_PCT = 'flunet_influenza_positivity';
 const DELAY = 'sivep_reporting_delay_cdf';
 /** data da base: domingo da SE 2026-W20 → semanas 2026-W20 = 0 semanas atrás, W19 = 1, ... */
 const DATA_AS_OF = toIsoDate(epiWeekStart(2026, 20));
 
 let db: Db;
 let app: FastifyInstance;
+/** mesma base, limite de 5 linhas por série: força meta.truncated nas rotas de visualização/análise */
+let tinyApp: FastifyInstance;
 
 async function insertSnapshot(sourceId: string, dataAsOf: string): Promise<string> {
   const r = await db.query<{ id: string }>(
@@ -98,12 +101,21 @@ beforeAll(async () => {
     ['ENOENT: open /Users/alguem/Projects/h1n1/data/snapshots/INFLUD26.csv ' + 'detalhe '.repeat(60)],
   );
   await db.query(`insert into ingestion_runs (source_id, connector, status, rows_in, rows_out, finished_at) values ('INT-01', 'flunet', 'ok', 10, 10, now())`);
+  // Run com URL (credenciais + query string) e credenciais soltas no erro
+  await db.query(
+    `insert into ingestion_runs (source_id, connector, status, rows_in, rows_out, error, finished_at)
+     values ('INT-01', 'flunet', 'failed', 0, 0, $1, now())`,
+    ['HTTP 401 em https://user:SECRET@host/v1?token=ABC; retry com Authorization: Bearer eyJTOKEN e api_key=K9 falhou'],
+  );
 
   app = await buildApp({ db, rateLimit: false });
   await app.ready();
+  tinyApp = await buildApp({ db, rateLimit: false, vizRowLimit: 5 });
+  await tinyApp.ready();
 });
 afterAll(async () => {
   await app.close();
+  await tinyApp.close();
   await db.close();
 });
 
@@ -117,7 +129,7 @@ describe('/v1/globe', () => {
     expect(res.headers.etag).toBeDefined();
     const body = res.json();
     expect(body.indicator).toEqual({ id: FLU, name: expect.any(String) });
-    expect(body.meta).toMatchObject({ data_as_of: '2026-05-11', source_id: 'INT-01', license: 'CC-BY' });
+    expect(body.meta).toMatchObject({ data_as_of: '2026-05-11', source_id: 'INT-01', license: 'CC-BY', truncated: false });
     expect(body.meta.universe_note).toContain('FluNet');
     expect(body.weeks).toEqual([W(1), W(2), W(3)]);
     expect(body.countries.map((c: { iso3: string }) => c.iso3)).toEqual(['BRA', 'USA']);
@@ -129,6 +141,15 @@ describe('/v1/globe', () => {
     expect(JSON.stringify(body)).not.toContain('storage_path');
     const r304 = await app.inject({ method: 'GET', url: `/v1/globe?indicator=${FLU}`, headers: { 'if-none-match': res.headers.etag as string } });
     expect(r304.statusCode).toBe(304);
+  });
+
+  it('só measurement=count: positividade (percent) responde 400 mesmo sendo flunet_* com nível country', async () => {
+    const res = await get(`/v1/globe?indicator=${FLU_PCT}`);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('validation_error');
+    expect(res.json().error.message).toContain('measurement=count');
+    const spec = (await get('/openapi.json')).json();
+    expect(JSON.stringify(spec.paths['/v1/globe'])).toContain('measurement=count');
   });
 
   it('respeita from/to e origin; rejeita indicador não FluNet (400) e inexistente (404)', async () => {
@@ -170,8 +191,18 @@ describe('/v1/map/brazil', () => {
     expect(am.values.every((v: unknown) => v === null)).toBe(true);
     expect(body.national.values).toEqual(BRA_SERIES);
     expect(body.national.provisional.slice(-3)).toEqual([false, true, true]);
-    expect(body.meta).toMatchObject({ data_as_of: DATA_AS_OF, source_id: 'BR-03' });
+    expect(body.meta).toMatchObject({ data_as_of: DATA_AS_OF, source_id: 'BR-03', truncated: false });
     expect(JSON.stringify(body)).not.toMatch(/"values":\[[^\]]*\b3\b/);
+  });
+
+  it('com leitura cortada pelo limite de linhas mantém 200 e sinaliza meta.truncated=true', async () => {
+    const res = await tinyApp.inject({ method: 'GET', url: `/v1/map/brazil?indicator=${SIVEP}` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.meta.truncated).toBe(true);
+    expect(body.states).toHaveLength(27);
+    const full = (await get(`/v1/map/brazil?indicator=${SIVEP}`)).json();
+    expect(full.meta.truncated).toBe(false);
   });
 
   it('from/to e 400 para indicador sem nível state', async () => {
@@ -230,6 +261,14 @@ describe('/v1/analytics/ears', () => {
     expect((await get('/v1/analytics/ears?indicator=nao_existe')).statusCode).toBe(404);
     const custom = (await get(`/v1/analytics/ears?indicator=${SIVEP}&geo_code=BRA&weeks=1&baseline=4&guard=0`)).json();
     expect(custom.method).toMatchObject({ baseline: 4, guard: 0 });
+    expect(custom.meta.truncated).toBe(false);
+  });
+
+  it('400 too_many_rows quando a série excede o limite de linhas (nunca analisa série cortada)', async () => {
+    const res = await tinyApp.inject({ method: 'GET', url: `/v1/analytics/ears?indicator=${SIVEP}&geo_code=BRA` });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('too_many_rows');
+    expect(res.headers['cache-control']).toBeUndefined();
   });
 });
 
@@ -248,16 +287,45 @@ describe('/v1/analytics/nowcast', () => {
     expect(last.upper).toBeGreaterThan(475);
     expect(body.results[2]).toMatchObject({ observed: 80, reported_share: 0.5, estimated: 160 });
     expect(body.results[0]).toMatchObject({ observed: 9, reported_share: 0.85 });
-    expect(body.meta).toMatchObject({ data_as_of: DATA_AS_OF, source_id: 'BR-03' });
+    expect(body.meta).toMatchObject({ data_as_of: DATA_AS_OF, source_id: 'BR-03', truncated: false });
+    expect(body.note).toContain('mesma distribuição de atraso da base de SRAG por influenza');
   });
 
-  it('404 nowcast_unavailable sem CDF para a geo; 400 para indicador não sivep de contagem', async () => {
+  it('404 nowcast_unavailable sem CDF para a geo; 400 nowcast_not_applicable fora da população da CDF (CLASSI_FIN = 1)', async () => {
     const pr = await get(`/v1/analytics/nowcast?indicator=${SIVEP}&geo_code=BR-PR`);
     expect(pr.statusCode).toBe(404);
     expect(pr.json().error.code).toBe('nowcast_unavailable');
-    expect((await get(`/v1/analytics/nowcast?indicator=${FLU}`)).statusCode).toBe(400);
-    expect((await get(`/v1/analytics/nowcast?indicator=${DELAY}`)).statusCode).toBe(400);
+    for (const id of [FLU, DELAY, 'sivep_srag_notifications', 'sivep_srag_influenza_subtype_completeness', 'ibge_population_estimate']) {
+      const res = await get(`/v1/analytics/nowcast?indicator=${id}`);
+      expect(res.statusCode, id).toBe(400);
+      expect(res.json().error.code, id).toBe('nowcast_not_applicable');
+      expect(res.json().error.message).toContain('CLASSI_FIN = 1');
+    }
+    // os sete indicadores da população da CDF passam da validação (chegam ao nowcast ou ao 404 da CDF)
+    for (const id of NOWCAST_INDICATORS) {
+      const res = await get(`/v1/analytics/nowcast?indicator=${id}&geo_code=BR-PR`);
+      expect(res.statusCode, id).toBe(404);
+      expect(res.json().error.code, id).toBe('nowcast_unavailable');
+    }
+    expect(NOWCAST_INDICATORS.size).toBe(7);
     expect((await get(`/v1/analytics/nowcast?indicator=${SIVEP}&weeks=99`)).statusCode).toBe(400);
+    expect((await get('/v1/analytics/nowcast?indicator=nao_existe')).statusCode).toBe(404);
+  });
+
+  it('400 se o period_type do indicador não for semanal; 400 too_many_rows com série cortada', async () => {
+    const id = 'sivep_srag_ah3n2_confirmed';
+    await db.query(`update indicators set period_type = 'month' where id = $1`, [id]);
+    try {
+      const res = await get(`/v1/analytics/nowcast?indicator=${id}`);
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.code).toBe('validation_error');
+      expect(res.json().error.message).toContain('semanais');
+    } finally {
+      await db.query(`update indicators set period_type = 'epiweek' where id = $1`, [id]);
+    }
+    const cut = await tinyApp.inject({ method: 'GET', url: `/v1/analytics/nowcast?indicator=${SIVEP}&geo_code=BRA` });
+    expect(cut.statusCode).toBe(400);
+    expect(cut.json().error.code).toBe('too_many_rows');
   });
 
   it('weeksBetween conta semanas epidemiológicas entre o período e a data da base', () => {
@@ -284,17 +352,45 @@ describe('/v1/analytics/seasons', () => {
     expect(ac.seasons[0].values[0]).toBe(7);
     expect((await get(`/v1/analytics/seasons?indicator=${DELAY}`)).statusCode).toBe(400);
     expect((await get(`/v1/analytics/seasons?indicator=${SIVEP}&from_year=2027`)).json().seasons).toEqual([]);
+    expect(body.group).toBe('calendar');
+    expect(body.seasons[0].label).toBe('2026');
+    expect(body.meta.truncated).toBe(false);
+  });
+
+  it('group=season: SE 27 → SE 26 do ano seguinte, rótulo 2025/26; group inválido → 400', async () => {
+    const res = await get(`/v1/analytics/seasons?indicator=${SIVEP}&geo_code=BRA&group=season`);
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.group).toBe('season');
+    expect(body.weeks).toHaveLength(53);
+    expect(body.weeks[0]).toBe(27);
+    expect(body.weeks[26]).toBe(53);
+    expect(body.weeks[27]).toBe(1);
+    expect(body.weeks[52]).toBe(26);
+    // 2026-W01..W20 pertencem à temporada 2025/26, posições 27..46
+    expect(body.seasons).toHaveLength(1);
+    expect(body.seasons[0]).toMatchObject({ year: 2025, label: '2025/26' });
+    expect(body.seasons[0].values.slice(0, 27).every((v: unknown) => v === null)).toBe(true);
+    expect(body.seasons[0].values.slice(27, 47)).toEqual(BRA_SERIES);
+    expect(body.seasons[0].values[47]).toBeNull();
+    expect((await get(`/v1/analytics/seasons?indicator=${SIVEP}&group=fiscal`)).statusCode).toBe(400);
+    const cut = await tinyApp.inject({ method: 'GET', url: `/v1/analytics/seasons?indicator=${SIVEP}&geo_code=BRA` });
+    expect(cut.statusCode).toBe(400);
+    expect(cut.json().error.code).toBe('too_many_rows');
   });
 });
 
 describe('/v1/runs', () => {
-  it('lista execuções sem caminhos de disco, erro truncado a 200 e sem params', async () => {
+  it('lista execuções sem caminhos de disco, erro truncado a 200 e sem params; cache de 60 s + ETag', async () => {
     const res = await get('/v1/runs?limit=10');
     expect(res.statusCode).toBe(200);
     expect(res.headers.etag).toBeDefined();
+    expect(res.headers['cache-control']).toBe('public, max-age=60');
+    const r304 = await app.inject({ method: 'GET', url: '/v1/runs?limit=10', headers: { 'if-none-match': res.headers.etag as string } });
+    expect(r304.statusCode).toBe(304);
     const body = res.json();
-    expect(body.data.length).toBe(2);
-    const failed = body.data.find((r: { status: string }) => r.status === 'failed');
+    expect(body.data.length).toBe(3);
+    const failed = body.data.find((r: { status: string; connector: string }) => r.status === 'failed' && r.connector === 'sivep');
     expect(failed).toMatchObject({ connector: 'sivep', source_id: 'BR-03', rows_in: 100, rows_out: 0 });
     expect(typeof failed.id).toBe('string');
     expect(failed.error.length).toBeLessThanOrEqual(200);
@@ -305,9 +401,17 @@ describe('/v1/runs', () => {
     expect(text).not.toContain('pglite');
     expect(text).not.toContain('params');
     const ok = (await get('/v1/runs?source_id=INT-01')).json();
-    expect(ok.data).toHaveLength(1);
-    expect(ok.data[0]).toMatchObject({ status: 'ok', error: null, connector: 'flunet' });
+    expect(ok.data).toHaveLength(2);
+    expect(ok.data.find((r: { status: string }) => r.status === 'ok')).toMatchObject({ error: null, connector: 'flunet' });
     expect((await get('/v1/runs?limit=0')).statusCode).toBe(400);
+  });
+
+  it('erro com URL (credenciais + query) e credenciais soltas sai redigido', async () => {
+    const body = (await get('/v1/runs?source_id=INT-01')).json();
+    const failed = body.data.find((r: { status: string }) => r.status === 'failed');
+    expect(failed.error).toBe('HTTP 401 em [url] retry com authorization=[redigido] e api_key=[redigido] falhou');
+    const text = JSON.stringify(body);
+    for (const leak of ['SECRET', 'ABC', 'host', 'eyJTOKEN', 'K9', 'https://']) expect(text, leak).not.toContain(leak);
   });
 });
 
@@ -336,6 +440,20 @@ describe('/v1/indicators/:id/latest', () => {
     expect(nopub.latest).toBeNull();
     expect(nopub.meta.data_as_of).toBeNull();
     expect((await get('/v1/indicators/nao_existe/latest')).statusCode).toBe(404);
+  });
+
+  it('400 se o nível de geo_code não consta em geo_levels do indicador; 400 too_many_rows com série cortada', async () => {
+    const wld = await get(`/v1/indicators/${SIVEP}/latest?geo_code=WLD`);
+    expect(wld.statusCode).toBe(400);
+    expect(wld.json().error.code).toBe('validation_error');
+    expect(wld.json().error.message).toContain('geo_levels');
+    expect((await get(`/v1/indicators/${FLU}/latest?geo_code=BR-SP`)).statusCode).toBe(400);
+    expect((await get(`/v1/indicators/${FLU}/latest?geo_code=BR-R-SE`)).statusCode).toBe(400);
+    expect((await get(`/v1/indicators/${FLU}/latest?geo_code=BRA`)).statusCode).toBe(200);
+    const cut = await tinyApp.inject({ method: 'GET', url: `/v1/indicators/${SIVEP}/latest?geo_code=BRA` });
+    expect(cut.statusCode).toBe(400);
+    expect(cut.json().error.code).toBe('too_many_rows');
+    expect((await get(`/v1/indicators/${SIVEP}/latest?geo_code=BRA`)).json().meta.truncated).toBe(false);
   });
 });
 

@@ -3,41 +3,44 @@ import type { NavItem } from '@/lib/content';
 import { SITE } from '@/lib/site';
 import { CommandPaletteButton } from '@/components/sala/CommandPaletteButton';
 
-/** Navegação primária fixa do HUD; grupos editoriais elegíveis (sintomas, vacina…) entram em seguida. */
-export const PRIMARY_NAV: ReadonlyArray<{ label: string; href: string }> = [
-  { label: 'Sala de Situação', href: '/' },
-  { label: 'Dados Brasil', href: '/dados/brasil/' },
-  { label: 'Mundo', href: '/dados/mundo/' },
+/**
+ * Navegação primária (DESIGN.md v2). Os grupos editoriais (Sintomas, Vacina) só aparecem quando há página elegível:
+ * o href vem da navegação derivada do conteúdo; sem página, o item fica de fora.
+ */
+export const PRIMARY_NAV: ReadonlyArray<{ label: string; href: string; group?: string }> = [
+  { label: 'Entenda', href: '/o-que-e-h1n1/', group: 'Entenda o H1N1' },
+  { label: 'Sintomas e cuidados', href: '', group: 'Sintomas e cuidados' },
+  { label: 'Vacina e prevenção', href: '', group: 'Vacina e prevenção' },
+  { label: 'Dados do Brasil', href: '/dados/brasil/' },
+  { label: 'Sala de dados', href: '/sala/' },
   { label: 'Terminal', href: '/terminal/' },
-  { label: 'Entenda o H1N1', href: '/o-que-e-h1n1/' },
   { label: 'Fontes', href: '/dados/fontes/' },
-  { label: 'Metodologia', href: '/dados/metodologia/' },
 ];
 
+/** Resolve a navegação primária contra os grupos editoriais elegíveis. */
+export function resolvePrimaryNav(nav: NavItem[]): Array<{ label: string; href: string }> {
+  return PRIMARY_NAV.flatMap((item) => {
+    if (!item.group) return [{ label: item.label, href: item.href }];
+    const found = nav.find((n) => n.label === item.group);
+    if (found) return [{ label: item.label, href: found.href }];
+    return item.href ? [{ label: item.label, href: item.href }] : [];
+  });
+}
+
 export function Header({ nav }: { nav: NavItem[] }) {
-  const primaryHrefs = new Set(PRIMARY_NAV.map((p) => p.href));
-  const entenda = nav.find((n) => n.label === 'Entenda o H1N1');
-  const primary = PRIMARY_NAV.map((p) => (p.label === 'Entenda o H1N1' && entenda ? { ...p, href: entenda.href } : p));
-  const editorial = nav.filter((n) => !primaryHrefs.has(n.href) && n.label !== 'Entenda o H1N1' && n.label !== 'H1N1 hoje' && n.label !== 'Dados e pesquisas');
+  const items = resolvePrimaryNav(nav);
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg-950/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2">
-        <Link href="/" className="touch inline-flex items-center gap-2 no-underline" aria-label={`${SITE.name}: sala de situação`}>
-          <span className="rounded border border-h1n1/60 bg-h1n1/10 px-2 py-0.5 font-display text-base font-bold tracking-tight text-h1n1 glow-h1n1">H1N1</span>
-          <span className="hidden font-mono text-[11px] uppercase tracking-[0.2em] text-faint md:inline">sala de situação</span>
+    <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2 md:px-6">
+        <Link href="/" className="touch inline-flex items-center gap-2 no-underline" aria-label={`${SITE.name}: início`}>
+          <span className="font-display text-2xl font-extrabold tracking-[-0.03em] text-primary-600">H1N1</span>
+          <span className="hidden text-[13px] text-muted md:inline">informação clara, dados oficiais</span>
         </Link>
-        <nav aria-label="Navegação principal" className="order-last w-full md:order-none md:w-auto">
-          <ul className="-mx-1 flex flex-wrap gap-x-0.5 gap-y-0 font-mono text-[12px] uppercase tracking-wider">
-            {primary.map((item) => (
+        <nav aria-label="Navegação principal" className="order-last w-full lg:order-none lg:w-auto">
+          <ul className="-mx-1 flex flex-wrap gap-x-0.5 gap-y-0 text-[15px] font-medium">
+            {items.map((item) => (
               <li key={item.href}>
-                <Link href={item.href} className="touch inline-flex items-center rounded px-2.5 py-2 text-muted no-underline hover:bg-bg-800 hover:text-signal">
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-            {editorial.map((item) => (
-              <li key={item.href}>
-                <Link href={item.href} className="touch inline-flex items-center rounded px-2.5 py-2 text-muted no-underline hover:bg-bg-800 hover:text-signal">
+                <Link href={item.href} className="touch inline-flex items-center rounded-full px-3 py-2 text-muted no-underline hover:bg-primary-50 hover:text-primary-700">
                   {item.label}
                 </Link>
               </li>

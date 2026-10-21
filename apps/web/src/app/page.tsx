@@ -1,320 +1,139 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { INDICATOR_BY_ID } from '@h1n1/core';
-import { getBrazilMap, getEars, getFreshness, getGlobe, getLatest, getNowcast, getRuns, getSeasons, getSeries, seriesCsvUrl, type ApiResult, type BrazilMapResult } from '@/lib/api';
+import type { ReactNode } from 'react';
 import { eligiblePages, firstEligible } from '@/lib/content';
-import { formatDateBR, formatNumberBR, formatPeriod, UNIT_LABEL } from '@/lib/format';
-import { globalMax } from '@/lib/hud';
-import { indicatorLabel } from '@/lib/observatory';
-import { sliceInterval, totalSeries } from '@/lib/series';
 import { SITE, absoluteUrl } from '@/lib/site';
-import { TIMELINE_START } from '@/lib/timeline';
+import { HOME_FACT_IDS } from '@/lib/virus/copy';
 import { JsonLd } from '@/components/JsonLd';
-import { DataUnavailable, FreshnessNote } from '@/components/Notices';
-import { freshnessState } from '@/lib/api';
-import { AssistentePanel } from '@/components/assistente/AssistentePanel';
-import { BrazilStrip, type MapOption } from '@/components/sala/BrazilStrip';
-import { COMPOSITION_COLORS, CompositionChart, type CompositionLayer } from '@/components/sala/CompositionChart';
-import { EarsTable } from '@/components/sala/EarsTable';
-import { GlobePanel } from '@/components/sala/GlobePanel';
-import { GlobePoster } from '@/components/sala/GlobePoster';
-import { HudCounters } from '@/components/sala/HudCounters';
-import { HudFooter } from '@/components/sala/HudFooter';
-import { HudTopbar } from '@/components/sala/HudTopbar';
-import { IngestConsole } from '@/components/sala/IngestConsole';
-import { NextstrainPanel } from '@/components/sala/NextstrainPanel';
-import { Panel } from '@/components/sala/Panel';
-import { SeasonsChart } from '@/components/sala/SeasonsChart';
-import { TimelineProvider } from '@/components/sala/TimelineContext';
-import { TimeScrubber } from '@/components/sala/TimeScrubber';
-import { TrendChart } from '@/components/sala/TrendChart';
+import { ClinicalNotice } from '@/components/Notices';
+import { Fato } from '@/components/mdx/Fato';
+import { BrasilNow } from '@/components/virus/BrasilNow';
+import { FatoCtx } from '@/components/virus/FatoCtx';
+import { VirusExplainer } from '@/components/virus/VirusExplainer';
+import { POSTER_ALT, POSTER_HEIGHT, POSTER_SRC, POSTER_WIDTH } from '@/components/virus/VirusPoster';
 
 /** ISR: igual a API_REVALIDATE_SECONDS (src/lib/api.ts); literal por exigência do Next (ver test/cache-policy.test.ts). */
 export const revalidate = 3600;
 
+const TITLE = 'H1N1, explicado de um jeito que dá para ver.';
+const DESCRIPTION = 'Desmonte o vírus H1N1 peça por peça em 3D: o que ele é, como entra na célula, como se espalha e como a vacina age. Cada afirmação com fonte; dados oficiais do Brasil com data da base.';
+
 export const metadata: Metadata = {
-  title: `${SITE.name}: sala de situação epidemiológica`,
-  description: 'Sala de situação do H1N1: globo com detecções de A(H1N1)pdm09 por país desde 2009, mapa de UFs do Brasil, tendência, nowcast, temporadas e composição viral, com fonte e data da base em cada número.',
+  title: { absolute: `${SITE.name}: ${TITLE}` },
+  description: DESCRIPTION,
   alternates: { canonical: '/' },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: '/',
+    siteName: SITE.name,
+    locale: 'pt_BR',
+    type: 'website',
+    images: [{ url: POSTER_SRC, width: POSTER_WIDTH, height: POSTER_HEIGHT, alt: POSTER_ALT }],
+  },
 };
 
-const GLOBE_INDICATOR = 'flunet_ah1n1pdm09_detections';
-const NATIONAL = 'sivep_srag_ah1n1pdm09_confirmed';
-const MAP_OPTIONS: MapOption[] = [
-  { id: 'sivep_srag_ah1n1pdm09_confirmed', label: 'H1N1pdm09 confirmado (SRAG)', unit: 'notifications' },
-  { id: 'sivep_srag_influenza_confirmed', label: 'SRAG por influenza', unit: 'notifications' },
-  { id: 'sivep_srag_notifications', label: 'SRAG total', unit: 'notifications' },
-  { id: 'sivep_srag_ah1n1pdm09_deaths', label: 'Óbitos H1N1pdm09 (SRAG)', unit: 'deaths' },
-];
-const COMPOSITION: Array<{ id: string; name: string; color: string }> = [
-  { id: 'flunet_ah1n1pdm09_detections', name: 'A(H1N1)pdm09', color: COMPOSITION_COLORS.h1n1 },
-  { id: 'flunet_ah3_detections', name: 'A(H3)', color: COMPOSITION_COLORS.h3 },
-  { id: 'flunet_inf_a_not_subtyped', name: 'A não subtipada (não é H1N1)', color: COMPOSITION_COLORS.nsub },
-  { id: 'flunet_inf_b_detections', name: 'Influenza B', color: COMPOSITION_COLORS.infb },
-];
-
-export default async function SalaDeSituacao() {
+export default function Home() {
   const pages = eligiblePages();
   const q = (c: string[]) => firstEligible(c, pages);
-  const institutional = [
-    { label: 'Política editorial', href: q(['/sobre/politica-editorial/']) },
-    { label: 'Equipe e revisão', href: q(['/sobre/equipe-e-revisao/']) },
-    { label: 'Correções', href: q(['/sobre/correcoes/']) },
-  ].filter((x): x is { label: string; href: string } => x.href !== null);
+  // O mesmo fato aparece no capítulo, no painel da peça e na versão em texto: ids de âncora distintos por contexto.
+  const facts: Record<string, ReactNode> = Object.fromEntries(HOME_FACT_IDS.map((id) => [id, <Fato key={id} id={id} />]));
+  const panelFacts: Record<string, ReactNode> = Object.fromEntries(HOME_FACT_IDS.map((id) => [id, <FatoCtx key={id} id={id} ctx="peca" />]));
+  const textFacts: Record<string, ReactNode> = Object.fromEntries(HOME_FACT_IDS.map((id) => [id, <FatoCtx key={id} id={id} ctx="texto" />]));
 
-  const [fresh, globe, ears, nowcast, seasons, runs, latest, national, ...rest] = await Promise.all([
-    getFreshness(),
-    getGlobe({ indicator: GLOBE_INDICATOR, from: TIMELINE_START }),
-    getEars({ indicator: NATIONAL, geo_level: 'state', weeks: 12 }),
-    getNowcast({ indicator: NATIONAL, geo_code: 'BRA', weeks: 8 }),
-    getSeasons({ indicator: NATIONAL, geo_code: 'BRA', from_year: 2019 }),
-    getRuns(30),
-    getLatest(NATIONAL, 'BRA'),
-    getSeries({ indicator: NATIONAL, geo_level: 'country', geo_code: 'BRA' }),
-    ...MAP_OPTIONS.map((o) => getBrazilMap({ indicator: o.id })),
-    ...COMPOSITION.map((c) => getSeries({ indicator: c.id, geo_level: 'country', geo_code: 'BRA' })),
-    getSeries({ indicator: 'flunet_influenza_positivity', geo_level: 'country', geo_code: 'BRA' }),
-  ]);
-  const maps = rest.slice(0, MAP_OPTIONS.length) as ApiResult<BrazilMapResult>[];
-  const comp = rest.slice(MAP_OPTIONS.length, MAP_OPTIONS.length + COMPOSITION.length) as Awaited<ReturnType<typeof getSeries>>[];
-  const positivity = rest[MAP_OPTIONS.length + COMPOSITION.length] as Awaited<ReturnType<typeof getSeries>>;
-  const datasets = Object.fromEntries(MAP_OPTIONS.map((o, i) => [o.id, maps[i]!]));
-
-  // eixo do scrubber: semanas do globo (2009-W01 → última semana FluNet); sem globo, eixo das semanas do mapa
-  const weeks = globe.ok ? globe.data.weeks : (maps[0]?.ok ? maps[0].data.weeks : []);
-  const globeMax = globe.ok ? globalMax(globe.data.countries) : 0;
-  const lastIndex = Math.max(0, weeks.length - 1);
-
-  // série nacional (52 semanas) para tendência + Dataset JSON-LD
-  const natObs = national.ok ? sliceInterval(totalSeries(national.data), 'ultimas-52-semanas') : [];
-  const natUnit = national.ok ? national.data.indicator.unit : 'notifications';
-  const threshold = national.ok ? national.data.meta.suppression_threshold || 5 : 5;
-
-  // composição FluNet Brasil (alinhada pelas semanas da primeira série disponível)
-  const compBase = comp.find((c) => c.ok);
-  const compWeeks = compBase?.ok ? sliceInterval(totalSeries(compBase.data), 'ultimas-52-semanas').map((o) => o.period) : [];
-  const layerFor = (i: number): CompositionLayer | null => {
-    const r = comp[i];
-    if (!r?.ok) return null;
-    const by = new Map(totalSeries(r.data).map((o) => [o.period, o.suppressed ? null : o.value]));
-    return { id: COMPOSITION[i]!.id, name: COMPOSITION[i]!.name, color: COMPOSITION[i]!.color, values: compWeeks.map((w) => by.get(w) ?? null) };
-  };
-  const layers = COMPOSITION.map((_, i) => layerFor(i)).filter((l): l is CompositionLayer => l !== null);
-  const posBy = positivity.ok ? new Map(totalSeries(positivity.data).map((o) => [o.period, o.suppressed ? null : o.value])) : null;
-  const posValues = posBy ? compWeeks.map((w) => posBy.get(w) ?? null) : null;
-  const compProvFrom = compBase?.ok ? sliceInterval(totalSeries(compBase.data), 'ultimas-52-semanas').findIndex((o) => o.update_status === 'provisional') : -1;
-  const compMeta = compBase?.ok ? compBase.data.meta : null;
-
-  const csv = seriesCsvUrl({ indicator: NATIONAL, geo_level: 'country', geo_code: 'BRA' });
+  const alerta = q(['/sintomas/sinais-de-alerta/', '/sintomas/']);
+  const links = [
+    { href: q(['/o-que-e-h1n1/']), title: 'O que é o H1N1', text: 'Vírus, subtipo e doença explicados sem jargão.' },
+    { href: q(['/transmissao/']), title: 'Como se transmite', text: 'Incubação, período de transmissão e isolamento.' },
+    { href: alerta, title: 'Sinais de alerta', text: 'Quando procurar atendimento, segundo a orientação oficial.' },
+    { href: q(['/vacina/', '/prevencao/']), title: 'Vacina e prevenção', text: 'O que a vacina da gripe faz e quem deve tomar.' },
+    { href: '/dados/brasil/', title: 'Dados do Brasil', text: 'Séries oficiais por semana, com fonte e data da base.' },
+    { href: '/sala/', title: 'Sala de dados', text: 'Globo, mapa por UF, tendência e composição viral, para quem quer ir fundo.' },
+    { href: '/terminal/', title: 'Terminal', text: 'Consultas diretas aos indicadores, por comando.' },
+  ].filter((l): l is { href: string; title: string; text: string } => l.href !== null);
 
   return (
-    <TimelineProvider weeks={weeks}>
+    <div className="mx-auto max-w-6xl">
       <JsonLd
         data={{
           '@context': 'https://schema.org',
           '@graph': [
             { '@type': 'Organization', '@id': `${SITE.url}/#organization`, name: SITE.name, url: SITE.url, description: SITE.description },
             { '@type': 'WebSite', '@id': `${SITE.url}/#website`, name: SITE.name, url: SITE.url, inLanguage: 'pt-BR', publisher: { '@id': `${SITE.url}/#organization` } },
-            ...(national.ok
-              ? [
-                  {
-                    '@type': 'Dataset',
-                    name: `${national.data.indicator.name}, Brasil`,
-                    description: `${national.data.indicator.description} ${national.data.meta.universe_note}`,
-                    url: absoluteUrl(`/dados/brasil/?indicador=${NATIONAL}`),
-                    creator: { '@type': 'Organization', name: national.data.source.agency, url: national.data.source.url },
-                    publisher: { '@id': `${SITE.url}/#organization` },
-                    isBasedOn: national.data.snapshot?.url ?? national.data.source.url,
-                    license: national.data.meta.license ?? undefined,
-                    dateModified: national.data.meta.data_as_of ?? undefined,
-                    temporalCoverage: natObs.length ? `${natObs[0]!.period_start}/${natObs[natObs.length - 1]!.period_end}` : undefined,
-                    spatialCoverage: 'Brasil',
-                    variableMeasured: national.data.indicator.name,
-                    measurementTechnique: national.data.meta.case_definition,
-                    distribution: [{ '@type': 'DataDownload', encodingFormat: 'text/csv', contentUrl: csv }],
-                    inLanguage: 'pt-BR',
-                  },
-                ]
-              : []),
+            { '@type': 'WebPage', '@id': `${SITE.url}/#home`, name: TITLE, description: DESCRIPTION, url: SITE.url, isPartOf: { '@id': `${SITE.url}/#website` }, primaryImageOfPage: absoluteUrl(POSTER_SRC), inLanguage: 'pt-BR' },
           ],
         }}
       />
 
-      <div className="hud-grid hud-grid-fade pointer-events-none absolute inset-x-0 top-0 -z-10 h-[70vh]" aria-hidden="true" />
+      {/* ===== topo ===== */}
+      <section aria-labelledby="titulo-home" className="relative overflow-hidden py-16 md:py-24">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary-50 blur-3xl md:h-96 md:w-96" aria-hidden="true" />
+        <div className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-h1n1-soft blur-3xl" aria-hidden="true" />
+        <div className="relative max-w-3xl">
+          <p className="text-sm font-medium text-primary-600">Explicador visual · fontes em cada afirmação</p>
+          <h1 id="titulo-home" className="mt-3 font-display text-4xl font-extrabold leading-[1.05] tracking-[-0.02em] text-ink md:text-6xl">
+            {TITLE}
+          </h1>
+          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted md:text-xl">Desmonte o vírus peça por peça, veja como ele entra na célula, como se espalha e como a vacina age; depois confira os dados oficiais do Brasil.</p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href="#por-dentro" className="touch inline-flex items-center justify-center rounded-full bg-primary-600 px-6 text-base font-semibold text-white no-underline shadow-[0_8px_30px_-12px_rgba(36,81,214,.6)] hover:bg-primary-700">
+              Explorar o vírus
+            </a>
+            <Link href="/dados/brasil/" className="touch inline-flex items-center justify-center rounded-full border border-line-strong bg-bg px-6 text-base font-semibold text-ink no-underline hover:border-primary-600 hover:text-primary-600">
+              Ver os dados do Brasil
+            </Link>
+          </div>
+        </div>
+      </section>
 
-      <h1 className="sr-only">H1N1: sala de situação epidemiológica</h1>
-      <HudTopbar freshness={fresh} entendaHref={q(['/o-que-e-h1n1/', '/transmissao/', '/historia/'])} />
+      {/* ===== capítulos 1–5: explicador 3D ===== */}
+      <VirusExplainer facts={facts} panelFacts={panelFacts} textFacts={textFacts} />
 
-      {/* ===== HERO: globo + contadores + scrubber ===== */}
-      <section aria-labelledby="h-globo" className="mt-5 grid gap-4 lg:grid-cols-12">
-        <h2 id="h-globo" className="sr-only">
-          Detecções de A(H1N1)pdm09 no mundo por semana (FluNet)
+      {/* ===== capítulo 6: Brasil ===== */}
+      <section aria-labelledby="brasil-titulo" className="mt-20 rounded-3xl bg-bg-soft px-5 py-14 md:mt-28 md:px-10 md:py-20">
+        <p className="text-sm font-medium text-primary-600">Capítulo 6</p>
+        <h2 id="brasil-titulo" className="mt-2 font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-4xl">
+          Como está o Brasil
         </h2>
-        <div className="lg:col-span-7">
-          {globe.ok ? (
-            <GlobePanel
-              countries={globe.data.countries}
-              max={globeMax}
-              dataAsOf={globe.data.meta.data_as_of}
-              universeNote={globe.data.meta.universe_note}
-              poster={<GlobePoster countries={globe.data.countries} weekIndex={lastIndex} week={weeks[lastIndex] ?? ''} max={globeMax} dataAsOf={globe.data.meta.data_as_of} indicatorName={globe.data.indicator.name} />}
-            />
+        <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted">Os últimos valores publicados pelas fontes oficiais. Cada número vem com o período, o universo medido e a data da base; casos graves confirmados não são o total de infectados.</p>
+        <div className="mt-8">
+          <BrasilNow />
+        </div>
+      </section>
+
+      {/* ===== capítulo 7: continuar ===== */}
+      <section aria-labelledby="mais-titulo" className="mt-20 md:mt-28">
+        <p className="text-sm font-medium text-primary-600">Capítulo 7</p>
+        <h2 id="mais-titulo" className="mt-2 font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-4xl">
+          Quer entender mais?
+        </h2>
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {links.map((l) => (
+            <li key={l.href}>
+              <Link href={l.href} className="group flex h-full flex-col rounded-3xl border border-line bg-card p-6 no-underline shadow-[0_8px_30px_-12px_rgba(11,18,32,.18)] transition-colors hover:border-primary-600">
+                <span className="font-display text-lg font-bold text-ink group-hover:text-primary-600">{l.title}</span>
+                <span className="mt-2 text-[15px] leading-relaxed text-muted">{l.text}</span>
+                <span className="mt-auto pt-4 text-sm font-medium text-primary-600">Abrir →</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* ===== aviso ===== */}
+      <section aria-label="Aviso" className="mt-16 md:mt-24">
+        <ClinicalNotice />
+        <p className="mt-3 text-sm text-muted">
+          {alerta ? (
+            <>
+              Em caso de falta de ar, febre persistente ou piora do estado geral, procure um serviço de saúde. Veja os <Link href={alerta}>sinais de alerta</Link>.
+            </>
           ) : (
-            <div className="hud-panel hud-corner p-4">
-              <p className="hud-label">Globo · {indicatorLabel(GLOBE_INDICATOR)}</p>
-              <div className="mt-3">
-                <DataUnavailable attemptedAt={globe.attemptedAt} detail={globe.error} />
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="grid content-start gap-4 lg:col-span-5">
-          {globe.ok ? (
-            <HudCounters countries={globe.data.countries} dataAsOf={globe.data.meta.data_as_of} />
-          ) : (
-            <p className="hud-panel p-4 text-sm text-muted">Contadores indisponíveis sem o globo.</p>
-          )}
-          {weeks.length > 0 && <TimeScrubber />}
-          <p className="px-1 text-xs leading-relaxed text-muted">
-            O globo mostra <strong className="text-ink">detecções laboratoriais</strong> de A(H1N1)pdm09 reportadas à OMS por semana ISO, não casos na população. Países sem valor na semana não aparecem. Licença: termos de uso da OMS (FluNet).
-            {globe.ok && ` Base de ${formatDateBR(globe.data.meta.data_as_of)}.`}
-          </p>
-        </div>
+            'Em caso de falta de ar, febre persistente ou piora do estado geral, procure um serviço de saúde.'
+          )}{' '}
+          Os dados desta página não são um painel em tempo real: todo número traz a data da base.
+        </p>
       </section>
-
-      {/* ===== BRASIL ===== */}
-      <section aria-labelledby="h-brasil" className="mt-8">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <h2 id="h-brasil" className="font-display text-xl font-semibold text-ink md:text-2xl">
-            <span className="hud-kicker block">Faixa 02</span>Brasil por UF, sincronizado com a semana selecionada
-          </h2>
-          <LatestChip latest={latest} fresh={fresh} />
-        </div>
-        <BrazilStrip options={MAP_OPTIONS} datasets={datasets} threshold={threshold} ears={<EarsTable ears={ears} threshold={threshold} />} />
-      </section>
-
-      {/* ===== TENDÊNCIA ===== */}
-      <section aria-labelledby="h-tend" className="mt-8 grid gap-4 lg:grid-cols-12">
-        <h2 id="h-tend" className="font-display text-xl font-semibold text-ink md:text-2xl lg:col-span-12">
-          <span className="hud-kicker block">Faixa 03</span>Tendência nacional, nowcast e temporadas
-        </h2>
-        <div className="lg:col-span-7">
-          <Panel
-            id="painel-tendencia"
-            label="Série nacional · últimas 52 semanas"
-            title={national.ok ? national.data.indicator.name : indicatorLabel(NATIONAL)}
-            minHeight={420}
-            meta={
-              national.ok ? (
-                <>
-                  {national.data.meta.universe_note} · fonte {national.data.source.name} ({national.data.source.agency}) · licença {national.data.meta.license ?? 'verificar'} · base de {formatDateBR(national.data.meta.data_as_of)} · <FreshnessNote state={freshnessState(fresh, NATIONAL)} />{' '}
-                  <a href={csv} download>
-                    CSV
-                  </a>{' '}
-                  · <Link href={`/dados/brasil/?indicador=${NATIONAL}&intervalo=ultimas-52-semanas`}>abrir no observatório</Link>
-                </>
-              ) : undefined
-            }
-          >
-            {national.ok && natObs.length > 0 ? (
-              <TrendChart obs={natObs} unit={natUnit} title={`${national.data.indicator.name}, Brasil`} periodType={national.data.indicator.period_type} threshold={threshold} nowcast={nowcast} tableId="tabela-tendencia" />
-            ) : (
-              <DataUnavailable attemptedAt={national.ok ? new Date().toISOString() : national.attemptedAt} detail={national.ok ? undefined : national.error} />
-            )}
-          </Panel>
-        </div>
-        <div className="lg:col-span-5">
-          <Panel
-            id="painel-temporadas"
-            label="Sobreposição de temporadas · semanas 1–53"
-            title={seasons.ok ? `${seasons.data.indicator.name}: ${seasons.data.seasons[0]?.year}–${seasons.data.seasons[seasons.data.seasons.length - 1]?.year}` : 'Temporadas'}
-            minHeight={420}
-            meta={seasons.ok ? `${seasons.data.meta.universe_note} · fonte ${seasons.data.meta.source_id} · base de ${formatDateBR(seasons.data.meta.data_as_of)} · ano corrente em magenta; os demais em tons neutros` : undefined}
-          >
-            {seasons.ok ? <SeasonsChart seasons={seasons.data} unit={natUnit} tableId="tabela-temporadas" /> : <DataUnavailable attemptedAt={seasons.attemptedAt} detail={seasons.error} />}
-          </Panel>
-        </div>
-      </section>
-
-      {/* ===== COMPOSIÇÃO ===== */}
-      <section aria-labelledby="h-comp" className="mt-8">
-        <h2 id="h-comp" className="mb-3 font-display text-xl font-semibold text-ink md:text-2xl">
-          <span className="hud-kicker block">Faixa 04</span>Composição das detecções de influenza no Brasil (FluNet)
-        </h2>
-        <Panel
-          id="painel-composicao"
-          label="Área empilhada por tipo e subtipo · positividade em linha"
-          minHeight={400}
-          meta={compMeta ? `${compMeta.universe_note} A não subtipada não é H1N1 (regra 1). Positividade depende da estratégia de coleta (regra 4). Fonte FluNet · OMS/GISRS · base de ${formatDateBR(compMeta.data_as_of)}.` : undefined}
-        >
-          {layers.length > 0 ? (
-            <CompositionChart weeks={compWeeks} layers={layers} positivity={posValues} provisionalFrom={compProvFrom} tableId="tabela-composicao" />
-          ) : (
-            <DataUnavailable attemptedAt={comp[0] && !comp[0].ok ? comp[0].attemptedAt : new Date().toISOString()} detail={comp[0] && !comp[0].ok ? comp[0].error : undefined} />
-          )}
-          {!positivity.ok && <p className="mt-2 text-xs text-muted">Positividade indisponível no momento ({indicatorLabel('flunet_influenza_positivity')}).</p>}
-        </Panel>
-      </section>
-
-      {/* ===== EVOLUÇÃO DO VÍRUS + CONSOLE ===== */}
-      <section aria-labelledby="h-virus" className="mt-8 grid gap-4 lg:grid-cols-12">
-        <h2 id="h-virus" className="font-display text-xl font-semibold text-ink md:text-2xl lg:col-span-12">
-          <span className="hud-kicker block">Faixas 05 · 06</span>Evolução do vírus e console de ingestão
-        </h2>
-        <div className="lg:col-span-7">
-          <Panel
-            id="painel-nextstrain"
-            label="Filogenia · A(H1N1)pdm09 · HA · 2 anos"
-            minHeight={480}
-            meta={
-              <>
-                Nextstrain (Hadfield et al. 2018), dados GISAID; visualização externa, não redistribuída.{' '}
-                <a href="https://nextstrain.org/seasonal-flu/h1n1pdm/ha/2y" rel="noopener noreferrer" target="_blank">
-                  Abrir no Nextstrain
-                </a>
-              </>
-            }
-          >
-            <NextstrainPanel />
-          </Panel>
-        </div>
-        <div className="lg:col-span-5">
-          <Panel id="painel-console" label="Console de ingestão · últimas execuções" minHeight={480} meta="Cada linha é uma execução registrada de um conector, com linhas lidas e publicadas. Falhas mantêm a versão anterior claramente datada (regra 10).">
-            <IngestConsole runs={runs} />
-          </Panel>
-        </div>
-      </section>
-
-      {/* ===== PERGUNTE ===== */}
-      <section aria-labelledby="h-pergunte" className="mt-8">
-        <h2 id="h-pergunte" className="mb-3 font-display text-xl font-semibold text-ink md:text-2xl">
-          <span className="hud-kicker block">Faixa 07</span>Pergunte ao observatório
-        </h2>
-        <AssistentePanel />
-      </section>
-
-      <div className="mt-8">
-        <HudFooter institutional={institutional} />
-      </div>
-    </TimelineProvider>
-  );
-}
-
-function LatestChip({ latest, fresh }: { latest: Awaited<ReturnType<typeof getLatest>>; fresh: Awaited<ReturnType<typeof getFreshness>> }) {
-  if (!latest.ok) return <p className="font-mono text-xs text-faint">último valor indisponível</p>;
-  const d = latest.data;
-  const unit = INDICATOR_BY_ID.get(d.indicator.id)?.unit ?? 'notifications';
-  return (
-    <p className="hud-panel inline-flex flex-wrap items-center gap-x-2 px-3 py-2 font-mono text-xs text-muted">
-      <span className="text-faint">última base</span>
-      <span className="text-ink">{d.suppressed ? '<5' : formatNumberBR(d.value, unit)}</span>
-      <span>
-        {UNIT_LABEL[unit] ?? unit} em {formatPeriod(d.period)}
-      </span>
-      {d.provisional && <span className="text-srag">provisório</span>}
-      {d.trend_pct_vs_4w !== null && <span title="variação vs. média das 4 semanas anteriores">{d.trend_pct_vs_4w > 0 ? '▲' : d.trend_pct_vs_4w < 0 ? '▼' : '■'} {Math.abs(d.trend_pct_vs_4w).toFixed(0)}% vs 4 sem</span>}
-      <span className="text-faint">base de {formatDateBR(d.data_as_of)}</span>
-      <FreshnessNote state={freshnessState(fresh, d.indicator.id)} />
-    </p>
+    </div>
   );
 }

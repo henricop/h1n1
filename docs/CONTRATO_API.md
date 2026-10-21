@@ -47,6 +47,8 @@ Outras regras transversais:
 |---|---|---|---|
 | 400 | `validation_error` | Parâmetro inválido ou ausente (formato, tamanho > 200, caractere de controle, `from > to`, snapshot sem `status = ok` no diff...); mensagem lista `campo: motivo` separados por `; `. Também 413/415 | implementado |
 | 404 | `not_found` | Indicador, fonte, snapshot ou rota inexistente; a mensagem nunca ecoa a URL | implementado |
+| 400 | `nowcast_not_applicable` | `/v1/analytics/nowcast` com indicador fora da população da CDF de atraso (SRAG por influenza, `CLASSI_FIN = 1`); a mensagem lista os indicadores aceitos (§3.13.4) | implementado |
+| 400 | `too_many_rows` | Rotas de análise (`/v1/analytics/*`, `/v1/indicators/:id/latest`) quando a leitura da série atingiu o limite de linhas: a análise seria calculada sobre dados incompletos; reduza `from`/`to` ou o recorte. Globo e mapa não usam este código (respondem `200` com `meta.truncated: true`) | implementado |
 | 404 | `nowcast_unavailable` | `/v1/analytics/nowcast` sem publicação vigente (ou sem os 13 estratos completos) de `sivep_reporting_delay_cdf` para a geo | implementado |
 | 414 e outros 4xx | `client_error` | Erros 4xx não mapeados mantêm o status original (ex.: `414` para parâmetro de caminho > 200 caracteres) | implementado |
 | 429 | `rate_limited` | Limite por IP excedido (seção 5) | implementado |
@@ -371,9 +373,10 @@ Resposta `200`:
 Rotas de apoio à interface (globo, mapa do Brasil, HUD e painéis de análise). Todas:
 
 - leem **apenas** a snapshot vigente (via `getSeries`/`getMatrix` de `packages/db`), com a mesma supressão de `/v1/series`; células suprimidas entram como `null` e nunca são reveladas;
-- devolvem `indicator: { id, name }` e `meta: { data_as_of, universe_note, license, source_id, case_definition, caveats }` — a regra da seção 0 vale: **exiba `universe_note` e `data_as_of` junto a qualquer número**;
-- `Cache-Control: public, max-age=300, stale-while-revalidate=3600` + `ETag` (`If-None-Match` → `304`), como as séries;
-- erros no formato padrão (`400 validation_error`, `404 not_found`, `404 nowcast_unavailable`);
+- devolvem `indicator: { id, name }` e `meta: { data_as_of, universe_note, license, source_id, case_definition, caveats, truncated }` — a regra da seção 0 vale: **exiba `universe_note` e `data_as_of` junto a qualquer número**;
+- `meta.truncated: true` indica que a leitura atingiu o limite de linhas por série (100 000, o teto de `getSeries`). **Globo e mapa** mantêm `200` e sinalizam em `meta.truncated` (exiba o aviso e reduza `from`/`to`); as **rotas de análise** (`/v1/analytics/*` e `/v1/indicators/:id/latest`) nunca calculam sobre série cortada: respondem `400 { "error": { "code": "too_many_rows" } }`;
+- `Cache-Control: public, max-age=300, stale-while-revalidate=3600` + `ETag` (`If-None-Match` → `304`), como as séries (exceto `/v1/runs`: 60 s);
+- erros no formato padrão (`400 validation_error`, `400 nowcast_not_applicable`, `400 too_many_rows`, `404 not_found`, `404 nowcast_unavailable`);
 - `from`/`to` seguem a convenção de período da seção 1 (expansão de `AAAA` conforme o `period_type`; `from > to` → `400`).
 
 As rotas `analytics/*` produzem **sinais estatísticos e estimativas**, não contagens: o corpo diz isso em `method.note` / `note` e o cliente deve reproduzir o aviso. Implementação das fórmulas em `packages/analytics/src` (funções puras, com testes).
@@ -384,16 +387,16 @@ Matriz país × semana de um indicador FluNet, com centroides, para o globo.
 
 | Parâmetro | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| `indicator` | string | sim | Só `flunet_*` com nível `country` (`400` caso contrário) |
+| `indicator` | string | sim | Só `flunet_*` com nível `country` **e `measurement = count`** (`400 validation_error` caso contrário). Percentuais como `flunet_influenza_positivity` ou `flunet_ah1n1pdm09_share_of_inf_a` não entram: dependem do denominador de cada país e não são comparáveis como magnitude no globo |
 | `from`, `to` | período | não | Intervalo inclusive |
 | `origin` | `all \| SENTINEL \| NONSENTINEL \| NOTDEFINED` | não | `all` (padrão) = total sem estrato; os demais selecionam o estrato `origin_source` |
 
-Regras: só países presentes em `COUNTRY_CENTROIDS` (`packages/core`); países sem **nenhum** valor no intervalo são omitidos; `values` alinhado a `weeks` (`null` = célula ausente na snapshot); `weeks` = períodos distintos presentes, ordenados. Uma consulta por indicador (`getMatrix`), agrupada em memória.
+Regras: só países presentes em `COUNTRY_CENTROIDS` (`packages/core`); países sem **nenhum** valor no intervalo são omitidos; `values` alinhado a `weeks` (`null` = célula ausente na snapshot); `weeks` = períodos distintos presentes, ordenados. Uma consulta por indicador (`getMatrix`), agrupada em memória. `meta.truncated: true` quando a varredura atingiu o teto da matriz (resposta `200`, possivelmente incompleta).
 
 ```json
 {
   "indicator": { "id": "flunet_ah1n1pdm09_detections", "name": "…" },
-  "meta": { "data_as_of": "2026-10-12", "universe_note": "…", "license": "…", "source_id": "INT-01", "case_definition": "…", "caveats": ["…"] },
+  "meta": { "data_as_of": "2026-10-12", "universe_note": "…", "license": "…", "source_id": "INT-01", "case_definition": "…", "caveats": ["…"], "truncated": false },
   "weeks": ["2026-W38", "2026-W39", "2026-W40"],
   "countries": [
     { "iso3": "BRA", "name": "Brazil", "lat": -10.655, "lon": -53.173, "who_region": "AMR", "values": [12, null, 20] }
@@ -410,7 +413,7 @@ Matriz UF × semana com supressão aplicada e total nacional, para o mapa.
 | `indicator` | string | sim | Só indicadores com `geo_levels` contendo `state` (`400` caso contrário) |
 | `from`, `to` | período | não | Intervalo inclusive |
 
-Reutiliza `getSeries` com `geo_level = state` (todas as UFs) e `geo_level = country`, `geo_code = BRA`. `states` traz **as 27 UFs** na ordem do IBGE (`null` onde não há dado); `suppressed[i] = true` quando a célula foi suprimida (`values[i] = null`, valor bruto nunca exposto). `national.provisional[i]` marca `update_status = provisional`. `weeks` = união dos períodos das duas séries.
+Reutiliza `getSeries` com `geo_level = state` (todas as UFs) e `geo_level = country`, `geo_code = BRA`. `states` traz **as 27 UFs** na ordem do IBGE (`null` onde não há dado); `suppressed[i] = true` quando a célula foi suprimida (`values[i] = null`, valor bruto nunca exposto). `national.provisional[i]` marca `update_status = provisional`. `weeks` = união dos períodos das duas séries. `meta.truncated: true` se qualquer das duas leituras atingiu o limite de linhas (resposta `200`, possivelmente incompleta).
 
 ```json
 {
@@ -440,7 +443,7 @@ Detecção de aberração EARS (CDC) C1/C2/C3 adaptada a semanas, sobre a série
 
 Método (`packages/analytics/src/ears.ts`): `C1 = (x_t − média(baseline)) / sd`, baseline = as `baseline` semanas imediatamente anteriores; `C2` idem com a baseline terminando `guard` semanas antes; `C3 = Σ_{i=0..2} max(0, C2(t−i) − 1)`. `sd` amostral; `sd = 0` → estatística `0` se `x_t ≤ média`, senão `100`. Sinal quando a estatística **excede** o limiar (`c1 > 3`, `c2 > 3`, `c3 > 2`). O eixo de semanas é a união dos períodos publicados na consulta; células ausentes ou suprimidas entram como `null` (puladas na baseline; estatística `null` na própria semana). Posições sem baseline completa → `null`.
 
-Resposta: `results` ordenado por `c2` desc (`null` por último), depois `period` desc.
+Resposta: `results` ordenado por `c2` desc (`null` por último), depois `period` desc. Série cortada pelo limite de linhas → `400 too_many_rows`.
 
 ```json
 {
@@ -460,11 +463,13 @@ Estimativa do total final das últimas semanas a partir da CDF empírica de atra
 
 | Parâmetro | Tipo | Padrão | Descrição |
 |---|---|---|---|
-| `indicator` | string | — | Só `sivep_*` com `measurement = count` (`400` caso contrário) |
+| `indicator` | string | — | Só indicadores cuja população coincide com a da CDF de atraso (SRAG por influenza, `CLASSI_FIN = 1`) ou é um subconjunto dela: `sivep_srag_influenza_confirmed`, `sivep_srag_ah1n1pdm09_confirmed`, `sivep_srag_ah3n2_confirmed`, `sivep_srag_inf_a_not_subtyped`, `sivep_srag_influenza_icu`, `sivep_srag_influenza_deaths`, `sivep_srag_ah1n1pdm09_deaths` (constante `NOWCAST_INDICATORS` em `apps/api/src/routes/analytics.ts`). Qualquer outro → `400 { "error": { "code": "nowcast_not_applicable" } }` (ex.: `sivep_srag_notifications` — SRAG de qualquer agente — percentuais, FluNet). Indicador aceito mas com `period_type` não semanal → `400 validation_error` |
 | `geo_code` | string | `BRA` | `BRA` ou `BR-UF` |
 | `weeks` | 1–13 | 8 | Semanas mais recentes estimadas |
 
-Fonte do atraso: publicação vigente de `sivep_reporting_delay_cdf` para a mesma geo, último `period` (ano) com os **13 estratos** `delay_weeks = 0..12` presentes e não suprimidos; `n` = `denominator` dessas células. Sem isso → `404 { "error": { "code": "nowcast_unavailable" } }`.
+Fonte do atraso: publicação vigente de `sivep_reporting_delay_cdf` para a mesma geo, último `period` (ano) com os **13 estratos** `delay_weeks = 0..12` presentes e não suprimidos; `n` = `denominator` dessas células. Sem isso → `404 { "error": { "code": "nowcast_unavailable" } }`. Leitura da CDF ou da série cortada pelo limite de linhas → `400 too_many_rows`.
+
+**Aproximação documentada em `note`**: a CDF é calculada sobre toda a base de SRAG por influenza (`CLASSI_FIN = 1`); o nowcast assume que o indicador pedido (um subtipo, UTI ou óbitos dentro dessa base) segue **a mesma distribuição de atraso da base de SRAG por influenza**. Subtipos dependem do resultado de RT-PCR e óbitos do fechamento do caso, logo podem ter atraso próprio — por isso a lista é fechada e o aviso acompanha toda resposta.
 
 Cálculo (`packages/analytics/src/nowcast.ts`): `weeks_ago` = semanas epidemiológicas entre o período e `meta.data_as_of`; `reported_share = cdf[min(weeks_ago, 12)] / 100`; `estimated = observed / reported_share`; intervalo pelo erro padrão binomial da share, `se = sqrt(p(1−p)/n)`, `lower = observed / min(1, p + 1.96·se)`, `upper = observed / max(0.02, p − 1.96·se)`. Share `≥ 0.98` → semana completa (`estimated = observed`, sem intervalo); share `< 0.02` → sem estimativa. **É estimativa, não contagem** (`note`).
 
@@ -477,21 +482,22 @@ Cálculo (`packages/analytics/src/nowcast.ts`): `weeks_ago` = semanas epidemiol�
     { "period": "2026-W41", "weeks_ago": 1, "observed": 44, "reported_share": 0.489, "estimated": 90, "lower": 87.3, "upper": 92.8 },
     { "period": "2026-W34", "weeks_ago": 8, "observed": 71, "reported_share": 0.983, "estimated": 71, "lower": null, "upper": null }
   ],
-  "note": "Estimativa, não contagem: …"
+  "note": "Estimativa, não contagem: … Aproximação: assume para o indicador a mesma distribuição de atraso da base de SRAG por influenza (CLASSI_FIN = 1) …"
 }
 ```
 
 #### 3.13.5. `GET /v1/analytics/seasons`
 
-Sobreposição de temporadas: uma linha por ano com 53 posições (semana 1..53).
+Sobreposição de temporadas: uma linha por ano (ou por temporada) com 53 posições.
 
 | Parâmetro | Tipo | Padrão | Descrição |
 |---|---|---|---|
 | `indicator` | string | — | Só indicadores semanais (`epiweek`/`isoweek`; `400` caso contrário) |
 | `geo_code` | string | `BRA` | nível inferido do código |
-| `from_year` | 1990–2100 | — | Primeiro ano incluído |
+| `from_year` | 1990–2100 | — | Primeiro ano incluído (ano civil da semana; a leitura começa em `AAAA-W01`) |
+| `group` | `calendar \| season` | `calendar` | `calendar`: uma linha por ano, `weeks = [1..53]`, `label = "2025"`. `season`: uma linha por temporada de influenza do hemisfério sul, da **SE 27 de um ano à SE 26 do ano seguinte**, `weeks = [27..53, 1..26]`, `label = "2025/26"` e `year` = ano inicial (a SE 2026-W10 cai na temporada `2025/26`, posição 36) |
 
-Resposta: `{ indicator, meta, geo_code, weeks: [1..53], seasons: [{ year, values: (number|null)[53] }] }`, anos crescentes; semanas sem dado ou suprimidas → `null`.
+Resposta: `{ indicator, meta, geo_code, group, weeks: int[53], seasons: [{ year, label, values: (number|null)[53] }] }`, anos crescentes; `values[i]` corresponde a `weeks[i]`; semanas sem dado ou suprimidas → `null`; a posição da SE 53 fica `null` nos anos sem SE 53. Série cortada pelo limite de linhas → `400 too_many_rows`. Implementação: `seasonOverlay(points, { group })` em `packages/analytics/src/seasons.ts`.
 
 #### 3.13.6. `GET /v1/runs`
 
@@ -502,7 +508,7 @@ Execuções de ingestão (`ingestion_runs`), mais recentes primeiro.
 | `limit` | 1–500 | 50 |
 | `source_id` | string | — |
 
-Resposta: `{ "data": [{ id, connector, source_id, started_at, finished_at, status, rows_in, rows_out, error }] }`. `error` é truncado a **200 caracteres** e passa por `sanitizeRunError` (caminhos de disco POSIX/relativos/Windows → `[caminho]`); `params` e `snapshot_id` da execução não são expostos.
+Resposta: `{ "data": [{ id, connector, source_id, started_at, finished_at, status, rows_in, rows_out, error }] }`. `error` é truncado a **200 caracteres** e passa por `sanitizeRunError` (`packages/db/src/queries.ts`), nesta ordem: URLs inteiras (`https?://…`, inclusive `user:senha@` e query string) → `[url]`; credenciais soltas (`token=`, `key=`, `api_key=`, `authorization: Bearer …`, `password=`, `secret=`, case-insensitive) → `nome=[redigido]`; caminhos de disco POSIX/relativos/Windows → `[caminho]`. `params` e `snapshot_id` da execução não são expostos. Cache: `public, max-age=60` + `ETag` (seção 4).
 
 #### 3.13.7. `GET /v1/indicators/:id/latest`
 
@@ -510,9 +516,9 @@ Contadores do HUD: último período publicado com valor (não suprimido) da sér
 
 | Parâmetro | Tipo | Padrão |
 |---|---|---|
-| `geo_code` | string | `BRA` |
+| `geo_code` | string | `BRA` — o nível inferido do código (`BRA` → `country`, `BR-SP` → `state`, `BR-R-SE` → `region`, `WLD` → `world`) precisa constar em `geo_levels` do indicador, senão `400 validation_error` (ex.: `flunet_*` com `BR-SP`, `sivep_*` com `WLD`) |
 
-Resposta: `{ indicator, meta, geo_code, latest: { period, period_start, period_end, value, provisional, update_status } | null, trend: { k: 4, change_pct, recent_mean, previous_mean } }`. `change_pct` = variação percentual entre a média das últimas 4 semanas (até `latest.period`) e a das 4 anteriores (`packages/analytics/src/trend.ts`; `null` se houver menos de 8 semanas ou média anterior zero; células suprimidas ignoradas na média). Sem publicação vigente ou sem valor → `latest: null`, nunca zero.
+Série cortada pelo limite de linhas → `400 too_many_rows`. Resposta: `{ indicator, meta, geo_code, latest: { period, period_start, period_end, value, provisional, update_status } | null, trend: { k: 4, change_pct, recent_mean, previous_mean } }`. `change_pct` = variação percentual entre a média das últimas 4 semanas (até `latest.period`) e a das 4 anteriores (`packages/analytics/src/trend.ts`; `null` se houver menos de 8 semanas ou média anterior zero; células suprimidas ignoradas na média). Sem publicação vigente ou sem valor → `latest: null`, nunca zero.
 
 ### 3.14. `GET /openapi.json` e `GET /docs` — implementado (gerado)
 
@@ -531,7 +537,7 @@ Especificação OpenAPI gerada pelo Fastify a partir dos esquemas de rota. Este 
 | `/v1/freshness` | `public, max-age=60` | — |
 | `/v1/snapshots*`, `/v1/diff` | `public, max-age=300` | Nova snapshot |
 | `/v1/globe`, `/v1/map/brazil`, `/v1/analytics/*`, `/v1/indicators/:id/latest` | idem às séries: `public, max-age=300, stale-while-revalidate=3600` + `ETag` | Nova publicação do indicador (ou do indicador de atraso, no nowcast) |
-| `/v1/runs` | idem às séries (300 s + `ETag`) | Nova execução de ingestão |
+| `/v1/runs` | `public, max-age=60` + `ETag` (operação muda a cada ingestão; 60 s como `/v1/freshness`) | Nova execução de ingestão |
 
 Só respostas `200` a `GET`/`HEAD` levam `Cache-Control` (exceto `/health`, sempre `no-store`); erros 4xx/5xx não levam. CORS: `GET`, `HEAD`, `OPTIONS` liberados para qualquer origem; preflight responde `204`.
 

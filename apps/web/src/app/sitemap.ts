@@ -8,6 +8,7 @@ export const revalidate = 3600;
 
 export const APP_ROUTES: ReadonlyArray<{ path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }> = [
   { path: '/', priority: 1, changeFrequency: 'weekly' },
+  { path: '/sala/', priority: 0.9, changeFrequency: 'weekly' },
   { path: '/dados/brasil/', priority: 0.9, changeFrequency: 'weekly' },
   { path: '/dados/mundo/', priority: 0.8, changeFrequency: 'weekly' },
   { path: '/dados/fontes/', priority: 0.7, changeFrequency: 'monthly' },

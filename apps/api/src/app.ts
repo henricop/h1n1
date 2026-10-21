@@ -26,6 +26,7 @@ export const CACHE = {
   catalog: 'public, max-age=3600, stale-while-revalidate=86400',
   series: 'public, max-age=300, stale-while-revalidate=3600',
   freshness: 'public, max-age=60',
+  runs: 'public, max-age=60',
   snapshots: 'public, max-age=300',
 } as const;
 export type CachePolicy = keyof typeof CACHE;
@@ -73,7 +74,15 @@ export interface BuildAppOptions {
   logger?: boolean;
   /** confiança em X-Forwarded-* (default: false). Aceita boolean ou lista de IPs/CIDRs separados por vírgula. */
   trustProxy?: FastifyServerOptions['trustProxy'];
+  /**
+   * Máximo de observações lidas por série nas rotas de visualização/análise (default: 100000, o teto de getSeries).
+   * Ao atingi-lo, globo e mapa respondem 200 com meta.truncated=true; as rotas de análise respondem 400 too_many_rows.
+   */
+  vizRowLimit?: number;
 }
+
+/** Teto padrão de observações por série nas rotas de visualização/análise (= SERIES_MAX_LIMIT). */
+export const VIZ_ROW_LIMIT_DEFAULT = 100000;
 
 /** Interpreta TRUST_PROXY: vazio/false/0 → false; true/1 → true; outro → lista de IPs/CIDRs (ex. "10.0.0.0/8,127.0.0.1"). */
 export function parseTrustProxy(raw: string | undefined): FastifyServerOptions['trustProxy'] {
@@ -102,6 +111,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   const { db } = opts;
   const rateLimitMax = opts.rateLimitMax ?? RATE_LIMIT_DEFAULT;
   const csvRateLimitMax = opts.csvRateLimitMax ?? CSV_RATE_LIMIT_DEFAULT;
+  const rowLimit = Math.min(Math.max(1, Math.floor(opts.vizRowLimit ?? VIZ_ROW_LIMIT_DEFAULT)), VIZ_ROW_LIMIT_DEFAULT);
 
   /**
    * Mapeia qualquer erro para { error: { code, message } }. 400/413/415 → validation_error; 404 → not_found;
@@ -218,13 +228,13 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   await app.register(healthRoutes, { db });
   await app.register(sourcesRoutes, { db });
-  await app.register(indicatorsRoutes, { db });
+  await app.register(indicatorsRoutes, { db, rowLimit });
   await app.register(seriesRoutes, { db, csvRateLimitMax });
   await app.register(freshnessRoutes, { db });
   await app.register(snapshotsRoutes, { db });
   await app.register(geoRoutes, { db });
-  await app.register(vizRoutes, { db });
-  await app.register(analyticsRoutes, { db });
+  await app.register(vizRoutes, { db, rowLimit });
+  await app.register(analyticsRoutes, { db, rowLimit });
   await app.register(runsRoutes, { db });
 
   return app;

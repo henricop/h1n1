@@ -1,12 +1,12 @@
 /**
  * Escalas visuais da sala de situação (puras, testáveis):
- * - mapa de UFs: sequencial magenta (alto) ← ciano (baixo) sobre fundo escuro; nulo/suprimido → hachura.
+ * - mapa de UFs: sequencial do tint do primário (baixo) ao rosa forte A(H1N1)pdm09 (alto) sobre fundo claro; nulo/suprimido → hachura.
  * - globo: raio por raiz quadrada (sqrt) do valor, para que áreas sejam proporcionais ao dado.
  */
 
-export const MAP_COLOR_LOW = '#1aa7c2'; // signal-dim (ciano)
-export const MAP_COLOR_HIGH = '#ff4fd8'; // h1n1 (magenta)
-export const MAP_COLOR_ZERO = '#172238';
+export const MAP_COLOR_LOW = '#eef3ff'; // primary-50
+export const MAP_COLOR_HIGH = '#d6007f'; // h1n1 (rosa forte)
+export const MAP_COLOR_ZERO = '#f5f7fb'; // bg-soft: zero publicado (distinto de "sem dado")
 export const MAP_COLOR_NODATA = 'url(#hatch-nodata)';
 
 function hexToRgb(hex: string): [number, number, number] {

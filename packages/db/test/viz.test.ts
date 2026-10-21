@@ -103,4 +103,18 @@ describe('listIngestionRuns', () => {
     expect(sanitizeRunError(null)).toBeNull();
     expect(sanitizeRunError('   ')).toBeNull();
   });
+
+  it('sanitizeRunError remove URLs inteiras (com credenciais e query) e redige token/key/authorization', () => {
+    const r = sanitizeRunError('falha ao baixar https://user:SECRET@host/v1?token=ABC depois de 3 tentativas');
+    expect(r).toBe('falha ao baixar [url] depois de 3 tentativas');
+    expect(r).not.toContain('SECRET');
+    expect(r).not.toContain('ABC');
+    expect(r).not.toContain('host');
+    expect(sanitizeRunError('HTTP://EXEMPLO.ORG/x/y.csv 404')).toBe('[url] 404');
+    const c = sanitizeRunError('auth falhou: token=abc123 KEY=xyz Authorization: Bearer eyJhbGci api_key=k9 ok');
+    expect(c).toBe('auth falhou: token=[redigido] key=[redigido] authorization=[redigido] api_key=[redigido] ok');
+    expect(c).not.toMatch(/abc123|xyz|eyJ|k9/);
+    // caminho de disco continua coberto depois da URL
+    expect(sanitizeRunError('ENOENT /var/x.csv ao gravar https://h/t?key=Q')).toBe('ENOENT [caminho] ao gravar [url]');
+  });
 });

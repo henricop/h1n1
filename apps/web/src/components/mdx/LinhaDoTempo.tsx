@@ -21,13 +21,13 @@ export function LinhaDoTempo({
   const lista = eventos ?? items ?? [];
   return (
     <section className="my-6" aria-label={titulo}>
-      <ol className="relative border-l-2 border-navy-100 pl-5">
+      <ol className="relative border-l-2 border-primary-100 pl-5">
         {lista.map((e, i) => {
           const fato = e.fato_id ? getFact(e.fato_id) : null;
           return (
             <li key={`${e.data}-${i}`} className="relative mb-6">
-              <span aria-hidden="true" className="absolute -left-[1.6rem] top-1.5 h-3 w-3 rounded-full border-2 border-navy-700 bg-paper" />
-              <time dateTime={e.data} className="text-sm font-semibold text-signal">
+              <span aria-hidden="true" className="absolute -left-[1.6rem] top-1.5 h-3 w-3 rounded-full border-2 border-primary-600 bg-card" />
+              <time dateTime={e.data} className="text-sm font-semibold tabular-nums text-primary-600">
                 {e.data}
               </time>
               <p className="font-medium">{e.titulo}</p>

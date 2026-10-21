@@ -1,6 +1,7 @@
 /**
- * Handler do assistente (Node runtime): guardas (chave, rate limit, tamanho), validação das mensagens
- * e streaming com o Vercel AI SDK (`ai` v7 + `@ai-sdk/anthropic` v4). Sem persistência de conversas.
+ * Handler do assistente (Node runtime): guardas (chave, rate limit, tamanho em bytes lendo o stream),
+ * validação das mensagens (só `user`/`assistant` com partes de texto; `system` e partes de ferramenta vindas do
+ * cliente são descartadas) e streaming com o Vercel AI SDK (`ai` v7 + `@ai-sdk/anthropic` v4). Sem persistência.
  */
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { convertToModelMessages, stepCountIs, streamText, validateUIMessages, type LanguageModel, type UIMessage } from 'ai';
@@ -10,6 +11,8 @@ import { ASSISTANT_MODEL_ID, SYSTEM_PROMPT } from './system-prompt';
 import { assistantTools } from './tools';
 
 export const MAX_MESSAGE_CHARS = 2_000;
+/** Soma dos caracteres de texto de toda a conversa enviada. */
+export const MAX_CONVERSATION_CHARS = 12_000;
 export const MAX_MESSAGES = 40;
 export const MAX_TOOL_STEPS = 6;
 export const MAX_BODY_BYTES = 256 * 1024;
@@ -25,16 +28,51 @@ export function jsonError(status: number, code: string, message: string, headers
 
 export const DISABLED_MESSAGE = 'Assistente desativado nesta instalação (defina ANTHROPIC_API_KEY).';
 
-/** Corpo mínimo aceito: mensagens de UI com partes de texto (partes de ferramenta passam por validateUIMessages). */
+/** Corpo aceito: mensagens `user`/`assistant`; `system` é rejeitado. Partes passam por `sanitizeParts`. */
 const BodySchema = z.object({
-  messages: z.array(z.object({ role: z.enum(['user', 'assistant', 'system']), parts: z.array(z.object({ type: z.string() }).passthrough()) }).passthrough()).min(1).max(MAX_MESSAGES),
+  messages: z
+    .array(z.object({ id: z.string().max(100).optional(), role: z.enum(['user', 'assistant']), parts: z.array(z.object({ type: z.string() }).passthrough()).max(50) }).strip())
+    .min(1)
+    .max(MAX_MESSAGES),
 });
 
-function textOf(parts: Array<{ type: string; text?: unknown }>): string {
-  return parts
-    .filter((p) => p.type === 'text' && typeof p.text === 'string')
-    .map((p) => p.text as string)
-    .join('\n');
+export interface TextPart {
+  type: 'text';
+  text: string;
+}
+
+/** Mantém só partes de texto (string); partes de ferramenta, arquivo, raciocínio etc. vindas do cliente são descartadas. */
+export function sanitizeParts(parts: ReadonlyArray<{ type: string; text?: unknown }>): TextPart[] {
+  return parts.filter((p): p is { type: 'text'; text: string } => p.type === 'text' && typeof p.text === 'string').map((p) => ({ type: 'text', text: p.text }));
+}
+
+/**
+ * Lê o corpo como texto com teto de bytes (mesmo sem Content-Length). Devolve null quando o limite é ultrapassado.
+ */
+export async function readBodyLimited(req: Request, maxBytes: number): Promise<string | null> {
+  const declared = Number(req.headers.get('content-length') ?? 0);
+  if (declared > maxBytes) return null;
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    buf.set(c, off);
+    off += c.byteLength;
+  }
+  return new TextDecoder().decode(buf);
 }
 
 export interface HandlerOptions {
@@ -56,6 +94,8 @@ export function handleChatStatus(opts: HandlerOptions = {}): Response {
   return Response.json({ enabled: true, model: ASSISTANT_MODEL_ID }, { headers: { 'cache-control': 'no-store' } });
 }
 
+const CONTROL_RE = /[\u0000-\u0008\u000b-\u001f\u007f]/; // eslint-disable-line no-control-regex
+
 /** POST: valida e responde em streaming (UI message stream). */
 export async function handleChatRequest(req: Request, opts: HandlerOptions = {}): Promise<Response> {
   const env = opts.env ?? process.env;
@@ -64,34 +104,45 @@ export async function handleChatRequest(req: Request, opts: HandlerOptions = {})
 
   if (!assistantEnabled(env)) return jsonError(503, 'assistant_disabled', DISABLED_MESSAGE);
 
-  const decision = limiter.check(clientIp(req), now());
+  const decision = limiter.check(clientIp(req, env), now());
   if (!decision.allowed) {
     return jsonError(429, 'rate_limited', `Muitas perguntas em pouco tempo. Tente novamente em ${decision.retryAfterSec} s.`, { 'retry-after': String(decision.retryAfterSec) });
   }
 
-  const length = Number(req.headers.get('content-length') ?? 0);
-  if (length > MAX_BODY_BYTES) return jsonError(413, 'payload_too_large', 'Conversa longa demais. Recomece a conversa.');
+  const text = await readBodyLimited(req, MAX_BODY_BYTES);
+  if (text === null) return jsonError(413, 'payload_too_large', 'Conversa longa demais. Recomece a conversa.');
 
   let raw: unknown;
   try {
-    raw = await req.json();
+    raw = JSON.parse(text);
   } catch {
     return jsonError(400, 'validation_error', 'Corpo inválido: envie JSON { messages: UIMessage[] }.');
   }
   const body = BodySchema.safeParse(raw);
   if (!body.success) return jsonError(400, 'validation_error', 'messages: formato inválido ou conversa longa demais.');
 
-  const last = body.data.messages[body.data.messages.length - 1]!;
+  // Só texto: partes de ferramenta/sistema do cliente nunca chegam ao modelo.
+  const messages: UIMessage[] = body.data.messages.map((m, i) => ({ id: m.id ?? `m${i}`, role: m.role, parts: sanitizeParts(m.parts as Array<{ type: string; text?: unknown }>) }));
+
+  const last = messages[messages.length - 1]!;
   if (last.role !== 'user') return jsonError(400, 'validation_error', 'A última mensagem deve ser do usuário.');
-  const lastText = textOf(last.parts as Array<{ type: string; text?: unknown }>);
+  const lastText = (last.parts as TextPart[]).map((p) => p.text).join('\n');
   if (!lastText.trim()) return jsonError(400, 'validation_error', 'Escreva uma pergunta.');
   if (lastText.length > MAX_MESSAGE_CHARS) return jsonError(400, 'message_too_long', `Mensagem com mais de ${MAX_MESSAGE_CHARS} caracteres. Resuma a pergunta.`);
-  // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u0008\u000b-\u001f\u007f]/.test(lastText)) return jsonError(400, 'validation_error', 'Mensagem contém caracteres de controle.');
+  if (CONTROL_RE.test(lastText)) return jsonError(400, 'validation_error', 'Mensagem contém caracteres de controle.');
 
-  let messages: UIMessage[];
+  let total = 0;
+  for (const m of messages) {
+    for (const p of m.parts as TextPart[]) {
+      if (p.text.length > MAX_MESSAGE_CHARS) return jsonError(400, 'message_too_long', `Cada mensagem deve ter até ${MAX_MESSAGE_CHARS} caracteres.`);
+      total += p.text.length;
+    }
+  }
+  if (total > MAX_CONVERSATION_CHARS) return jsonError(400, 'conversation_too_long', 'Conversa longa demais. Recomece a conversa.');
+
+  let validated: UIMessage[];
   try {
-    messages = await validateUIMessages({ messages: body.data.messages, tools: assistantTools });
+    validated = await validateUIMessages({ messages, tools: assistantTools });
   } catch (err) {
     return jsonError(400, 'validation_error', `messages inválidas: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -101,7 +152,7 @@ export async function handleChatRequest(req: Request, opts: HandlerOptions = {})
   const result = streamText({
     model,
     instructions: SYSTEM_PROMPT,
-    messages: await convertToModelMessages(messages, { tools: assistantTools, ignoreIncompleteToolCalls: true }),
+    messages: await convertToModelMessages(validated, { tools: assistantTools, ignoreIncompleteToolCalls: true }),
     tools: assistantTools,
     stopWhen: stepCountIs(MAX_TOOL_STEPS),
     maxOutputTokens: 1_500,

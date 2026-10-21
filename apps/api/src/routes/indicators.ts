@@ -1,16 +1,17 @@
 import type { FastifyInstance } from 'fastify';
-import { listIndicators, getIndicatorRow, getCurrentPublication, getFreshness, getSeries, type Db } from '@h1n1/db';
+import { listIndicators, getIndicatorRow, getCurrentPublication, getFreshness, getSeries } from '@h1n1/db';
 import { trend } from '@h1n1/analytics';
 import { parseOr400, indicatorsQuery, pathId, latestQuery, inferGeoLevel } from '../schemas.js';
-import { notFound } from '../errors.js';
+import { notFound, badRequest } from '../errors.js';
 import { ANY_OBJECT, INDICATORS_QUERY, LATEST_QUERY, LATEST_RESPONSE, errorResponses } from '../openapi.js';
-import { vizMeta, indicatorRef } from './viz.js';
+import { vizMeta, indicatorRef, requireComplete, type VizRouteOptions } from './viz.js';
 
 /** Janela (em períodos) da variação exibida nos contadores do HUD. */
 export const LATEST_TREND_K = 4;
 
-export async function indicatorsRoutes(app: FastifyInstance, opts: { db: Db }) {
+export async function indicatorsRoutes(app: FastifyInstance, opts: VizRouteOptions) {
   const { db } = opts;
+  const limit = opts.rowLimit ?? 100000;
 
   app.get('/v1/indicators', {
     config: { cache: 'catalog' },
@@ -58,7 +59,8 @@ export async function indicatorsRoutes(app: FastifyInstance, opts: { db: Db }) {
       description:
         'Percorre a série total (sem estrato) da geo e devolve o último período com valor não suprimido, se é provisório e a ' +
         'variação percentual entre a média das últimas 4 semanas e a das 4 anteriores (null se insuficiente). Sem publicação ' +
-        'vigente ou sem valor: latest null. Cache 300 s + ETag.',
+        'vigente ou sem valor: latest null. 400 se o nível inferido de geo_code não consta em geo_levels do indicador; ' +
+        '400 too_many_rows se a série exceder o limite de linhas. Cache 300 s + ETag.',
       params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
       querystring: LATEST_QUERY,
       response: { 200: LATEST_RESPONSE, ...errorResponses(400, 404) },
@@ -69,8 +71,13 @@ export async function indicatorsRoutes(app: FastifyInstance, opts: { db: Db }) {
     const indicator = await getIndicatorRow(db, id);
     if (!indicator) throw notFound(`Indicador não encontrado: ${id}`);
     const geoCode = q.geo_code ?? 'BRA';
-    const r = await getSeries(db, { indicator: indicator.id, geoLevel: inferGeoLevel(geoCode), geoCode, limit: 100000 });
+    const geoLevel = inferGeoLevel(geoCode);
+    if (!indicator.geo_levels.includes(geoLevel)) {
+      throw badRequest(`geo_code: ${geoCode} é do nível ${geoLevel}, que o indicador ${indicator.id} não publica (geo_levels: ${indicator.geo_levels.join(', ')})`);
+    }
+    const r = await getSeries(db, { indicator: indicator.id, geoLevel, geoCode, limit });
     if (!r) throw notFound(`Indicador não encontrado: ${id}`);
+    requireComplete(r, 'latest');
     const obs = [...r.observations].sort((a, b) => (a.period < b.period ? -1 : a.period > b.period ? 1 : 0));
     let idx = -1;
     for (let i = obs.length - 1; i >= 0; i--) {

@@ -18,7 +18,7 @@ interface Props {
   tableId?: string;
 }
 
-/** Wrapper do ECharts (tema escuro do HUD, canvas, redimensionável). Carregar só no cliente via next/dynamic. */
+/** Wrapper do ECharts (tema claro, canvas, redimensionável). Carregar só no cliente via next/dynamic. */
 export default function EChart({ option, height, ariaLabel, tableId }: Props) {
   return (
     <div role="img" aria-label={ariaLabel} aria-describedby={tableId} style={{ height }}>

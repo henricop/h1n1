@@ -49,19 +49,19 @@ export default async function ObservatorioPage({ searchParams }: { searchParams:
     <>
       <Breadcrumb items={crumbs} />
       <header className="mt-2">
-        <p className="hud-kicker">Observatório · SIVEP-Gripe e FluNet</p>
-        <h1 className="font-display text-3xl font-semibold text-ink">H1N1 no Brasil</h1>
-        <p className="mt-2 max-w-3xl text-muted">
+        <p className="kicker">Observatório · SIVEP-Gripe e FluNet</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-5xl">H1N1 no Brasil</h1>
+        <p className="mt-3 max-w-2xl text-muted">
           Séries semanais de fontes oficiais. Cada indicador diz exatamente o que mede; os números não representam todos os casos de H1N1 na população e chegam com atraso de notificação.
         </p>
       </header>
 
-      <form method="get" action="/dados/brasil/" className="hud-panel hud-corner mt-6 grid gap-4 p-4 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end" aria-label="Seletores do observatório">
+      <form method="get" action="/dados/brasil/" className="card mt-8 grid gap-4 p-5 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end" aria-label="Seletores do observatório">
         <div>
-          <label htmlFor="indicador" className="hud-label block">
+          <label htmlFor="indicador" className="label block">
             Indicador
           </label>
-          <select id="indicador" name="indicador" defaultValue={indicador.id} className="hud-select mt-1 w-full">
+          <select id="indicador" name="indicador" defaultValue={indicador.id} className="select-field mt-1 w-full">
             <optgroup label="SIVEP-Gripe (Ministério da Saúde): SRAG hospitalizada">
               {OBSERVATORY_INDICATORS.filter((i) => i.id.startsWith('sivep_')).map((i) => (
                 <option key={i.id} value={i.id}>
@@ -79,10 +79,10 @@ export default async function ObservatorioPage({ searchParams }: { searchParams:
           </select>
         </div>
         <div>
-          <label htmlFor="uf" className="hud-label block">
+          <label htmlFor="uf" className="label block">
             UF
           </label>
-          <select id="uf" name="uf" defaultValue={state?.uf ?? ''} className="hud-select mt-1 w-full">
+          <select id="uf" name="uf" defaultValue={state?.uf ?? ''} className="select-field mt-1 w-full">
             <option value="">Brasil (todas)</option>
             {BR_STATES.map((s) => (
               <option key={s.uf} value={s.uf}>
@@ -92,10 +92,10 @@ export default async function ObservatorioPage({ searchParams }: { searchParams:
           </select>
         </div>
         <div>
-          <label htmlFor="intervalo" className="hud-label block">
+          <label htmlFor="intervalo" className="label block">
             Intervalo
           </label>
-          <select id="intervalo" name="intervalo" defaultValue={intervalo} className="hud-select mt-1 w-full">
+          <select id="intervalo" name="intervalo" defaultValue={intervalo} className="select-field mt-1 w-full">
             {INTERVALS.map((i) => (
               <option key={i.key} value={i.key}>
                 {i.label}
@@ -103,7 +103,7 @@ export default async function ObservatorioPage({ searchParams }: { searchParams:
             ))}
           </select>
         </div>
-        <button type="submit" className="hud-btn hud-btn-primary">
+        <button type="submit" className="btn btn-primary">
           Atualizar
         </button>
       </form>
@@ -115,7 +115,7 @@ export default async function ObservatorioPage({ searchParams }: { searchParams:
 
       {!series.ok ? (
         <section aria-labelledby="h-serie" className="mt-6">
-          <h2 id="h-serie" className="font-display text-xl font-semibold text-ink">
+          <h2 id="h-serie" className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
             {indicador.label}
           </h2>
           <p className="mt-1 text-sm text-muted">{geoLabel}</p>
@@ -185,51 +185,51 @@ function ObservatoryBody({
 
       <section aria-labelledby="h-serie" className="mt-6">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 id="h-serie" className="font-display text-xl font-semibold text-ink">
+          <h2 id="h-serie" className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
             {r.indicator.name}
           </h2>
           <FreshnessNote state={freshness} />
         </div>
-        <p className="mt-1 font-mono text-xs text-muted">
+        <p className="mt-1 text-[14px] text-muted">
           {geoLabel} · {intervalLabel} · base de {formatDateBR(r.meta.data_as_of)}
         </p>
 
-        <p className="mt-4 rounded border-l-4 border-signal bg-bg-900 p-4 text-ink">{r.meta.universe_note}</p>
+        <p className="mt-4 rounded-2xl border border-primary-100 bg-primary-50 p-4 text-ink">{r.meta.universe_note}</p>
 
         {obs.length === 0 ? (
-          <p className="hud-panel mt-4 p-4 text-sm">Nenhuma observação publicada para este recorte e intervalo.</p>
+          <p className="card-soft mt-4 p-4 text-[15px]">Nenhuma observação publicada para este recorte e intervalo.</p>
         ) : everythingSuppressed ? (
-          <p role="status" className="hud-panel mt-4 p-4 text-sm">
+          <p role="status" className="card-soft mt-4 p-4 text-[15px]">
             Todas as semanas deste recorte têm contagens pequenas e foram suprimidas (valores abaixo de {threshold}). Isso evita reidentificação de pessoas e não significa ausência de casos. Veja o total nacional ou um intervalo maior.
           </p>
         ) : (
           <>
             {last && (
               <p className="mt-4">
-                <span className="hud-value text-signal glow-signal">{formatNumberBR(publishedValue(last), unit)}</span>{' '}
-                <span className="font-mono text-sm text-muted">
+                <span className="value text-primary-600">{formatNumberBR(publishedValue(last), unit)}</span>{' '}
+                <span className="text-[15px] text-muted">
                   {UNIT_LABEL[unit] ?? unit} em {formatPeriod(last.period, r.indicator.period_type)}
-                  {last.update_status === 'provisional' ? <span className="text-srag"> (provisório)</span> : ''}
+                  {last.update_status === 'provisional' ? <span className="text-attention-700"> (provisório)</span> : ''}
                 </span>
               </p>
             )}
-            <div className="hud-panel hud-corner mt-4 p-4">
+            <div className="card mt-4 p-5">
               <TrendChart obs={obs} unit={unit} title={title} periodType={r.indicator.period_type} threshold={threshold} tableId={tableId} />
             </div>
           </>
         )}
 
         <p className="mt-4 flex flex-wrap items-center gap-3">
-          <a href={csv} className="hud-btn" download>
+          <a href={csv} className="btn" download>
             Baixar CSV
           </a>
-          <span className="text-xs text-muted">Licença: {r.meta.license ?? 'verificar na fonte'}. Cite a fonte original.</span>
+          <span className="text-[13px] text-muted">Licença: {r.meta.license ?? 'verificar na fonte'}. Cite a fonte original.</span>
         </p>
       </section>
 
       {map && (
-        <section aria-labelledby="h-mapa" className="mt-8">
-          <h2 id="h-mapa" className="font-display text-xl font-semibold text-ink">
+        <section aria-labelledby="h-mapa" className="mt-12">
+          <h2 id="h-mapa" className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
             Mapa por UF · última semana da base
           </h2>
           <div className="mt-3">
@@ -237,7 +237,7 @@ function ObservatoryBody({
               <Panel id="painel-mapa" label={`${mapData.indicator.name} · ${formatPeriod(mapData.weeks[mapIndex] ?? '')}`} meta={`${mapData.meta.universe_note} · células <${threshold} suprimidas (regra 9) · base de ${formatDateBR(mapData.meta.data_as_of)}`}>
                 <BrazilMap states={mapData.states} weekIndex={mapIndex} week={mapData.weeks[mapIndex] ?? ''} max={mapMax} unit={unit} threshold={threshold} indicatorName={mapData.indicator.name} provisional={mapData.national.provisional[mapIndex] ?? false} />
                 <details className="mt-3 text-sm">
-                  <summary className="touch inline-flex cursor-pointer items-center font-mono text-xs uppercase tracking-wider text-signal">Tabela equivalente</summary>
+                  <summary className="touch inline-flex cursor-pointer items-center text-[14px] font-medium text-primary-600">Tabela equivalente</summary>
                   <table className="data-table mt-2 text-xs">
                     <caption>{mapData.indicator.name} por UF na semana {formatPeriod(mapData.weeks[mapIndex] ?? '')}</caption>
                     <thead>
@@ -266,8 +266,8 @@ function ObservatoryBody({
         </section>
       )}
 
-      <section aria-labelledby="h-nao-dizem" className="mt-8">
-        <h2 id="h-nao-dizem" className="font-display text-xl font-semibold text-ink">
+      <section aria-labelledby="h-nao-dizem" className="mt-12">
+        <h2 id="h-nao-dizem" className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
           O que estes números não dizem
         </h2>
         <ul className="mt-2 list-disc space-y-1 pl-6 text-[0.95em] text-muted">
@@ -278,8 +278,8 @@ function ObservatoryBody({
         </ul>
       </section>
 
-      <section aria-labelledby="h-meta" className="mt-8">
-        <h2 id="h-meta" className="font-display text-xl font-semibold text-ink">
+      <section aria-labelledby="h-meta" className="mt-12">
+        <h2 id="h-meta" className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
           Metadados
         </h2>
         <dl className="mt-2 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">

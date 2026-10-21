@@ -49,7 +49,7 @@ export function Sparkline({ obs, label, width = 240, height = 56 }: { obs: Serie
           key={i}
           points={s.d}
           fill="none"
-          stroke="var(--color-navy-700)"
+          stroke="var(--color-primary-600)"
           strokeWidth={2}
           strokeLinejoin="round"
           strokeLinecap="round"

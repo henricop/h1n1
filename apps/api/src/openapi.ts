@@ -160,6 +160,12 @@ export const VIZ_META = {
     source_id: { type: 'string' },
     case_definition: { type: 'string' },
     caveats: { type: 'array', items: { type: 'string' } },
+    truncated: {
+      type: 'boolean',
+      description:
+        'true quando a leitura atingiu o limite de linhas (resultado possivelmente incompleto; refine from/to). ' +
+        'Só globo e mapa chegam a responder 200 com truncated=true; as rotas de análise respondem 400 too_many_rows.',
+    },
   },
 } as const;
 
@@ -171,7 +177,7 @@ export const GLOBE_QUERY = {
   type: 'object',
   required: ['indicator'],
   properties: {
-    indicator: str('Id de um indicador flunet_* (400 caso contrário), ex. flunet_ah1n1pdm09_detections', { ...TEXT, maxLength: 64 }),
+    indicator: str('Id de um indicador flunet_* de contagem (measurement=count) com nível country (400 caso contrário), ex. flunet_ah1n1pdm09_detections', { ...TEXT, maxLength: 64 }),
     from: str(`Período inicial, inclusive. ${PERIOD_DOC}`, PERIOD_PATTERN),
     to: str(`Período final, inclusive. ${PERIOD_DOC}`, PERIOD_PATTERN),
     origin: str('Estrato origin_source do FluNet; all = total (padrão)', { enum: ['all', 'SENTINEL', 'NONSENTINEL', 'NOTDEFINED'] }),
@@ -276,7 +282,13 @@ export const NOWCAST_QUERY = {
   type: 'object',
   required: ['indicator'],
   properties: {
-    indicator: str('Id de um indicador sivep_* de contagem (400 caso contrário)', { ...TEXT, maxLength: 64 }),
+    indicator: str(
+      'Só indicadores cuja população coincide com a da CDF de atraso (SRAG por influenza, CLASSI_FIN = 1): ' +
+      'sivep_srag_influenza_confirmed, sivep_srag_ah1n1pdm09_confirmed, sivep_srag_ah3n2_confirmed, ' +
+      'sivep_srag_inf_a_not_subtyped, sivep_srag_influenza_icu, sivep_srag_influenza_deaths, sivep_srag_ah1n1pdm09_deaths. ' +
+      'Outros → 400 nowcast_not_applicable.',
+      { ...TEXT, maxLength: 64 },
+    ),
     geo_code: str('BRA (padrão) ou BR-UF', { ...TEXT, maxLength: 16 }),
     weeks: { type: 'integer', minimum: 1, maximum: 13, default: 8, description: 'Semanas mais recentes estimadas' },
   },
@@ -317,7 +329,12 @@ export const SEASONS_QUERY = {
   properties: {
     indicator: INDICATOR_PARAM,
     geo_code: str('Código geográfico (padrão BRA)', { ...TEXT, maxLength: 16 }),
-    from_year: { type: 'integer', minimum: 1990, maximum: 2100, description: 'Primeiro ano incluído' },
+    from_year: { type: 'integer', minimum: 1990, maximum: 2100, description: 'Primeiro ano incluído (ano civil da semana)' },
+    group: str(
+      'calendar (padrão): uma linha por ano, semanas 1..53. season: uma linha por temporada, da SE 27 à SE 26 do ano ' +
+      'seguinte (weeks = 27..53,1..26), rótulo 2025/26 e year = ano inicial',
+      { enum: ['calendar', 'season'] },
+    ),
   },
 };
 
@@ -327,10 +344,18 @@ export const SEASONS_RESPONSE = {
     indicator: INDICATOR_REF,
     meta: VIZ_META,
     geo_code: { type: 'string' },
-    weeks: { type: 'array', items: { type: 'integer' } },
+    group: { type: 'string', enum: ['calendar', 'season'] },
+    weeks: { type: 'array', items: { type: 'integer' }, description: '53 posições: 1..53 (calendar) ou 27..53,1..26 (season)' },
     seasons: {
       type: 'array',
-      items: { type: 'object', properties: { year: { type: 'integer' }, values: NULLABLE_NUMBERS } },
+      items: {
+        type: 'object',
+        properties: {
+          year: { type: 'integer', description: 'ano civil ou ano inicial da temporada' },
+          label: { type: 'string', description: '2025 (calendar) ou 2025/26 (season)' },
+          values: NULLABLE_NUMBERS,
+        },
+      },
     },
   },
 };
@@ -355,7 +380,7 @@ export const RUNS_RESPONSE = {
           started_at: { type: 'string' }, finished_at: { type: 'string', nullable: true },
           status: { type: 'string', enum: ['running', 'ok', 'failed', 'quarantined'] },
           rows_in: { type: 'integer' }, rows_out: { type: 'integer' },
-          error: { type: 'string', nullable: true, maxLength: 200, description: 'Truncado a 200 caracteres, sem caminhos de disco' },
+          error: { type: 'string', nullable: true, maxLength: 200, description: 'Truncado a 200 caracteres; URLs → [url], credenciais → [redigido], caminhos de disco → [caminho]' },
         },
       },
     },
@@ -364,7 +389,7 @@ export const RUNS_RESPONSE = {
 
 export const LATEST_QUERY = {
   type: 'object',
-  properties: { geo_code: str('Código geográfico (padrão BRA)', { ...TEXT, maxLength: 16 }) },
+  properties: { geo_code: str('Código geográfico (padrão BRA); o nível inferido precisa constar em geo_levels do indicador (400 caso contrário)', { ...TEXT, maxLength: 16 }) },
 };
 
 export const LATEST_RESPONSE = {

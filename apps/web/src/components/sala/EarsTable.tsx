@@ -5,11 +5,11 @@ import { DataUnavailable } from '@/components/Notices';
 /** Sinais EARS por UF: sinal estatístico, não surto confirmado. */
 export function EarsTable({ ears, threshold = 5 }: { ears: ApiResult<EarsResult>; threshold?: number }) {
   return (
-    <section aria-labelledby="h-ears" className="hud-panel hud-corner p-4">
-      <p id="h-ears" className="hud-label">
-        Sinais EARS · C1/C2/C3
+    <section aria-labelledby="h-ears" className="card p-5">
+      <p id="h-ears" className="label">
+        Sinais estatísticos EARS (C1, C2, C3)
       </p>
-      <p className="mt-1 text-xs font-semibold text-srag">Sinal estatístico, não surto confirmado.</p>
+      <p className="mt-1 text-[14px] font-semibold text-attention-700">Sinal estatístico, não surto confirmado.</p>
       {!ears.ok ? (
         <div className="mt-2">
           <DataUnavailable attemptedAt={ears.attemptedAt} detail={ears.error} />
@@ -27,10 +27,10 @@ function EarsBody({ ears, threshold }: { ears: EarsResult; threshold: number }) 
   const period = rows[0]?.period;
   return (
     <>
-      <p className="mt-1 font-mono text-[11px] text-faint">
+      <p className="mt-1 text-[12px] text-faint">
         {flagged.length} UF{flagged.length === 1 ? '' : 's'} com sinal · semana avaliada {period ? formatPeriod(period) : '—'} · {ears.method.name}
       </p>
-      <div className="mt-2 max-h-64 overflow-auto hud-scroll">
+      <div className="mt-2 max-h-64 overflow-auto scroll-thin">
         <table className="data-table text-xs">
           <caption className="sr-only">Sinais EARS por UF: valor da semana, estatísticas C1, C2 e C3 e flags</caption>
           <thead>
@@ -49,7 +49,7 @@ function EarsBody({ ears, threshold }: { ears: EarsResult; threshold: number }) 
             {rows.map((r) => {
               const signal = r.flags.some((f) => /^C[123]$/.test(f));
               return (
-                <tr key={r.geo_code} className={signal ? 'text-srag' : undefined}>
+                <tr key={r.geo_code} className={signal ? 'font-semibold text-attention-700' : undefined}>
                   <th scope="row" className="font-normal">
                     <abbr title={r.name}>{r.geo_code.replace('BR-', '')}</abbr>
                   </th>
@@ -62,8 +62,8 @@ function EarsBody({ ears, threshold }: { ears: EarsResult; threshold: number }) 
           </tbody>
         </table>
       </div>
-      <p className="hud-meta">
-        Baseline {ears.method.baseline} · guarda {ears.method.guard} · limiares {ears.method.thresholds}. {ears.method.note} Fonte {ears.meta.source_id} · base de {formatDateBR(ears.meta.data_as_of)}.
+      <p className="meta">
+        {ears.meta.universe_note} Baseline {ears.method.baseline} · guarda {ears.method.guard} · limiares {ears.method.thresholds}. {ears.method.note} Fonte {ears.meta.source_id} · base de {formatDateBR(ears.meta.data_as_of)}.
       </p>
     </>
   );

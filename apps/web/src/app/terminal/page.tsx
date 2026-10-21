@@ -11,8 +11,14 @@ export const metadata: Metadata = {
 
 export default function TerminalPage() {
   return (
-    <div className="-mx-4 -my-6 min-h-[calc(100vh-9rem)] bg-bg-950 px-2 py-3 sm:px-4">
-      <h1 className="sr-only">Terminal de consulta epidemiológica</h1>
+    <div>
+      <header className="mb-6">
+        <p className="kicker">Terminal</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-5xl">Consulte os dados por comandos</h1>
+        <p className="mt-2 max-w-2xl text-muted">
+          Digite <code className="rounded bg-bg-soft px-1 font-mono text-[0.9em]">help</code> para ver os comandos. Toda saída traz fonte, data da base e o que os números representam.
+        </p>
+      </header>
       <Terminal />
     </div>
   );

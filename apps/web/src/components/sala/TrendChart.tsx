@@ -47,7 +47,7 @@ export function TrendChart({ obs, unit, title, periodType, threshold, nowcast, t
         const o = obs[idx];
         if (!o) return '';
         const r = ncBy.get(o.period);
-        const lines = [`<strong>${formatPeriod(o.period, periodType)}</strong>`, `${o.suppressed ? `<${threshold} (suprimido)` : fmt(publishedValue(o))} ${o.update_status === 'provisional' ? '· <span style="color:#ffd166">provisório</span>' : '· consolidado'}`];
+        const lines = [`<strong>${formatPeriod(o.period, periodType)}</strong>`, `${o.suppressed ? `<${threshold} (suprimido)` : fmt(publishedValue(o))} ${o.update_status === 'provisional' ? '· <span style="color:#9a5b00">provisório</span>' : '· consolidado'}`];
         if (r) lines.push(`nowcast: ${fmt(r.estimated)} (${fmt(r.lower)}–${fmt(r.upper)}) · ${(r.reported_share * 100).toFixed(0)}% já digitado`);
         return lines.join('<br/>');
       },
@@ -72,7 +72,7 @@ export function TrendChart({ obs, unit, title, periodType, threshold, nowcast, t
         itemStyle: { color: HUD_COLORS.signal },
         symbolSize: 4,
         ...(firstProv >= 0
-          ? { markArea: { silent: true, itemStyle: { color: HUD_COLORS.srag, opacity: 0.08 }, data: [[{ xAxis: periods[Math.max(0, firstProv)] }, { xAxis: periods[periods.length - 1] }] as [{ xAxis: string | undefined }, { xAxis: string | undefined }]] } }
+          ? { markArea: { silent: true, itemStyle: { color: HUD_COLORS.srag, opacity: 0.12 }, data: [[{ xAxis: periods[Math.max(0, firstProv)] }, { xAxis: periods[periods.length - 1] }] as [{ xAxis: string | undefined }, { xAxis: string | undefined }]] } }
           : {}),
       },
       { name: 'Provisória', type: 'line', data: provLine, lineStyle: { width: 2.5, type: 'dashed' as const, color: HUD_COLORS.srag }, itemStyle: { color: HUD_COLORS.srag }, symbolSize: 5 },
@@ -82,14 +82,14 @@ export function TrendChart({ obs, unit, title, periodType, threshold, nowcast, t
   return (
     <div>
       <EChart option={option} height={height} ariaLabel={`${title}, por semana; semanas provisórias tracejadas em âmbar; nowcast como faixa e estimativa pontilhada. Tabela equivalente abaixo.`} tableId={tableId} />
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-faint">
-        <span><span className="text-signal">━</span> consolidada</span>
-        <span><span className="text-srag">╌</span> provisória (sujeita a revisão)</span>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-faint">
+        <span><span className="text-primary-600">━</span> consolidada</span>
+        <span><span className="text-attention-700">╌</span> provisória (sujeita a revisão)</span>
         {nc && <span><span className="text-h1n1">◆ ┈</span> nowcast: estimativa de notificações ainda não digitadas; método na metodologia</span>}
         {nowcast && !nowcast.ok && <span>nowcast indisponível{nowcast.status === 'not_found' ? ' para este recorte' : ''}</span>}
       </div>
       <details className="mt-3 text-sm">
-        <summary className="touch inline-flex cursor-pointer items-center font-mono text-xs uppercase tracking-wider text-signal">Tabela equivalente</summary>
+        <summary className="touch inline-flex cursor-pointer items-center text-[14px] font-medium text-primary-600">Tabela equivalente</summary>
         <div className="mt-2">
           <SeriesTable id={tableId} caption={`${title}, por semana`} obs={obs} unit={unit} periodType={periodType} suppressionThreshold={threshold} compact />
           {nc && (

@@ -440,10 +440,20 @@ export const RUN_ERROR_MAX = 200;
 /** Caminhos absolutos POSIX (/a/b/c.ext), relativos com ./ ou ../, e Windows (C:\a\b). */
 const DISK_PATH_RE = /(?:[A-Za-z]:\\(?:[^\\\s'"`]+\\)*[^\\\s'"`]*)|(?:(?:^|[\s('"`=:])\.{0,2}\/(?:[^/\s'"`)]+\/)*[^/\s'"`)]*)/g;
 
-/** Remove caminhos de disco e trunca a mensagem de erro de uma run (nunca exponha o texto cru). */
+/** URLs inteiras (inclusive credenciais user:pass@ e query string) → `[url]`, antes de qualquer outra regra. */
+const URL_RE = /https?:\/\/\S+/gi;
+/** Credenciais soltas no texto: token=..., key=..., api_key: ..., authorization: Bearer ... (case-insensitive). */
+const CREDENTIAL_RE = /\b(authorization|api[_-]?key|access[_-]?key|secret[_-]?key|token|key|password|secret)\b(\s*[=:]\s*)(?:bearer\s+)?[^\s'"`,;)]+/gi;
+
+/**
+ * Higieniza a mensagem de erro de uma run (nunca exponha o texto cru): URLs → `[url]`, credenciais
+ * (`token=`, `key=`, `authorization`) → `[redigido]`, caminhos de disco → `[caminho]`, truncada a 200 caracteres.
+ */
 export function sanitizeRunError(error: string | null | undefined): string | null {
   if (error === null || error === undefined) return null;
   let s = String(error).replace(/[\u0000-\u001F\u007F]+/g, ' ');
+  s = s.replace(URL_RE, '[url]');
+  s = s.replace(CREDENTIAL_RE, (_m, name: string) => `${name.toLowerCase()}=[redigido]`);
   s = s.replace(DISK_PATH_RE, (m) => {
     const lead = /^[\s('"`=:]/.test(m) ? m[0]! : '';
     return `${lead}[caminho]`;

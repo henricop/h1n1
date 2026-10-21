@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { applyCompletion, COMMANDS, completions, helpLines, parseLine, tokenize } from '@/lib/terminal/parser';
+import { applyCompletion, COMMANDS, completions, helpLines, isInternalRoute, parseLine, tokenize } from '@/lib/terminal/parser';
+import { handleTerminal, sanitizeOutput } from '@/lib/terminal/route-handler';
+import { MemoryRateLimiter } from '@/lib/assistant/rate-limit';
 import { formatCell, metadataFooter, sparkline, table } from '@/lib/terminal/format';
 import { buildPaletteGroups, currentCsvUrl, paletteIndicators } from '@/lib/terminal/palette-items';
 import { defaultDeps, EARS_NOTICE, executeLine, executeLocal, type ExecuteDeps } from '@/lib/terminal/execute';
@@ -41,6 +43,11 @@ describe('parser: tokens e argumentos', () => {
     expect(parseLine('top estado x')).toMatchObject({ ok: false });
     expect(parseLine('fontes P9')).toMatchObject({ ok: false, error: expect.stringMatching(/P0, P1 ou P2/) });
     expect(parseLine('abrir http://evil')).toMatchObject({ ok: false, error: expect.stringMatching(/Rota inválida/) });
+    // achado d: só rotas internas simples
+    for (const bad of ['abrir //evil.test', 'abrir /\\evil.test', 'abrir javascript:alert(1)', 'abrir /Dados/', 'abrir /x/?q=<b>']) expect(parseLine(bad), bad).toMatchObject({ ok: false, error: expect.stringMatching(/Rota inválida/) });
+    expect(parseLine('abrir /dados/brasil/?indicador=sivep_srag_notifications&uf=sp')).toMatchObject({ ok: true });
+    expect(isInternalRoute('/terminal/')).toBe(true);
+    expect(isInternalRoute('//x')).toBe(false);
     expect(parseLine('series Indicador-Ruim')).toMatchObject({ ok: false, error: expect.stringMatching(/Indicador inválido/) });
   });
 
@@ -169,6 +176,38 @@ describe('executor (modo mock da API)', () => {
   it('erro de parse vira bloco de erro, nunca exceção', async () => {
     const out = await executeLine('series');
     expect(out.blocks[0]?.kind).toBe('error');
+  });
+});
+
+describe('rota /api/terminal (achado c)', () => {
+  const post = (line: string, headers: Record<string, string> = {}) => new Request('http://localhost/api/terminal', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ line }) });
+
+  it('nunca devolve linhas "detalhe:" (URL interna) ao cliente; registra no servidor', async () => {
+    const logged: string[] = [];
+    const out = sanitizeOutput({ blocks: [{ kind: 'error', lines: ['série x: API indisponível no momento.', 'detalhe: Falha ao acessar http://localhost:3001/v1/series?indicator=x'] }, { kind: 'meta', lines: ['detalhe: fica'] }] }, 'series x', (m) => logged.push(m));
+    expect(out.blocks[0]!.lines).toEqual(['série x: API indisponível no momento.']);
+    expect(out.blocks[1]!.lines).toEqual(['detalhe: fica']);
+    expect(logged[0]).toMatch(/localhost:3001/);
+    const res = await handleTerminal(post('series nao_existe_mesmo'), { limiter: new MemoryRateLimiter(), env: {} });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { blocks: Array<{ kind: string; lines: string[] }> };
+    expect(body.blocks.some((b) => b.kind === 'error')).toBe(true);
+    expect(JSON.stringify(body)).not.toMatch(/detalhe:/);
+    expect(JSON.stringify(body)).not.toMatch(/localhost:3001|fixtures/);
+  });
+
+  it('rate limit por IP com o mesmo módulo do assistente (429 + retry-after)', async () => {
+    const limiter = new MemoryRateLimiter({ max: 2, windowMs: 10_000 });
+    const env = { TRUST_PROXY: 'true' };
+    const exec = async () => ({ blocks: [{ kind: 'text' as const, lines: ['ok'] }] });
+    const a = { 'x-forwarded-for': '203.0.113.9' };
+    expect((await handleTerminal(post('status', a), { limiter, env, exec })).status).toBe(200);
+    expect((await handleTerminal(post('status', a), { limiter, env, exec })).status).toBe(200);
+    const blocked = await handleTerminal(post('status', a), { limiter, env, exec });
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get('retry-after'))).toBeGreaterThan(0);
+    expect((await handleTerminal(post('status', { 'x-forwarded-for': '198.51.100.7' }), { limiter, env, exec })).status).toBe(200);
+    expect((await handleTerminal(post('x'.repeat(301)), { limiter: new MemoryRateLimiter(), env: {}, exec })).status).toBe(400);
   });
 });
 

@@ -119,6 +119,11 @@ describe('linha do tempo (scrubber)', () => {
     expect(t.coverage(axis, '2030-W01')).toMatchObject({ covered: false, shown: '2026-W05' });
     expect(t.weekLabel('2009-W17')).toBe('SEMANA ISO 17 · 2009');
     expect(t.PANDEMIC_REPLAY).toEqual({ from: '2009-W17', to: '2010-W33' });
+    // janela do globo enviada no RSC (achado m): constante em módulo de servidor (um módulo 'use client' viraria referência → NaN)
+    expect(t.GLOBE_WINDOW_WEEKS).toBe(160);
+    const fullAxis = t.weekRange('2009-W01', '2026-W40');
+    const offset = Math.max(0, fullAxis.length - t.GLOBE_WINDOW_WEEKS);
+    expect(Number.isFinite(offset) && offset > 700).toBe(true);
   });
 });
 
@@ -178,6 +183,58 @@ describe('componentes da sala (SSR)', () => {
     expect(html).toContain('não surto confirmado');
     expect(html).toContain('&lt;5');
     expect(html).toContain('1 UF com sinal');
+    expect(html).toContain('u'); // meta.universe_note exibido (achado h)
+    const withNote = renderToStaticMarkup(createElement(EarsTable, { ears: { ...ears, data: { ...ears.data, meta: { ...ears.data.meta, universe_note: 'Universo EARS de teste.' } } }, threshold: 5 }));
+    expect(withNote).toContain('Universo EARS de teste.');
+  });
+
+  it('IngestConsole renderiza todas as linhas no SSR (animação só CSS) e IngestConsole/NextstrainPanel sem efeitos de terminal', async () => {
+    const { IngestConsole } = await import('@/components/sala/IngestConsole');
+    const runs = Array.from({ length: 12 }, (_, i) => ({ id: `r${i}`, connector: `con_${i}`, source_id: 'BR-03', started_at: '2026-10-20T09:00:00Z', finished_at: '2026-10-20T09:01:00Z', status: i === 3 ? 'failed' : 'ok', rows_in: 10, rows_out: 9, error: i === 3 ? 'timeout' : null }));
+    const html = renderToStaticMarkup(createElement(IngestConsole, { runs: { ok: true as const, fetchedAt: 'x', data: { data: runs } } }));
+    expect((html.match(/console-line/g) ?? []).length).toBe(12);
+    expect(html).toContain('con_11');
+    expect(html).toContain('--delay');
+    expect(html).not.toMatch(/scanlines|cursor-blink|hud-/);
+    const { NextstrainPanel } = await import('@/components/sala/NextstrainPanel');
+    const ns = renderToStaticMarkup(createElement(NextstrainPanel));
+    expect(ns).toContain('Carregar visualização do Nextstrain');
+    expect(ns).not.toContain('allow-same-origin');
+  });
+
+  it('LatestChip não exibe tendência quando a célula está suprimida (achado g)', async () => {
+    const { LatestChip } = await import('@/components/sala/LatestChip');
+    const fresh = { ok: true as const, fetchedAt: 'x', data: { data: [] } };
+    const base = { indicator: { id: 'sivep_srag_ah1n1pdm09_confirmed', name: 'X' }, geo_code: 'BRA', period: '2026-W40', period_end: '2026-10-03', provisional: false, trend_pct_vs_4w: 42, data_as_of: '2026-10-13' };
+    const sup = renderToStaticMarkup(createElement(LatestChip, { latest: { ok: true as const, fetchedAt: 'x', data: { ...base, value: null, suppressed: true } }, fresh }));
+    expect(sup).toContain('&lt;5');
+    expect(sup).not.toContain('vs 4 sem');
+    const ok = renderToStaticMarkup(createElement(LatestChip, { latest: { ok: true as const, fetchedAt: 'x', data: { ...base, value: 120, suppressed: false } }, fresh }));
+    expect(ok).toContain('42% vs 4 sem');
+  });
+
+  it('CompositionChart só marca provisório quando provisionalFrom >= 0 (achado f); escapeHtml do rótulo do globo (achado e)', async () => {
+    const { CompositionChart } = await import('@/components/sala/CompositionChart');
+    const weeks = ['2026-W40', '2026-W41'];
+    const layers = [{ id: 'a', name: 'A(H1N1)pdm09', color: '#d6007f', values: [1, 2] }];
+    const none = renderToStaticMarkup(createElement(CompositionChart, { weeks, layers, positivity: null, provisionalFrom: -1, tableId: 't' }));
+    expect(none).not.toContain('provisória');
+    expect((none.match(/consolidada/g) ?? []).length).toBe(2);
+    const some = renderToStaticMarkup(createElement(CompositionChart, { weeks, layers, positivity: null, provisionalFrom: 1, tableId: 't' }));
+    expect((some.match(/provisória/g) ?? []).length).toBe(1);
+    const { escapeHtml } = await import('@/lib/html');
+    expect(escapeHtml('<img src=x onerror=alert(1)> & "Brasil"')).toBe('&lt;img src=x onerror=alert(1)&gt; &amp; &quot;Brasil&quot;');
+  });
+
+  it('CSP do next.config cobre API e Nextstrain; unsafe-eval só em dev', async () => {
+    const { buildCsp } = await import('../next.config');
+    const prod = buildCsp('https://api.example.test', false);
+    expect(prod).toMatch(/default-src 'self'/);
+    expect(prod).toMatch(/connect-src 'self' https:\/\/api\.example\.test https:\/\/nextstrain\.org/);
+    expect(prod).toMatch(/frame-src https:\/\/nextstrain\.org/);
+    expect(prod).toMatch(/img-src 'self' data: blob:/);
+    expect(prod).not.toContain('unsafe-eval');
+    expect(buildCsp('http://localhost:3001', true)).toContain("'unsafe-eval'");
   });
 
   it('IngestConsole em falha não exibe execução antiga como atual', async () => {

@@ -790,5 +790,113 @@
     "quote": "Criança - A temperatura pode atingir níveis mais altos, sendo comum o achado de aumento dos linfonodos cervicais e também podem fazer parte os quadros de bronquite ou bronquiolite, além de sintomas gastrointestinais.",
     "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
     "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-subtipos-influenza-a-hemaglutinina-e-neuraminidase",
+    "claim": "Segundo o Ministério da Saúde, os vírus influenza A são classificados em subtipos de acordo com as combinações de duas proteínas diferentes: a hemaglutinina (HA ou H) e a neuraminidase (NA ou N).",
+    "source_title": "Ministério da Saúde — Gripe (influenza)",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza",
+    "quote": "Eles são ainda classificados em subtipos de acordo com as combinações de 2 proteínas diferentes, a Hemaglutinina (HA ou H) e a Neuraminidase (NA ou N).",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-hemaglutinina-entrada-neuraminidase-saida",
+    "claim": "A hemaglutinina (HA), com sua \"cabeça\" globular e sua \"haste\", facilita a entrada do vírus na célula; a neuraminidase (NA) facilita a liberação dos novos vírus.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "haemagglutinin (HA), with its distinct globular 'head' and 'stalk' structures, which facilitate viral entry, and neuraminidase (NA), which facilitates viral release",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-hemaglutinina-liga-acido-sialico",
+    "claim": "A ligação do vírus influenza à célula-alvo é mediada pela hemaglutinina, que se liga a ácidos siálicos presentes nas glicoproteínas da superfície celular.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "The cellular cycle of the virus starts with binding to the target cell. This binding is mediated by the viral HA (which binds to sialic acids present in the oligosaccharides of the glycoproteins at the cellular surface)",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-neuraminidase-libera-novos-virus",
+    "claim": "A atividade da neuraminidase impede que a hemaglutinina dos novos vírus fique presa a receptores com ácido siálico nas próprias glicoproteínas virais e na membrana da célula infectada, facilitando a disseminação do vírus.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "NA activity prevents non-productive binding of HA of new virions to receptors bearing sialic acid present in the viral glycoproteins and in the membrane of the infected cells, facilitating viral spread.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-genoma-oito-segmentos-rna",
+    "claim": "Todos os vírus influenza são vírus envelopados de RNA de fita simples e sentido negativo, com genoma segmentado; os vírus influenza A e B contêm oito segmentos de RNA.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "All influenza viruses are enveloped negative-sense single-strand RNA viruses with a segmented genome. Influenza A and influenza B viruses contain eight RNA segments",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-envelope-lipidico-derivado-da-celula-e-canal-m2",
+    "claim": "A proteína M2 é um canal de prótons necessário à entrada e à saída do vírus e fica, junto com as glicoproteínas HA e NA, na superfície do vírus, ancorada em uma membrana lipídica derivada da célula infectada.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "the M2 protein is a proton ion channel that is required for viral entry and exit and that, together with the HA and NA glycoproteins, is located on the surface of the virus anchored in a lipid membrane derived from the infected cell.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-m1-arcabouco-do-virion",
+    "claim": "Acredita-se que a proteína M1 forneça um arcabouço que ajuda a estrutura do vírion e que, junto com a NEP, regula o tráfego dos segmentos de RNA viral na célula.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "The M1 protein is thought to provide a scaffold that helps the structure of the virion and that, together with NEP, regulates the trafficking of the viral RNA segments in the cell",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-ha-e-na-alvos-principais-dos-anticorpos",
+    "claim": "A hemaglutinina e a neuraminidase ficam na superfície da partícula viral e são os principais alvos dos anticorpos protetores induzidos pela infecção e pela vacinação contra influenza.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "These two viral glycoproteins are located at the surface of the virus particle and are the main targets for protective antibodies induced by influenza virus infection and vaccination.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-ha-principal-componente-vacinas-inativadas",
+    "claim": "A hemaglutinina é atualmente o principal componente das vacinas inativadas contra influenza; por isso programas de vigilância monitoram as mudanças antigênicas do vírus.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "Because HA is currently the main component of the inactivated influenza vaccines, human and animal influenza virus surveillance programmes are in place to monitor antigenic changes of the virus",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-anticorpos-contra-cabeca-da-ha-neutralizam",
+    "claim": "Anticorpos dirigidos ao domínio da \"cabeça\" da hemaglutinina são tipicamente neutralizantes, porque bloqueiam a ligação do vírus ao receptor da célula.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "Antibodies that target the head domain of HA are typically neutralizing (via blockade of receptor binding)",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-deriva-antigenica-afeta-cabeca-da-ha",
+    "claim": "A deriva antigênica (pequenas mudanças acumuladas por mutação) afeta particularmente o domínio da \"cabeça\" da hemaglutinina, que tem alta plasticidade.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "antigenic drift particularly affects the HA head domain, which has high plasticity",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-genoma-segmentado-permite-rearranjo",
+    "claim": "A natureza segmentada do genoma do vírus influenza permite o rearranjo, isto é, a troca de segmentos de RNA genômico entre vírus diferentes que infectam a mesma célula.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "The segmented nature of the influenza viral genome enables reassortment, that is, interchange, of genomic RNA segments",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
   }
 ]

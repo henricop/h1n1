@@ -25,7 +25,7 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
     .filter((p): p is ContentPage => !!p);
 
   return (
-    <article className="mx-auto max-w-3xl">
+    <article className="mx-auto max-w-3xl py-4 md:py-8">
       <Breadcrumb items={breadcrumbsFor(fm.slug, all)} />
       {page.underReview && (
         <div className="mt-3">
@@ -33,8 +33,8 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
         </div>
       )}
       <header className="mt-4">
-        <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">{fm.title}</h1>
-        <p className="mt-3 rounded-md border-l-4 border-navy-700 bg-navy-50 p-4 text-lg leading-relaxed text-ink" data-summary-answer>
+        <h1 className="font-display text-4xl font-extrabold leading-[1.05] tracking-[-0.02em] text-ink md:text-6xl">{fm.title}</h1>
+        <p className="mt-6 rounded-[20px] border border-primary-100 bg-primary-50 p-5 text-lg leading-relaxed text-ink md:text-xl" data-summary-answer>
           {fm.summary_answer}
         </p>
         {fm.clinical && (
@@ -44,12 +44,12 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
         )}
       </header>
 
-      <div className="prose mt-6">{content}</div>
+      <div className="prose mt-10">{content}</div>
       {children}
 
       {fm.sources.length > 0 && (
         <section aria-labelledby="h-fontes" className="mt-10 border-t border-line pt-6">
-          <h2 id="h-fontes" className="text-xl font-semibold text-ink">
+          <h2 id="h-fontes" className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
             Fontes
           </h2>
           <ol className="mt-3 list-decimal space-y-2 pl-6 text-sm">
@@ -65,7 +65,7 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
         </section>
       )}
 
-      <section aria-labelledby="h-autoria" className="mt-8 rounded-md border border-line bg-paper p-4 text-sm">
+      <section aria-labelledby="h-autoria" className="card-soft mt-10 p-5 text-[15px]">
         <h2 id="h-autoria" className="font-semibold text-ink">
           Autoria e revisão
         </h2>
@@ -81,13 +81,13 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
 
       {related.length > 0 && (
         <nav aria-labelledby="h-rel" className="mt-8">
-          <h2 id="h-rel" className="text-xl font-semibold text-ink">
+          <h2 id="h-rel" className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
             Leia também
           </h2>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {related.map((p) => (
               <li key={p.frontmatter.slug}>
-                <Link href={p.frontmatter.slug} className="touch flex rounded-md border border-line bg-paper px-4 py-3 no-underline hover:border-navy-600">
+                <Link href={p.frontmatter.slug} className="card touch flex px-5 py-4 no-underline hover:border-primary-600">
                   <span>
                     <span className="font-medium text-ink">{p.frontmatter.title}</span>
                     <span className="mt-0.5 block text-sm text-muted">{p.frontmatter.description}</span>

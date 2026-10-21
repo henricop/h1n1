@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
+import { Inter, JetBrains_Mono, Manrope } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -8,8 +8,9 @@ import { CommandPalette } from '@/components/terminal/CommandPalette';
 import { siteChrome } from '@/lib/nav';
 import { SITE } from '@/lib/site';
 
+/* As três famílias expõem as variáveis CSS referenciadas pelos tokens de globals.css (--font-sans/--font-display/--font-mono). */
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space-grotesk', display: 'swap', weight: ['500', '600', '700'] });
+const manrope = Manrope({ subsets: ['latin'], variable: '--font-display-face', display: 'swap', weight: ['600', '700', '800'] });
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap', weight: ['400', '500', '700'] });
 
 export const metadata: Metadata = {
@@ -20,16 +21,16 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true, 'max-image-preview': 'large' },
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#05080f', colorScheme: 'dark' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#ffffff', colorScheme: 'light' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const { nav, institutional } = siteChrome();
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrains.variable}`}>
-      <body className="flex min-h-screen flex-col bg-bg-950 text-ink">
+    <html lang="pt-BR" className={`${inter.variable} ${manrope.variable} ${jetbrains.variable}`}>
+      <body className="flex min-h-screen flex-col bg-bg text-ink">
         <SkipLink />
         <Header nav={nav} />
-        <main id="conteudo" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6" tabIndex={-1}>
+        <main id="conteudo" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6" tabIndex={-1}>
           {children}
         </main>
         <Footer nav={nav} institutional={institutional} />

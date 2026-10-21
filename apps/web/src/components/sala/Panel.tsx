@@ -12,16 +12,16 @@ interface Props {
   minHeight?: number;
 }
 
-/** Painel do HUD: rótulo mono no topo, título display, conteúdo e rodapé de metadados. */
+/** Painel claro: rótulo discreto no topo, título em display, conteúdo e rodapé de metadados. */
 export function Panel({ id, label, title, meta, className = '', children, minHeight }: Props) {
   return (
-    <section id={id} aria-labelledby={`${id}-label`} className={`hud-panel hud-corner relative p-4 ${className}`} style={minHeight ? { minHeight } : undefined}>
-      <p id={`${id}-label`} className="hud-label">
+    <section id={id} aria-labelledby={`${id}-label`} className={`card relative p-5 ${className}`} style={minHeight ? { minHeight } : undefined}>
+      <p id={`${id}-label`} className="label">
         {label}
       </p>
-      {title && <h2 className="mt-1 font-display text-lg font-semibold leading-snug text-ink md:text-xl">{title}</h2>}
+      {title && <h2 className="mt-1 font-display text-xl font-bold leading-snug tracking-[-0.01em] text-ink md:text-2xl">{title}</h2>}
       <div className="mt-3">{children}</div>
-      {meta && <div className="hud-meta">{meta}</div>}
+      {meta && <div className="meta">{meta}</div>}
     </section>
   );
 }

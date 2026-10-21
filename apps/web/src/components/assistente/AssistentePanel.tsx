@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, getToolName, isToolUIPart, type UIMessage } from 'ai';
+import { isAllowedModelLink, isCitationUrl } from '@/lib/assistant/links';
 
 const SUGGESTIONS = ['Como está o H1N1 no Brasil nas últimas semanas?', 'Qual a diferença entre SRAG e H1N1 confirmado?', 'Quais UFs têm sinal estatístico?'] as const;
 
@@ -17,9 +18,6 @@ interface Citation {
   url: string;
 }
 
-function isSafeUrl(url: string): boolean {
-  return /^\/(?!\/)/.test(url) || /^https?:\/\//i.test(url);
-}
 
 function citationsOf(message: UIMessage): Citation[] {
   const out: Citation[] = [];
@@ -31,7 +29,7 @@ function citationsOf(message: UIMessage): Citation[] {
     for (const c of list) {
       if (typeof c !== 'object' || c === null) continue;
       const { label, url } = c as { label?: unknown; url?: unknown };
-      if (typeof url !== 'string' || typeof label !== 'string' || !isSafeUrl(url) || seen.has(url)) continue;
+      if (typeof url !== 'string' || typeof label !== 'string' || !isCitationUrl(url) || seen.has(url)) continue;
       seen.add(url);
       out.push({ label, url });
     }
@@ -39,8 +37,11 @@ function citationsOf(message: UIMessage): Citation[] {
   return out;
 }
 
-/** Markdown mínimo: parágrafos, listas "- ", **negrito** e [rótulo](url) com URLs seguras. Nada de HTML cru. */
-function renderInline(text: string, keyPrefix: string): ReactNode[] {
+/**
+ * Markdown mínimo: parágrafos, listas "- ", **negrito** e [rótulo](url). Nada de HTML cru.
+ * Links só quando forem rotas internas ou coincidirem com uma citação devolvida por ferramenta (achado d).
+ */
+function renderInline(text: string, keyPrefix: string, allowed: ReadonlySet<string>): ReactNode[] {
   const nodes: ReactNode[] = [];
   const re = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*/g;
   let last = 0;
@@ -50,7 +51,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
     if (m.index > last) nodes.push(text.slice(last, m.index));
     if (m[1] !== undefined && m[2] !== undefined) {
       nodes.push(
-        isSafeUrl(m[2]) ? (
+        isAllowedModelLink(m[2], allowed) ? (
           <a key={`${keyPrefix}-${i++}`} href={m[2]} target={m[2].startsWith('/') ? undefined : '_blank'} rel={m[2].startsWith('/') ? undefined : 'noopener noreferrer'}>
             {m[1]}
           </a>
@@ -67,7 +68,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
-function Markdown({ text }: { text: string }) {
+function Markdown({ text, allowed }: { text: string; allowed: ReadonlySet<string> }) {
   const blocks = text.split(/\n{2,}/).filter((b) => b.trim());
   return (
     <>
@@ -77,7 +78,7 @@ function Markdown({ text }: { text: string }) {
           return (
             <ul key={bi} className="my-1 list-disc pl-5">
               {lines.map((l, li) => (
-                <li key={li}>{renderInline(l.replace(/^\s*[-*•]\s+/, ''), `${bi}-${li}`)}</li>
+                <li key={li}>{renderInline(l.replace(/^\s*[-*•]\s+/, ''), `${bi}-${li}`, allowed)}</li>
               ))}
             </ul>
           );
@@ -86,7 +87,7 @@ function Markdown({ text }: { text: string }) {
           <p key={bi} className="my-1">
             {lines.map((l, li) => (
               <span key={li}>
-                {renderInline(l, `${bi}-${li}`)}
+                {renderInline(l, `${bi}-${li}`, allowed)}
                 {li < lines.length - 1 ? <br /> : null}
               </span>
             ))}
@@ -145,49 +146,52 @@ export function AssistentePanel({ compact = false }: { compact?: boolean }) {
   const errorText = error ? (/assistant_disabled|ANTHROPIC_API_KEY/.test(error.message) ? DISABLED_TEXT : /rate_limited|429/.test(error.message) ? 'Muitas perguntas em pouco tempo. Aguarde alguns minutos.' : 'Falha ao consultar o assistente. Tente novamente.') : null;
 
   return (
-    <section className="hud-panel scanlines relative flex flex-col overflow-hidden" aria-label="Pergunte ao observatório" data-compact={compact}>
-      <header className="flex items-center justify-between border-b border-line px-4 py-2">
-        <p className="hud-label">Pergunte ao observatório</p>
-        <p className="hud-label" aria-live="polite">
-          {enabled === false ? 'desativado' : busy ? 'respondendo…' : 'IA · claude'}
+    <section className="card relative flex flex-col overflow-hidden" aria-label="Pergunte ao observatório" data-compact={compact}>
+      <header className="flex items-center justify-between border-b border-line px-5 py-3">
+        <p className="font-display text-lg font-bold tracking-[-0.01em] text-ink">Pergunte ao observatório</p>
+        <p className="label" aria-live="polite">
+          {enabled === false ? 'desativado' : busy ? 'respondendo…' : 'assistente com IA'}
         </p>
       </header>
 
       <div ref={logRef} className={`${compact ? 'max-h-56' : 'max-h-[28rem]'} min-h-24 overflow-y-auto px-4 py-3 text-sm`} role="log" aria-live="polite" aria-relevant="additions">
-        {enabled === false && <p className="font-mono text-srag">{DISABLED_TEXT}</p>}
+        {enabled === false && <p className="text-attention-700">{DISABLED_TEXT}</p>}
         {enabled !== false && messages.length === 0 && (
           <p className="text-muted">Perguntas sobre os dados oficiais de H1N1, SRAG e influenza no Brasil. Cada número vem com fonte, data da base e o que ele representa.</p>
         )}
         {messages.map((m) => {
           const cites = m.role === 'assistant' ? citationsOf(m) : [];
+          const allowed = new Set(cites.map((c) => c.url));
+          const mine = m.role === 'user';
           return (
-            <div key={m.id} className="mb-3">
-              <p className="hud-label">{m.role === 'user' ? 'você' : 'observatório'}</p>
+            <div key={m.id} className={`mb-3 flex ${mine ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[88%] rounded-2xl px-4 py-3 ${mine ? 'bg-primary-600 text-white' : 'bg-bg-soft text-ink'}`}>
+              <p className={`text-[12px] ${mine ? 'text-white/80' : 'text-muted'}`}>{mine ? 'Você' : 'Observatório'}</p>
               {m.parts.map((part, i) => {
                 if (part.type === 'text') {
-                  return m.role === 'user' ? (
-                    <p key={i} className="my-1 whitespace-pre-wrap text-ink">
+                  return mine ? (
+                    <p key={i} className="my-1 whitespace-pre-wrap">
                       {part.text}
                     </p>
                   ) : (
                     <div key={i} className="text-ink">
-                      <Markdown text={part.text} />
+                      <Markdown text={part.text} allowed={allowed} />
                     </div>
                   );
                 }
                 const line = toolLine(part);
                 if (line) {
                   return (
-                    <pre key={i} className="my-0.5 whitespace-pre-wrap font-mono text-[12px] text-signal-dim">
+                    <p key={i} className="my-0.5 whitespace-pre-wrap text-[12px] text-primary-700">
                       {line}
-                    </pre>
+                    </p>
                   );
                 }
                 return null;
               })}
               {cites.length > 0 && (
-                <p className="mt-1 font-mono text-[12px] text-muted">
-                  fontes:{' '}
+                <p className="mt-1 text-[12px] text-muted">
+                  Fontes:{' '}
                   {cites.map((c, i) => (
                     <span key={c.url}>
                       <a href={c.url} target={c.url.startsWith('/') ? undefined : '_blank'} rel={c.url.startsWith('/') ? undefined : 'noopener noreferrer'}>
@@ -198,21 +202,22 @@ export function AssistentePanel({ compact = false }: { compact?: boolean }) {
                   ))}
                 </p>
               )}
+              </div>
             </div>
           );
         })}
-        {busy && <p className="font-mono text-[12px] text-faint">▸ consultando…</p>}
+        {busy && <p className="text-[13px] text-muted">Consultando os dados…</p>}
         {errorText && (
-          <p className="font-mono text-[12px] text-urgent-700" role="alert">
+          <p className="text-[13px] text-urgent-700" role="alert">
             {errorText}
           </p>
         )}
       </div>
 
       {enabled !== false && messages.length === 0 && (
-        <div className="flex flex-wrap gap-2 px-4 pb-2">
+        <div className="flex flex-wrap gap-2 px-4 pb-3">
           {SUGGESTIONS.map((s) => (
-            <button key={s} type="button" onClick={() => ask(s)} disabled={busy} className="touch rounded border border-line bg-bg-800 px-3 py-1.5 text-left font-mono text-[12px] text-muted hover:border-line-strong hover:text-signal">
+            <button key={s} type="button" onClick={() => ask(s)} disabled={busy} className="chip text-left">
               {s}
             </button>
           ))}
@@ -220,7 +225,7 @@ export function AssistentePanel({ compact = false }: { compact?: boolean }) {
       )}
 
       <form
-        className="flex items-end gap-2 border-t border-line px-4 py-2"
+        className="flex items-end gap-2 border-t border-line px-4 py-3"
         onSubmit={(e) => {
           e.preventDefault();
           ask(input);
@@ -243,19 +248,19 @@ export function AssistentePanel({ compact = false }: { compact?: boolean }) {
           maxLength={MAX_CHARS}
           disabled={enabled === false || busy}
           placeholder={enabled === false ? 'assistente desativado' : 'pergunte sobre os dados (sem dados de saúde pessoais)'}
-          className="min-h-[44px] flex-1 resize-none rounded border border-line bg-bg-950 px-3 py-2 font-mono text-sm text-ink placeholder:text-faint"
+          className="input-field flex-1 resize-none text-[15px]"
         />
         {busy ? (
-          <button type="button" onClick={() => stop()} className="touch rounded border border-line px-3 font-mono text-[12px] text-muted hover:bg-bg-700">
-            parar
+          <button type="button" onClick={() => stop()} className="btn">
+            Parar
           </button>
         ) : (
-          <button type="submit" disabled={enabled === false || !input.trim()} className="touch rounded border border-signal/60 px-3 font-mono text-[12px] text-signal hover:bg-bg-700 disabled:opacity-50">
-            perguntar
+          <button type="submit" disabled={enabled === false || !input.trim()} className="btn btn-primary">
+            Perguntar
           </button>
         )}
       </form>
-      <footer className="border-t border-line px-4 py-2 text-[11px] leading-snug text-faint">
+      <footer className="border-t border-line bg-bg-soft px-5 py-3 text-[12px] leading-snug text-muted">
         Conteúdo educativo gerado por IA a partir de dados oficiais; não substitui avaliação médica. Em sinais de alerta, procure um serviço de saúde (
         <a href="/sintomas/sinais-de-alerta/">sinais de alerta</a>). Não envie dados de saúde pessoais. A conversa não é armazenada. {input.length > 0 && <span className="tabular-nums">{input.length}/{MAX_CHARS}</span>}
       </footer>

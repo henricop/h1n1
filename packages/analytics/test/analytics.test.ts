@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ears, nowcast, seasonOverlay, trend } from '../src/index.js';
+import { ears, nowcast, seasonOverlay, seasonLabel, trend } from '../src/index.js';
 
 describe('ears', () => {
   it('sinaliza C1/C2/C3 em um pico sobre baseline estável e devolve null sem baseline completa', () => {
@@ -90,6 +90,41 @@ describe('seasonOverlay', () => {
     expect(r.seasons[1]!.values[52]).toBe(3);
     expect(r.seasons[1]!.values[1]).toBeNull();
     expect(JSON.stringify(r)).not.toContain('99');
+    expect(r.group).toBe('calendar');
+    expect(r.seasons.map((s) => s.label)).toEqual(['2024', '2025']);
+  });
+
+  it('group=season: SE 27 → SE 26 do ano seguinte, rótulo 2025/26, eixo 27..53,1..26', () => {
+    const r = seasonOverlay(
+      [
+        { period: '2025-W26', value: 1 },
+        { period: '2025-W27', value: 2 },
+        { period: '2025-W53', value: 3 },
+        { period: '2026-W01', value: 4 },
+        { period: '2026-W26', value: 5 },
+        { period: '2026-W27', value: 6 },
+      ],
+      { group: 'season' },
+    );
+    expect(r.group).toBe('season');
+    expect(r.weeks).toHaveLength(53);
+    expect(r.weeks.slice(0, 3)).toEqual([27, 28, 29]);
+    expect(r.weeks[26]).toBe(53);
+    expect(r.weeks[27]).toBe(1);
+    expect(r.weeks[52]).toBe(26);
+    expect(r.seasons.map((s) => s.label)).toEqual(['2024/25', '2025/26', '2026/27']);
+    expect(r.seasons.map((s) => s.year)).toEqual([2024, 2025, 2026]);
+    const s2425 = r.seasons[0]!;
+    expect(s2425.values[52]).toBe(1); // 2025-W26 fecha a temporada 2024/25
+    const s2526 = r.seasons[1]!;
+    expect(s2526.values[0]).toBe(2); // 2025-W27 abre a temporada
+    expect(s2526.values[26]).toBe(3); // 2025-W53
+    expect(s2526.values[27]).toBe(4); // 2026-W01
+    expect(s2526.values[52]).toBe(5); // 2026-W26
+    expect(s2526.values[1]).toBeNull();
+    expect(r.seasons[2]!.values[0]).toBe(6);
+    expect(seasonLabel(1999)).toBe('1999/00');
+    expect(seasonLabel(2009)).toBe('2009/10');
   });
 });
 

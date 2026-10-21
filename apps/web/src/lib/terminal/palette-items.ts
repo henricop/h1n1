@@ -26,6 +26,7 @@ export interface PalettePage {
 /** Rotas de aplicação sempre presentes (sem depender do conteúdo editorial). */
 export const APP_ROUTES: readonly PalettePage[] = [
   { label: 'Início', href: '/' },
+  { label: 'Sala de dados', href: '/sala/' },
   { label: 'H1N1 no Brasil (observatório)', href: '/dados/brasil/' },
   { label: 'H1N1 no mundo', href: '/dados/mundo/' },
   { label: 'Fontes oficiais', href: '/dados/fontes/' },

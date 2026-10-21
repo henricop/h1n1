@@ -1,21 +1,13 @@
 'use client';
+import { PALETTE_EVENT } from '@/components/terminal/CommandPalette';
 
-/**
- * Botão ⌘K do HUD. A paleta (components/terminal/CommandPalette, de outro agente) escuta o atalho de teclado;
- * aqui despachamos o mesmo atalho como evento sintético e um evento customizado, sem acoplar à implementação.
- */
+/** Botão pílula "Buscar ⌘K": dispara um único evento global (h1n1:palette) que a CommandPalette escuta. */
 export function CommandPaletteButton({ className = '' }: { className?: string }) {
-  const open = () => {
-    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
-    const init: KeyboardEventInit = { key: 'k', code: 'KeyK', metaKey: isMac, ctrlKey: !isMac, bubbles: true, cancelable: true };
-    document.dispatchEvent(new KeyboardEvent('keydown', init));
-    window.dispatchEvent(new KeyboardEvent('keydown', init));
-    window.dispatchEvent(new CustomEvent('h1n1:command-palette', { detail: { open: true } }));
-  };
+  const open = () => window.dispatchEvent(new CustomEvent(PALETTE_EVENT));
   return (
-    <button type="button" onClick={open} className={`hud-btn ${className}`} aria-label="Abrir paleta de comandos (⌘K ou Ctrl+K)" title="Paleta de comandos">
-      <kbd className="font-mono text-[11px]">⌘K</kbd>
-      <span className="hidden sm:inline">Comandos</span>
+    <button type="button" onClick={open} className={`btn btn-sm ${className}`} aria-label="Buscar no site e abrir comandos (⌘K ou Ctrl+K)" title="Buscar (⌘K)">
+      <span>Buscar</span>
+      <kbd className="rounded-full border border-line bg-bg-soft px-1.5 font-mono text-[11px] text-muted">⌘K</kbd>
     </button>
   );
 }

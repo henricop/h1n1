@@ -16,6 +16,7 @@ describe('sitemap', () => {
     const { loadAllPages } = await import('@/lib/content');
     const urls = buildSitemap(loadAllPages()).map((e) => new URL(e.url).pathname);
     expect(urls).toContain('/');
+    expect(urls).toContain('/sala/');
     expect(urls).toContain('/dados/brasil/');
     expect(urls).toContain('/dados/mundo/');
     expect(urls).toContain('/dados/fontes/');

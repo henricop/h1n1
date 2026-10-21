@@ -49,12 +49,12 @@ export default async function FontePage({ params }: { params: Params }) {
       {/* Sem JSON-LD Dataset aqui: a fonte é catalogada (DataCatalog em /dados/fontes/); Dataset só no observatório (série derivada). */}
       <header className="mt-2">
         <p className="font-mono text-xs text-muted">{s.id}</p>
-        <h1 className="text-3xl font-bold text-ink">{s.name}</h1>
+        <h1 className="font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-4xl">{s.name}</h1>
         <p className="mt-1 text-muted">
           {s.agency} · {s.region} · prioridade {s.priority}
         </p>
         <p className="mt-3 flex flex-wrap gap-2">
-          <a href={s.url} rel="noopener noreferrer" target="_blank" className="touch inline-flex items-center rounded-md border border-navy-700 px-4 py-2 font-medium text-ink no-underline hover:bg-navy-50">
+          <a href={s.url} rel="noopener noreferrer" target="_blank" className="btn btn-primary">
             Acessar a fonte oficial
           </a>
           {s.api_tested_at && <ApiVerifiedBadge date={s.api_tested_at} />}
@@ -85,7 +85,7 @@ export default async function FontePage({ params }: { params: Params }) {
       </dl>
 
       <section aria-labelledby="h-ind" className="mt-8">
-        <h2 id="h-ind" className="text-xl font-semibold text-ink">
+        <h2 id="h-ind" className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
           Indicadores derivados desta fonte
         </h2>
         {!ind.ok ? (
@@ -99,7 +99,7 @@ export default async function FontePage({ params }: { params: Params }) {
             {derived.map((i) => {
               const inObservatory = OBSERVATORY_INDICATORS.some((o) => o.id === i.id);
               return (
-                <li key={i.id} className="rounded-md border border-line bg-paper p-4 text-sm">
+                <li key={i.id} className="card p-5 text-[15px]">
                   <p className="font-semibold text-ink">{i.name}</p>
                   <p className="mt-1 text-muted">{i.description}</p>
                   <p className="mt-1">

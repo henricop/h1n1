@@ -65,6 +65,11 @@ export interface ParsedCommand {
 export type ParseResult = { ok: true; command: ParsedCommand } | { ok: false; error: string };
 
 export const GEO_RE = /^([A-Z]{3}|BR-[A-Z]{2})$/;
+/** Rota interna aceita por `abrir`: barra inicial, minúsculas/dígitos/hífen/barra e query simples; nada de //, \\ ou esquemas. */
+export const INTERNAL_ROUTE_RE = /^\/[a-z0-9\-\/]*(\?[a-z0-9=&\-_.]*)?$/;
+export function isInternalRoute(route: string): boolean {
+  return !route.startsWith('//') && !route.includes('\\') && INTERNAL_ROUTE_RE.test(route);
+}
 export const PERIOD_RE = /^\d{4}(-W\d{2})?$/;
 export const INDICATOR_ID_RE = /^[a-z0-9_]+$/;
 const PRIORITY_RE = /^P[012]$/;
@@ -168,7 +173,7 @@ function validateArgs(cmd: CommandSpec, positional: string[], named: Record<stri
     }
     case 'abrir': {
       const route = positional[0]!;
-      if (!route.startsWith('/') || /^\/\//.test(route) || /[\s<>"']/.test(route)) return `Rota inválida '${route}'. Use um caminho do site, ex.: abrir /dados/brasil/`;
+      if (!isInternalRoute(route)) return `Rota inválida '${route}'. Use um caminho do site, ex.: abrir /dados/brasil/`;
       break;
     }
     case 'help': {

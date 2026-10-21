@@ -42,8 +42,8 @@ export function BrazilMap({ states, weekIndex, week, max, unit, threshold, indic
 
   if (!features) {
     return (
-      <div className="scanlines relative flex w-full items-center justify-center rounded border border-line bg-bg-950/60" style={{ aspectRatio: `${W} / ${H}` }} role="status" aria-live="polite">
-        <p className="font-mono text-xs text-faint">{failed ? 'Malha de UFs indisponível; veja o ranking e a tabela.' : 'Carregando malha de UFs…'}</p>
+      <div className="relative flex w-full items-center justify-center rounded-2xl border border-line bg-bg-soft" style={{ aspectRatio: `${W} / ${H}` }} role="status" aria-live="polite">
+        <p className="text-[13px] text-muted">{failed ? 'Malha de UFs indisponível; veja o ranking e a tabela.' : 'Carregando malha de UFs…'}</p>
       </div>
     );
   }
@@ -53,8 +53,8 @@ export function BrazilMap({ states, weekIndex, week, max, unit, threshold, indic
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="group" aria-label={`Mapa do Brasil por UF: ${indicatorName}, semana ${week}`}>
         <defs>
           <pattern id="hatch-nodata" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="6" height="6" fill="#0f1726" />
-            <line x1="0" y1="0" x2="0" y2="6" stroke="#34507a" strokeWidth="1.5" />
+            <rect width="6" height="6" fill="#ffffff" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="#c7d0de" strokeWidth="1.5" />
           </pattern>
         </defs>
         {paths.map((p) => {
@@ -81,7 +81,7 @@ export function BrazilMap({ states, weekIndex, week, max, unit, threshold, indic
           );
         })}
         {paths.map((p) => (
-          <text key={`t-${p.uf}`} x={p.c[0]} y={p.c[1]} textAnchor="middle" dominantBaseline="middle" fontSize={9} fill="#e6edf7" fillOpacity={0.85} fontFamily="JetBrains Mono, monospace" pointerEvents="none">
+          <text key={`t-${p.uf}`} x={p.c[0]} y={p.c[1]} textAnchor="middle" dominantBaseline="middle" fontSize={9} fill="#0b1220" fillOpacity={0.8} fontFamily="Inter, system-ui, sans-serif" fontWeight={600} pointerEvents="none">
             {p.uf}
           </text>
         ))}
@@ -89,7 +89,7 @@ export function BrazilMap({ states, weekIndex, week, max, unit, threshold, indic
       {hover && hovered && hoveredCell && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute z-10 rounded border border-line-strong bg-bg-900/95 px-3 py-2 font-mono text-xs text-ink shadow-lg"
+          className="card pointer-events-none absolute z-10 px-3 py-2 text-[13px] text-ink"
           style={{ left: `${(hover.x / W) * 100}%`, top: `${(hover.y / H) * 100}%`, transform: 'translate(-50%, -120%)' }}
         >
           <p className="font-semibold">
@@ -97,14 +97,14 @@ export function BrazilMap({ states, weekIndex, week, max, unit, threshold, indic
           </p>
           <p>
             {hoveredCell.kind === 'suppressed' ? `<${threshold} (célula suprimida)` : hoveredCell.kind === 'nodata' ? 'sem dado publicado' : formatNumberBR(hovered.values[weekIndex], unit)}
-            {provisional && hoveredCell.kind === 'value' ? <span className="text-srag"> · provisório</span> : null}
+            {provisional && hoveredCell.kind === 'value' ? <span className="text-attention-700"> · provisório</span> : null}
           </p>
           <p className="text-faint">{week}</p>
         </div>
       )}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-faint" aria-label="Legenda do mapa">
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-faint" aria-label="Legenda do mapa">
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-sm" style={{ background: MAP_COLOR_ZERO }} aria-hidden="true" /> 0
+          <span className="inline-block h-3 w-3 rounded-sm border border-line" style={{ background: MAP_COLOR_ZERO }} aria-hidden="true" /> 0
         </span>
         {stops.map((s) => (
           <span key={s.value} className="inline-flex items-center gap-1">

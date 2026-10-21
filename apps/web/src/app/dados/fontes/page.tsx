@@ -55,18 +55,19 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
     <>
       <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Dados', href: null }, { label: 'Fontes oficiais', href: '/dados/fontes/' }]} />
       <header className="mt-2">
-        <h1 className="text-3xl font-bold text-ink">Fontes oficiais</h1>
-        <p className="mt-2 max-w-3xl text-muted">
+        <p className="kicker">Catálogo</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-5xl">Fontes oficiais</h1>
+        <p className="mt-3 max-w-2xl text-muted">
           Catálogo das fontes de dados consultadas pelo projeto, com o recorte que cada uma oferece sobre H1N1. Fontes do mesmo grupo espelhado reapresentam os mesmos registros e nunca são somadas.
         </p>
       </header>
 
-      <form method="get" action="/dados/fontes/" className="mt-6 flex flex-wrap items-end gap-4 rounded-md border border-line bg-paper p-4" aria-label="Filtros do catálogo">
+      <form method="get" action="/dados/fontes/" className="card mt-8 flex flex-wrap items-end gap-4 p-5" aria-label="Filtros do catálogo">
         <div>
           <label htmlFor="prioridade" className="block text-sm font-medium text-ink">
             Prioridade
           </label>
-          <select id="prioridade" name="prioridade" defaultValue={prioridade} className="touch mt-1 rounded border border-line bg-paper px-3 py-2">
+          <select id="prioridade" name="prioridade" defaultValue={prioridade} className="select-field mt-1">
             <option value="">Todas</option>
             {PRIORITIES.map((p) => (
               <option key={p} value={p}>
@@ -79,7 +80,7 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
           <label htmlFor="acesso" className="block text-sm font-medium text-ink">
             Tipo de acesso
           </label>
-          <select id="acesso" name="acesso" defaultValue={acesso} className="touch mt-1 rounded border border-line bg-paper px-3 py-2">
+          <select id="acesso" name="acesso" defaultValue={acesso} className="select-field mt-1">
             <option value="">Todos</option>
             {ACCESS.map((a) => (
               <option key={a.key} value={a.key}>
@@ -88,7 +89,7 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
             ))}
           </select>
         </div>
-        <button type="submit" className="touch rounded border border-signal bg-signal/15 px-5 py-2 font-medium text-signal hover:bg-signal/25">
+        <button type="submit" className="btn btn-primary">
           Filtrar
         </button>
         {(prioridade || acesso) && (
@@ -126,8 +127,8 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
             {res.data.data.length} fonte{res.data.data.length === 1 ? '' : 's'} {prioridade || acesso ? 'com os filtros aplicados' : 'catalogadas'}.
           </p>
           {regions.map((region) => (
-            <section key={region} aria-labelledby={`regiao-${slugify(region)}`} className="mt-8">
-              <h2 id={`regiao-${slugify(region)}`} className="text-xl font-semibold text-ink">
+            <section key={region} aria-labelledby={`regiao-${slugify(region)}`} className="mt-12">
+              <h2 id={`regiao-${slugify(region)}`} className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
                 {region} <span className="text-sm font-normal text-muted">({groups.get(region)!.length})</span>
               </h2>
               <ul className="mt-3 grid gap-3 md:grid-cols-2">

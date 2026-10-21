@@ -3,7 +3,7 @@ import { BR_STATES, COUNTRY_CENTROIDS } from '@h1n1/core';
 import { getSeries, getMatrix, getIndicatorRow, type Db, type IndicatorRow, type SeriesResult } from '@h1n1/db';
 import type { PublishedObservation } from '@h1n1/core';
 import { parseOr400, globeQuery, mapBrazilQuery, normalizePeriodRange, type PeriodType } from '../schemas.js';
-import { notFound, badRequest } from '../errors.js';
+import { notFound, badRequest, tooManyRows } from '../errors.js';
 import { GLOBE_QUERY, GLOBE_RESPONSE, MAP_BRAZIL_QUERY, MAP_BRAZIL_RESPONSE, errorResponses } from '../openapi.js';
 
 /** Metadados compactos das rotas de visualização/análise (CONTRATO_API.md §3.13). */
@@ -14,6 +14,8 @@ export interface VizMeta {
   source_id: string;
   case_definition: string;
   caveats: string[];
+  /** true quando a leitura atingiu o limite de linhas (resultado possivelmente incompleto) */
+  truncated: boolean;
 }
 
 export function vizMeta(r: { meta: SeriesResult['meta']; source: { id: string } }): VizMeta {
@@ -24,7 +26,25 @@ export function vizMeta(r: { meta: SeriesResult['meta']; source: { id: string } 
     source_id: r.source.id,
     case_definition: r.meta.case_definition,
     caveats: r.meta.caveats,
+    truncated: r.meta.truncated,
   };
+}
+
+/**
+ * Rotas de análise não operam sobre série cortada pelo limite de linhas: 400 too_many_rows.
+ * (Globo e mapa mantêm 200 e sinalizam em meta.truncated.)
+ */
+export function requireComplete<T extends { meta: SeriesResult['meta'] }>(r: T, what: string): T {
+  if (r.meta.truncated) {
+    throw tooManyRows(`${what}: a série excede o limite de linhas e a análise seria calculada sobre dados incompletos; reduza o intervalo (from/to) ou o recorte.`);
+  }
+  return r;
+}
+
+export interface VizRouteOptions {
+  db: Db;
+  /** máximo de observações lidas por série (ver BuildAppOptions.vizRowLimit) */
+  rowLimit?: number;
 }
 
 export const indicatorRef = (i: IndicatorRow) => ({ id: i.id, name: i.name });
@@ -62,8 +82,9 @@ export function alignToAxis(
   return { values, suppressed, provisional, present };
 }
 
-export async function vizRoutes(app: FastifyInstance, opts: { db: Db }) {
+export async function vizRoutes(app: FastifyInstance, opts: VizRouteOptions) {
   const { db } = opts;
+  const limit = opts.rowLimit ?? 100000;
 
   app.get('/v1/globe', {
     config: { cache: 'series', etag: true },
@@ -71,17 +92,18 @@ export async function vizRoutes(app: FastifyInstance, opts: { db: Db }) {
       tags: ['visualização'],
       summary: 'Matriz país × semana (FluNet) para o globo, com centroides',
       description:
-        'Só indicadores flunet_* (400 caso contrário) e só países com centroide conhecido (COUNTRY_CENTROIDS); países sem ' +
+        'Só indicadores flunet_* de contagem (measurement=count; 400 caso contrário — percentuais como positividade não ' +
+        'são comparáveis entre países no globo) e só países com centroide conhecido (COUNTRY_CENTROIDS); países sem ' +
         'nenhum valor no intervalo são omitidos. values alinhado a weeks (null = célula ausente). origin=all usa o total; ' +
-        'os demais valores selecionam o estrato origin_source. Cache 300 s + ETag.',
+        'os demais valores selecionam o estrato origin_source. meta.truncated=true sinaliza leitura cortada. Cache 300 s + ETag.',
       querystring: GLOBE_QUERY,
       response: { 200: GLOBE_RESPONSE, ...errorResponses(400, 404) },
     },
   }, async (req) => {
     const q = parseOr400(globeQuery, req.query);
     const indicator = await requireIndicator(db, q.indicator, {
-      ok: (i) => i.id.startsWith('flunet_') && i.geo_levels.includes('country'),
-      message: 'o globo só aceita indicadores flunet_* com nível country',
+      ok: (i) => i.id.startsWith('flunet_') && i.geo_levels.includes('country') && i.measurement === 'count',
+      message: 'o globo só aceita indicadores flunet_* de contagem (measurement=count) com nível country',
     });
     const range = normalizePeriodRange(q.from, q.to, indicator.period_type as PeriodType);
     const origin = q.origin ?? 'all';
@@ -112,7 +134,7 @@ export async function vizRoutes(app: FastifyInstance, opts: { db: Db }) {
       description:
         'Só indicadores com geo_levels contendo state (400 caso contrário). Reutiliza a série publicada por UF e o total nacional: ' +
         'células suprimidas saem com value null e suppressed true (o valor bruto nunca é exposto); todas as 27 UFs aparecem, com ' +
-        'null onde não há dado. weeks = união dos períodos publicados. Cache 300 s + ETag.',
+        'null onde não há dado. weeks = união dos períodos publicados. meta.truncated=true sinaliza leitura cortada. Cache 300 s + ETag.',
       querystring: MAP_BRAZIL_QUERY,
       response: { 200: MAP_BRAZIL_RESPONSE, ...errorResponses(400, 404) },
     },
@@ -123,7 +145,7 @@ export async function vizRoutes(app: FastifyInstance, opts: { db: Db }) {
       message: 'o mapa do Brasil só aceita indicadores com nível state',
     });
     const range = normalizePeriodRange(q.from, q.to, indicator.period_type as PeriodType);
-    const base = { indicator: indicator.id, limit: 100000, ...(range.from ? { from: range.from } : {}), ...(range.to ? { to: range.to } : {}) };
+    const base = { indicator: indicator.id, limit, ...(range.from ? { from: range.from } : {}), ...(range.to ? { to: range.to } : {}) };
     const [states, national] = await Promise.all([
       getSeries(db, { ...base, geoLevel: 'state' }),
       getSeries(db, { ...base, geoLevel: 'country', geoCode: 'BRA' }),
@@ -144,7 +166,7 @@ export async function vizRoutes(app: FastifyInstance, opts: { db: Db }) {
     const nat = alignToAxis(national.observations, weeks);
     return {
       indicator: indicatorRef(indicator),
-      meta: vizMeta(states),
+      meta: { ...vizMeta(states), truncated: states.meta.truncated || national.meta.truncated },
       weeks,
       states: out,
       national: { values: nat.values, provisional: nat.provisional },
