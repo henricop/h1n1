@@ -81,3 +81,18 @@ h1n1/
 | docs | sim | PRD, contrato, dicionário, mapeamento P0, políticas, LGPD, pesquisa de demanda (150 consultas, sem volume), backlog, 6 ADRs |
 
 Validações de abordagem (Sonnet) antes de implementar: arquitetura/modelo de dados, ontologia epidemiológica (dicionário SIVEP + metadados FluNet), IA do site/SEO/governança. Revisões (Haiku) após implementar: API, conectores, web, docs; conteúdo clínico revisado com Sonnet. Achados graves corrigidos; pendências humanas: domínio, revisor clínico, DPO, Search Console.
+
+## 6. Estado em 2026-10-21, v3 ("claro, forte, humano")
+
+Após duas rodadas de feedback do usuário (v1 sóbria rejeitada; v2 escura/HUD rejeitada), o site foi reconstruído sobre o tema claro de `apps/web/DESIGN.md` v2:
+
+| Frente | Entregue |
+|---|---|
+| Home | Explicador 3D em react-three-fiber: vírus A(H1N1)pdm09 procedural que se desmonta por rolagem (envelope, hemaglutinina, neuraminidase, M1, M2, 8 segmentos de RNA), capítulos "como entra", "como se espalha", "como a vacina ajuda", dados do Brasil e links; 12 fatos biológicos de Krammer et al. 2018 (Nat Rev Dis Primers) e MS; pôster SVG como fallback e og:image |
+| Sala de dados (/sala/) | Globo (react-globe.gl) com FluNet global (189.651 linhas, 193 países, 2009→hoje), scrubber com replay de 2009, mapa de UFs (IBGE), EARS C1/C2/C3, nowcast com CDF de atraso do SIVEP, sobreposição de temporadas, composição FluNet, Nextstrain, console de ingestão |
+| Terminal e assistente | /terminal/ com 11 comandos; assistente com Claude (ai + @ai-sdk/anthropic) e 9 ferramentas sobre a API, desativado sem chave |
+| API | 7 rotas de visualização/análise; índice de matriz (consulta 2,8 s → 58 ms) e cache LRU; nowcast restrito à população da CDF; sanitização de logs |
+| Conectores | FluNet global particionado por ano; CDF de atraso de notificação; provisório relativo à data da base; microdados apagados após agregação |
+| Testes | core 18 · db 9 · analytics 8 · api 46 · connectors 87 · web 121 |
+
+Pendências humanas inalteradas: revisor clínico, domínio, DPO, chave da Anthropic para o assistente, validação quantitativa de demanda.
