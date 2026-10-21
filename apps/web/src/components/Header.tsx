@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import type { NavItem } from '@/lib/content';
 import { SITE } from '@/lib/site';
-import { CommandPaletteButton } from '@/components/sala/CommandPaletteButton';
 
 /**
  * Navegação primária (DESIGN.md v2). Os grupos editoriais (Sintomas, Vacina) só aparecem quando há página elegível:
@@ -13,7 +12,6 @@ export const PRIMARY_NAV: ReadonlyArray<{ label: string; href: string; group?: s
   { label: 'Vacina e prevenção', href: '', group: 'Vacina e prevenção' },
   { label: 'Dados do Brasil', href: '/dados/brasil/' },
   { label: 'Sala de dados', href: '/sala/' },
-  { label: 'Terminal', href: '/terminal/' },
   { label: 'Fontes', href: '/dados/fontes/' },
 ];
 
@@ -47,7 +45,6 @@ export function Header({ nav }: { nav: NavItem[] }) {
             ))}
           </ul>
         </nav>
-        <CommandPaletteButton className="hidden sm:inline-flex" />
       </div>
     </header>
   );

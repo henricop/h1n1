@@ -19,7 +19,6 @@ export function HudFooter({ institutional }: { institutional: Array<{ label: str
             <li>
               <Link href="/dados/fontes/">Catálogo de fontes oficiais</Link>
             </li>
-            <li className="text-muted">Nextstrain (Hadfield et al. 2018), dados GISAID: visualização externa.</li>
           </ul>
         </div>
         <div>

@@ -21,6 +21,9 @@ export const DOCK_GAP = 0.6;
 /** Boca das silhuetas (capítulos 4 e 5), em unidades de cena. */
 export const MOUTH_LEFT = { x: -2.35, y: 0.95 } as const;
 export const MOUTH_RIGHT = { x: 2.35, y: 0.95 } as const;
+/** Onde o vírion "estaciona" diante de cada boca (afastado do rosto para não se sobrepor à cabeça). */
+export const CARRY_LEFT = { x: MOUTH_LEFT.x + 0.45, y: MOUTH_LEFT.y } as const;
+export const CARRY_RIGHT = { x: MOUTH_RIGHT.x - 0.45, y: MOUTH_RIGHT.y } as const;
 /** Escala do grupo micro quando visto "de longe" (capítulo 4). */
 export const FAR_SCALE = 0.32;
 
@@ -48,11 +51,11 @@ export const POSES: ReadonlyArray<Readonly<SceneState>> = [
   // 2 · Por dentro: vista explodida completa, rótulos ligados
   Object.freeze({ ...REST, camY: 0.35, camZ: 7.8, spin: 0.15, openEnv: 1, openSpikes: 1, openM1: 1, openRnp: 1, labels: 1 }),
   // 3 · Como entra: encaixado, engolido, aberto; RNPs liberadas rumo ao núcleo
-  Object.freeze({ ...REST, camX: 1.0, camY: 0.2, camZ: 7.2, lookX: 1.0, virusX: 0.35, spin: 0, membrane: 1, dock: 1, engulf: 1, uncoat: 1, release: 1 }),
+  Object.freeze({ ...REST, camX: 0.35, camY: 0.2, camZ: 7.2, lookX: 0.35, virusX: 0.35, spin: 0, membrane: 1, dock: 1, engulf: 1, uncoat: 1, release: 1 }),
   // 4 · Como se espalha: visto de longe; o vírion pegou carona numa gotícula até a boca da silhueta direita
-  Object.freeze({ ...REST, camY: 0.3, camZ: 12.5, lookY: 0.3, virusX: MOUTH_RIGHT.x, virusY: MOUTH_RIGHT.y, virusScale: FAR_SCALE, spin: 0, people: 1, droplets: 1 }),
+  Object.freeze({ ...REST, camY: 0.3, camZ: 12.5, lookY: 0.3, virusX: CARRY_RIGHT.x, virusY: CARRY_RIGHT.y, virusScale: FAR_SCALE, spin: 0, people: 1, droplets: 1 }),
   // 5 · Vacina: de perto outra vez, coberto de anticorpos; membrana à direita onde ele não encaixou
-  Object.freeze({ ...REST, camX: MOUTH_RIGHT.x, camY: MOUTH_RIGHT.y + 0.15, camZ: 5.8, lookX: MOUTH_RIGHT.x, lookY: MOUTH_RIGHT.y, virusX: MOUTH_RIGHT.x, virusY: MOUTH_RIGHT.y, spin: 0.25, membrane: 1, antibodies: 1, block: 1, drift: 1, rebind: 1 }),
+  Object.freeze({ ...REST, camX: CARRY_RIGHT.x, camY: CARRY_RIGHT.y + 0.15, camZ: 5.8, lookX: CARRY_RIGHT.x, lookY: CARRY_RIGHT.y, virusX: CARRY_RIGHT.x, virusY: CARRY_RIGHT.y, spin: 0.25, membrane: 1, antibodies: 1, block: 1, drift: 1, rebind: 1 }),
 ];
 
 /**
@@ -86,10 +89,10 @@ export const BEATS: ReadonlyArray<ChapterBeats> = [
     openSpikes: { w: [0.05, 0.1] },
     openEnv: { w: [0.07, 0.12] },
     membrane: { w: [0.05, 0.17] },
-    camX: { w: [0.02, 0.2] },
+    camX: { k: [[0.02, 0], [0.2, 1.0], [0.42, 1.0], [0.56, 0.35]] },
     camY: { w: [0.02, 0.2] },
     camZ: { w: [0.02, 0.2] },
-    lookX: { w: [0.02, 0.2] },
+    lookX: { k: [[0.02, 0], [0.2, 1.0], [0.42, 1.0], [0.56, 0.35]] },
     virusX: { w: [0.02, 0.2] },
     spin: { w: [0.2, 0.3] },
     dock: { w: [0.24, 0.34] },
@@ -99,7 +102,7 @@ export const BEATS: ReadonlyArray<ChapterBeats> = [
   },
   // 4 · 4 passos: brota → afasta (pessoas aparecem) → gotículas (o vírion viaja) → assentado
   {
-    bud: { k: [[0.02, 0], [0.11, 1], [0.38, 1], [0.48, 0]] },
+    bud: { k: [[0.02, 0], [0.12, 1], [0.38, 1], [0.48, 0]] },
     membrane: { w: [0.3, 0.45] },
     dock: { w: [0.3, 0.45] },
     engulf: { w: [0.3, 0.45] },
@@ -112,9 +115,9 @@ export const BEATS: ReadonlyArray<ChapterBeats> = [
     lookY: { w: [0.27, 0.48] },
     virusScale: { w: [0.27, 0.48] },
     people: { w: [0.33, 0.5] },
-    virusX: { k: [[0.27, 0.35], [0.48, MOUTH_LEFT.x], [0.55, MOUTH_LEFT.x], [0.8, MOUTH_RIGHT.x]] },
-    virusY: { k: [[0.27, 0], [0.48, MOUTH_LEFT.y], [0.55, MOUTH_LEFT.y], [0.675, MOUTH_LEFT.y + 0.7], [0.8, MOUTH_RIGHT.y]] },
-    droplets: { w: [0.55, 0.8] },
+    virusX: { k: [[0.27, 0.35], [0.48, CARRY_LEFT.x], [0.52, CARRY_LEFT.x], [0.72, CARRY_RIGHT.x]] },
+    virusY: { k: [[0.27, 0], [0.48, CARRY_LEFT.y], [0.52, CARRY_LEFT.y], [0.62, CARRY_LEFT.y + 0.7], [0.72, CARRY_RIGHT.y]] },
+    droplets: { w: [0.52, 0.72] },
   },
   // 5 · 5 passos: aproxima (gotícula vira vírion) → anticorpos → não encaixa → deriva → regrudam
   {
@@ -242,7 +245,7 @@ export function ambient(t: number): Ambient {
 export const SPIN_RATE = 0.22;
 
 /** Núcleo sugerido da célula (quadro micro): destino das RNPs em `release`. */
-export const NUCLEUS = { x: 4.2, y: -0.3, z: -0.9 } as const;
+export const NUCLEUS = { x: 2.7, y: -0.35, z: -1.5 } as const;
 /** Raio da vesícula que envolve o vírion em `engulf` (cabe o vírion com espinhos). */
 export const VESICLE_RADIUS = 1.5;
 /** Posição dos brotos (novos vírions) na face externa da membrana, em `bud` (quadro micro). */

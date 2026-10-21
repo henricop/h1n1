@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { ApiResult, FreshnessState, SeriesObservation, SeriesResult } from '@/lib/api';
 import { IndicatorCard } from '@/components/IndicatorCard';
 import { DataUnavailable, FreshnessNote, NoDataPublished } from '@/components/Notices';
-import { CommandPaletteButton } from '@/components/sala/CommandPaletteButton';
 import { LineChart } from '@/components/charts/LineChart';
 import { SeriesTable } from '@/components/charts/SeriesTable';
 import { Sparkline } from '@/components/charts/Sparkline';
@@ -59,7 +58,7 @@ describe('FreshnessNote', () => {
   });
 });
 
-describe('avisos de dado (achado i) e botão da paleta (achado l)', () => {
+describe('avisos de dado (achado i)', () => {
   it('DataUnavailable usa o attemptedAt real; NoDataPublished distingue ausência de falha', () => {
     const html = renderToStaticMarkup(<DataUnavailable attemptedAt="2026-10-20T10:05:00Z" />);
     expect(html).toContain('10:05 UTC de 20/10/2026');
@@ -67,14 +66,6 @@ describe('avisos de dado (achado i) e botão da paleta (achado l)', () => {
     expect(empty).toContain('Sem dado publicado');
     expect(empty).toContain('Ausência de dado não é zero');
     expect(empty).not.toContain('Dados indisponíveis');
-  });
-
-  it('CommandPaletteButton é uma pílula "Buscar ⌘K" sem classes do HUD', () => {
-    const html = renderToStaticMarkup(<CommandPaletteButton />);
-    expect(html).toContain('Buscar');
-    expect(html).toContain('⌘K');
-    expect(html).toMatch(/class="btn/);
-    expect(html).not.toMatch(/hud-|scanlines|glow-/);
   });
 });
 

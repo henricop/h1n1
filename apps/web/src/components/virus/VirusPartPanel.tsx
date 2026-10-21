@@ -15,7 +15,7 @@ export function VirusPartPanel({ part, facts, onClose, onChange }: Props) {
   const p = PART_BY_ID.get(part)!;
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    heading.current?.focus();
+    heading.current?.focus({ preventScroll: true });
   }, [part]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

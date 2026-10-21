@@ -1,39 +1,51 @@
 'use client';
 /**
  * Vírion A(H1N1) procedural em react-three-fiber. Um único driver (prioridade -10) amortece o progresso de
- * rolagem (`progress`, MotionValue) em `pAnim`, avalia `sceneAt(pAnim)` e escreve em `stateRef`; os módulos de
- * cena (scene/*) só leem `stateRef`/`ambientRef` dentro de `useFrame`. Carregado com next/dynamic (ssr: false);
- * o pôster SVG cobre o carregamento e o fallback.
+ * rolagem (`progress`, MotionValue) em `pAnim`, avalia `sceneAt(pAnim)` e escreve em `stateRef`/`ambientRef`;
+ * os módulos de cena (scene/*) só leem dentro de `useFrame`. Carregado com next/dynamic (ssr: false); o pôster
+ * cobre o carregamento até `onReady` (depois da pré-compilação dos shaders).
+ *
+ * Frameloop (decisão 4): `always` com a seção visível e a aba ativa; `never` fora da tela; `demand` com
+ * reduced-motion; em `quality: 'low'`, `never` + rAF próprio a ~30 fps (`FrameloopPolicy`).
  */
-import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { ContactShadows } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { AdaptiveDpr, PerformanceMonitor } from '@react-three/drei';
 import type { MotionValue } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { SPIN_RATE, ambient, fitDistance, sceneAt, settledProgress } from '@/lib/virus/choreography';
 import { dampTo, type Damped } from '@/lib/virus/damping';
-import { fibonacciSphere } from '@/lib/virus/geometry';
+import { CANVAS_BACKGROUND, frameloopPolicy, shouldRenderFrame, transmissionScale, type FrameloopMode } from '@/lib/virus/explainer';
+import type { PartId } from '@/lib/virus/parts';
+import { spikeLayout, type Quality } from '@/lib/virus/pose';
 import { cloneState, REST } from '@/lib/virus/scenestate';
-import { PART_COLORS, type PartId } from '@/lib/virus/parts';
 import { Antibodies } from './scene/Antibodies';
 import { Cell } from './scene/Cell';
-import { Labels } from './scene/Labels';
+import { Labels, type LabelCards } from './scene/Labels';
+import { Lighting } from './scene/Lighting';
 import { Droplets, People } from './scene/Spread';
-import { Channels, Envelope, Matrix, Rnps, Spikes } from './scene/Virion';
-import { COUNTS, rotateY, type AmbientState, type StateRef } from './scene/shared';
+import { Virion } from './scene/Virion';
+import type { AmbientRef, AmbientState, StateRef } from './scene/shared';
 
 export interface VirusCanvasProps {
-  /** progresso contínuo [0, 5) vindo da rolagem */
+  /** progresso contínuo [0, 5) vindo da rolagem (por passos de texto) */
   progress: MotionValue<number>;
   /** capítulo fixo (reduced-motion / botões); null = seguir `progress` */
   chapterOverride: number | null;
   reducedMotion: boolean;
-  quality: 'low' | 'high';
+  quality: Quality;
+  /** seção visível na janela E aba ativa (controla o frameloop) */
+  active: boolean;
   hovered: PartId | null;
   selected: PartId | null;
   onHover: (p: PartId | null) => void;
   onSelect: (p: PartId) => void;
+  /** cartões de rótulo (DOM do explainer), posicionados por quadro pela cena */
+  labelCards: LabelCards;
+  /** chamado depois da pré-compilação dos shaders (o explainer esconde o pôster) */
   onReady?: () => void;
+  /** PerformanceMonitor desistiu (3 oscilações): o explainer deve baixar `quality` para 'low' */
+  onQualityFallback?: () => void;
 }
 
 /** Driver: escreve o estado da cena e posiciona câmera e grupo micro; roda antes de todos (prioridade -10). */
@@ -50,20 +62,29 @@ function Driver({
   chapterOverride: number | null;
   reducedMotion: boolean;
   stateRef: StateRef;
-  ambientRef: React.MutableRefObject<AmbientState>;
+  ambientRef: AmbientRef;
   micro: React.RefObject<THREE.Group | null>;
   virion: React.RefObject<THREE.Group | null>;
 }) {
-  const { invalidate, camera, size } = useThree();
+  const invalidate = useThree((s) => s.invalidate);
+  const regress = useThree((s) => s.performance.regress);
   const damped = useRef<Damped>({ value: progress.get(), velocity: 0 });
   const look = useMemo(() => new THREE.Vector3(), []);
-  useEffect(() => progress.on('change', () => invalidate()), [progress, invalidate]);
+  useEffect(
+    () =>
+      progress.on('change', () => {
+        // rolagem em curso: AdaptiveDpr baixa a resolução até a rolagem assentar
+        if (!reducedMotion) regress();
+        invalidate();
+      }),
+    [progress, invalidate, regress, reducedMotion],
+  );
   useEffect(() => {
     invalidate();
   }, [chapterOverride, invalidate]);
 
-  useFrame((_, delta) => {
-    const dt = Math.min(delta, 0.05);
+  useFrame((state, delta) => {
+    const dt = Number.isFinite(delta) ? Math.min(Math.max(0, delta), 0.05) : 0;
     const target = chapterOverride !== null ? settledProgress(chapterOverride) : progress.get();
     const d = damped.current;
     if (reducedMotion) {
@@ -97,107 +118,132 @@ function Driver({
       // tentativa de encaixe bloqueada (capítulo 5): avança e recua
       v.position.x = Math.sin(Math.PI * s.block) * 0.28;
     }
+    const { camera, size } = state;
     const fit = fitDistance(size.width / Math.max(1, size.height));
     camera.position.set(s.camX, s.camY, s.camZ * fit);
     look.set(s.lookX, s.lookY, s.lookZ);
     camera.lookAt(look);
 
+    // em 'demand' (reduced-motion) pede o próximo quadro só enquanto algo ainda se move
     const moving = Math.abs(d.value - target) > 1e-5 || Math.abs(d.velocity) > 1e-4 || (!reducedMotion && s.spin > 0.01);
     if (moving) invalidate();
   }, -10);
   return null;
 }
 
-function Scene(props: VirusCanvasProps) {
-  const { invalidate } = useThree();
+/** Aplica o modo de frameloop ao store do r3f; em `manual`, roda um rAF próprio limitado a ~30 fps. */
+function FrameloopPolicy({ mode }: { mode: FrameloopMode }) {
+  const setFrameloop = useThree((s) => s.setFrameloop);
+  const invalidate = useThree((s) => s.invalidate);
+  const advance = useThree((s) => s.advance);
+  useEffect(() => {
+    if (mode === 'manual') {
+      setFrameloop('never');
+      let raf = 0;
+      let last = -Infinity;
+      const tick = (t: number) => {
+        raf = requestAnimationFrame(tick);
+        if (!shouldRenderFrame(t, last)) return;
+        last = t;
+        // em 'never' o r3f usa o timestamp (em segundos) para calcular o delta dos useFrame
+        advance(t / 1000);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }
+    setFrameloop(mode);
+    if (mode !== 'never') invalidate();
+    return undefined;
+  }, [mode, setFrameloop, invalidate, advance]);
+  return null;
+}
+
+function Scene(props: VirusCanvasProps & { mode: FrameloopMode }) {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const invalidate = useThree((s) => s.invalidate);
+  const advance = useThree((s) => s.advance);
   const stateRef = useRef(cloneState(REST)) as StateRef;
   const ambientRef = useRef<AmbientState>({ t: 0, yaw: 0, breath: 0, wobble: 0, blink: 0 });
   const micro = useRef<THREE.Group>(null);
   const virion = useRef<THREE.Group>(null);
-  const labelsRef = useRef(false);
-  const [labelsOn, setLabelsOn] = useState(false);
-  const { onReady } = props;
+  const { onReady, onQualityFallback, quality, mode } = props;
+  const layout = useMemo(() => spikeLayout(quality), [quality]);
 
   useEffect(() => {
     invalidate();
   }, [props.hovered, props.selected, invalidate]);
   useEffect(() => {
-    onReady?.();
+    gl.transmissionResolutionScale = transmissionScale(quality);
     invalidate();
+  }, [gl, quality, invalidate]);
+  // pré-compila todos os shaders antes de revelar o canvas (evita o engasgo do primeiro quadro de cada capítulo)
+  useEffect(() => {
+    let alive = true;
+    const done = () => {
+      if (!alive) return;
+      onReady?.();
+      // um quadro imediato, mesmo em 'never' (seção ainda fora da tela): o pôster some sobre uma cena pronta
+      advance(performance.now() / 1000);
+    };
+    gl.compileAsync(scene, camera).then(done, done);
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // histerese para o estado React dos rótulos (único setState derivado do quadro)
-  useFrame(() => {
-    const lab = stateRef.current.labels > 0.5;
-    if (lab !== labelsRef.current) {
-      labelsRef.current = lab;
-      setLabelsOn(lab);
-    }
-  }, -1);
-
-  const counts = COUNTS[props.quality];
-  const haDirs = useMemo(() => fibonacciSphere(counts.ha), [counts.ha]);
-  const naDirs = useMemo(() => fibonacciSphere(counts.na).map((d) => rotateY(d, 0.9)), [counts.na]);
-  const m2Dirs = useMemo(() => fibonacciSphere(counts.m2).map((d) => rotateY(d, 2.1)), [counts.m2]);
-
-  const isActive = (id: PartId) => props.hovered === id || props.selected === id;
-  const pointer = {
-    over: (id: PartId) => (e: ThreeEvent<PointerEvent>) => {
-      e.stopPropagation();
-      props.onHover(id);
-    },
-    out: () => props.onHover(null),
-    click: (id: PartId) => (e: ThreeEvent<MouseEvent>) => {
-      e.stopPropagation();
-      props.onSelect(id);
-    },
-  };
 
   return (
     <>
       <Driver progress={props.progress} chapterOverride={props.chapterOverride} reducedMotion={props.reducedMotion} stateRef={stateRef} ambientRef={ambientRef} micro={micro} virion={virion} />
-      <hemisphereLight args={['#ffffff', '#dfe6f2', 0.9]} />
-      <directionalLight position={[3, 5, 4]} intensity={1.7} />
-      <directionalLight position={[-4, 2, -3]} intensity={0.55} color="#dbe5ff" />
-      <ambientLight intensity={0.3} />
+      <FrameloopPolicy mode={mode} />
+      <AdaptiveDpr />
+      {/* só mede fps com o laço contínuo (em 'demand'/'manual' a cadência é propositalmente baixa) */}
+      {mode === 'always' && onQualityFallback && <PerformanceMonitor flipflops={3} onFallback={onQualityFallback} />}
+      <Lighting stateRef={stateRef} quality={quality} />
 
-      {/* grupo micro: vírion (gira) + membrana/célula (não gira) */}
+      {/* grupo micro (posição/escala do driver): vírion (gira com o yaw) + célula (não gira) */}
       <group ref={micro}>
         <group ref={virion}>
-          <Envelope stateRef={stateRef} active={isActive('envelope')} onOver={pointer.over('envelope')} onOut={pointer.out} onClick={pointer.click('envelope')} />
-          <Matrix stateRef={stateRef} active={isActive('m1')} onOver={pointer.over('m1')} onOut={pointer.out} onClick={pointer.click('m1')} />
-          <Spikes kind="ha" dirs={haDirs} stateRef={stateRef} active={isActive('ha')} onOver={pointer.over('ha')} onOut={pointer.out} onClick={pointer.click('ha')} />
-          <Spikes kind="na" dirs={naDirs} stateRef={stateRef} active={isActive('na')} onOver={pointer.over('na')} onOut={pointer.out} onClick={pointer.click('na')} />
-          <Channels dirs={m2Dirs} stateRef={stateRef} active={isActive('m2')} onOver={pointer.over('m2')} onOut={pointer.out} onClick={pointer.click('m2')} />
-          <Rnps stateRef={stateRef} active={isActive('rna')} onOver={pointer.over('rna')} onOut={pointer.out} onClick={pointer.click('rna')} />
-          <Antibodies haDirs={haDirs} count={counts.antibodies} stateRef={stateRef} />
-          <Labels stateRef={stateRef} haDirs={haDirs} naDirs={naDirs} m2Dirs={m2Dirs} labelsOn={labelsOn} hovered={props.hovered} selected={props.selected} onSelect={props.onSelect} />
+          <Virion stateRef={stateRef} ambientRef={ambientRef} quality={quality} layout={layout} hovered={props.hovered} selected={props.selected} onHover={props.onHover} onSelect={props.onSelect} />
+          <Antibodies stateRef={stateRef} ambientRef={ambientRef} quality={quality} layout={layout} />
+          <Labels stateRef={stateRef} layout={layout} hovered={props.hovered} selected={props.selected} cards={props.labelCards} />
         </group>
-        <Cell stateRef={stateRef} receptors={counts.receptors} />
+        <Cell stateRef={stateRef} ambientRef={ambientRef} quality={quality} />
       </group>
 
+      {/* mundo: silhuetas e gotículas (capítulo 4) */}
       <People stateRef={stateRef} />
-      <Droplets stateRef={stateRef} count={counts.droplets} />
-
-      {props.quality === 'high' && <ContactShadows position={[0, -1.95, 0]} opacity={0.22} scale={10} blur={2.6} far={3.2} color={PART_COLORS.ink} />}
+      <Droplets stateRef={stateRef} ambientRef={ambientRef} quality={quality} />
     </>
   );
 }
 
 export default function VirusCanvas(props: VirusCanvasProps) {
+  const mode = frameloopPolicy({ active: props.active, reducedMotion: props.reducedMotion, quality: props.quality });
   return (
     <Canvas
       aria-hidden="true"
-      dpr={[1, 1.5]}
-      frameloop="demand"
+      dpr={[1, props.quality === 'low' ? 1.25 : 1.5]}
+      // o modo real é aplicado por <FrameloopPolicy>; aqui só o valor inicial (nada roda antes de a seção aparecer)
+      frameloop="never"
       flat
-      gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
-      camera={{ fov: 36, near: 0.1, far: 60, position: [0, 0.15, 5.4] }}
-      onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
+      gl={{ alpha: false, antialias: true, stencil: false, powerPreference: 'high-performance' }}
+      camera={{ fov: 36, near: 0.1, far: 60, position: [0, 0.15, 5.6] }}
+      performance={{ min: 0.6 }}
+      onCreated={({ gl }) => {
+        gl.setClearColor(CANVAS_BACKGROUND, 1);
+        // limpa já: antes do 1.º quadro um canvas opaco apareceria preto
+        gl.clear();
+        gl.transmissionResolutionScale = transmissionScale(props.quality);
+      }}
       onPointerMissed={() => props.onHover(null)}
       style={{ position: 'absolute', inset: 0 }}
     >
-      <Scene {...props} />
+      {/* fundo OPACO no mesmo tom do contêiner (bg-soft): transmissão correta e sem blending do canvas */}
+      <color attach="background" args={[CANVAS_BACKGROUND]} />
+      <Scene {...props} mode={mode} />
     </Canvas>
   );
 }

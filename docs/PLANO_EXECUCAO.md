@@ -89,10 +89,21 @@ Após duas rodadas de feedback do usuário (v1 sóbria rejeitada; v2 escura/HUD 
 | Frente | Entregue |
 |---|---|
 | Home | Explicador 3D em react-three-fiber: vírus A(H1N1)pdm09 procedural que se desmonta por rolagem (envelope, hemaglutinina, neuraminidase, M1, M2, 8 segmentos de RNA), capítulos "como entra", "como se espalha", "como a vacina ajuda", dados do Brasil e links; 12 fatos biológicos de Krammer et al. 2018 (Nat Rev Dis Primers) e MS; pôster SVG como fallback e og:image |
-| Sala de dados (/sala/) | Globo (react-globe.gl) com FluNet global (189.651 linhas, 193 países, 2009→hoje), scrubber com replay de 2009, mapa de UFs (IBGE), EARS C1/C2/C3, nowcast com CDF de atraso do SIVEP, sobreposição de temporadas, composição FluNet, Nextstrain, console de ingestão |
-| Terminal e assistente | /terminal/ com 11 comandos; assistente com Claude (ai + @ai-sdk/anthropic) e 9 ferramentas sobre a API, desativado sem chave |
+| Sala de dados (/sala/) | Globo (react-globe.gl) com FluNet global (189.651 linhas, 193 países, 2009→hoje), scrubber com replay de 2009, mapa de UFs (IBGE), EARS C1/C2/C3, nowcast com CDF de atraso do SIVEP, sobreposição de temporadas, composição FluNet, ~~Nextstrain~~ (removido em 2026-10-21, ver 6.1), console de ingestão |
+| ~~Terminal e assistente~~ | **Removido em 2026-10-21 (ver 6.1).** Histórico: /terminal/ com 11 comandos e paleta ⌘K (cmdk); assistente com Claude (ai + @ai-sdk/anthropic) e 9 ferramentas sobre a API, desativado sem chave |
 | API | 7 rotas de visualização/análise; índice de matriz (consulta 2,8 s → 58 ms) e cache LRU; nowcast restrito à população da CDF; sanitização de logs |
 | Conectores | FluNet global particionado por ano; CDF de atraso de notificação; provisório relativo à data da base; microdados apagados após agregação |
 | Testes | core 18 · db 9 · analytics 8 · api 46 · connectors 87 · web 121 |
 
-Pendências humanas inalteradas: revisor clínico, domínio, DPO, chave da Anthropic para o assistente, validação quantitativa de demanda.
+Pendências humanas inalteradas: revisor clínico, domínio, DPO, validação quantitativa de demanda. (A "chave da Anthropic para o assistente" deixou de ser pendência: o assistente foi removido, ver 6.1.)
+
+### 6.1 Decisão do usuário em 2026-10-21: sem terminal, sem conexão externa
+
+"Não é pra ter terminal! Não quero conexão externa." Removidos do `apps/web`:
+
+- **Terminal**: rota `/terminal/`, `POST /api/terminal`, `GET /api/palette`, `src/components/terminal/` (Terminal, CommandPalette), `src/lib/terminal/`, botão "Buscar ⌘K" do cabeçalho (só abria a paleta do terminal), item "Terminal" da navegação e da home, dependência `cmdk`.
+- **Assistente de IA** (conexão com a API da Anthropic): `/api/chat`, `src/components/assistente/`, `src/lib/assistant/`, seção "Pergunte ao observatório" da `/sala/`, dependências `ai`, `@ai-sdk/anthropic`, `@ai-sdk/react` (e as exceções de `minimumReleaseAgeExclude` que existiam só para elas). Alinha o site de novo ao ADR-006 ("sem IA no runtime").
+- **Nextstrain** (iframe de nextstrain.org): painel da `/sala/` e menções no rodapé.
+- **CSP**: `connect-src 'self' <NEXT_PUBLIC_API_URL>` (+ `ws: wss:` só em dev), `frame-src 'none'`, `img-src 'self' data: blob:`, nenhum domínio externo. Um teste em `apps/web/test/sala.test.ts` varre `src/` contra iframe, URL absoluta em `fetch`/`src`/`url()` e SDK de IA.
+
+O navegador do visitante só fala com o próprio site e com a API própria. Links `<a href>` para as fontes oficiais (licenças, catálogo de fontes) continuam: são referência, não conexão.

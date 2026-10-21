@@ -27,9 +27,10 @@ export const UP = new THREE.Vector3(0, 1, 0);
 export const PERSON_X = 2.8;
 export const MOUTH_Y = 0.95;
 
+/** Contagens de partículas fora do vírion (as de espinhos vivem em lib/virus/pose.ts, SPIKE_COUNTS). */
 export const COUNTS = {
-  high: { ha: 90, na: 16, m2: 8, antibodies: 36, droplets: 80, receptors: 44 },
-  low: { ha: 50, na: 10, m2: 6, antibodies: 20, droplets: 44, receptors: 24 },
+  high: { droplets: 80, receptors: 44 },
+  low: { droplets: 44, receptors: 24 },
 } as const;
 
 export interface PartProps {

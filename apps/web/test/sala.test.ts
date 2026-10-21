@@ -188,7 +188,7 @@ describe('componentes da sala (SSR)', () => {
     expect(withNote).toContain('Universo EARS de teste.');
   });
 
-  it('IngestConsole renderiza todas as linhas no SSR (animação só CSS) e IngestConsole/NextstrainPanel sem efeitos de terminal', async () => {
+  it('IngestConsole renderiza todas as linhas no SSR (animação só CSS) e sem efeitos de terminal', async () => {
     const { IngestConsole } = await import('@/components/sala/IngestConsole');
     const runs = Array.from({ length: 12 }, (_, i) => ({ id: `r${i}`, connector: `con_${i}`, source_id: 'BR-03', started_at: '2026-10-20T09:00:00Z', finished_at: '2026-10-20T09:01:00Z', status: i === 3 ? 'failed' : 'ok', rows_in: 10, rows_out: 9, error: i === 3 ? 'timeout' : null }));
     const html = renderToStaticMarkup(createElement(IngestConsole, { runs: { ok: true as const, fetchedAt: 'x', data: { data: runs } } }));
@@ -196,10 +196,6 @@ describe('componentes da sala (SSR)', () => {
     expect(html).toContain('con_11');
     expect(html).toContain('--delay');
     expect(html).not.toMatch(/scanlines|cursor-blink|hud-/);
-    const { NextstrainPanel } = await import('@/components/sala/NextstrainPanel');
-    const ns = renderToStaticMarkup(createElement(NextstrainPanel));
-    expect(ns).toContain('Carregar visualização do Nextstrain');
-    expect(ns).not.toContain('allow-same-origin');
   });
 
   it('LatestChip não exibe tendência quando a célula está suprimida (achado g)', async () => {
@@ -226,15 +222,22 @@ describe('componentes da sala (SSR)', () => {
     expect(escapeHtml('<img src=x onerror=alert(1)> & "Brasil"')).toBe('&lt;img src=x onerror=alert(1)&gt; &amp; &quot;Brasil&quot;');
   });
 
-  it('CSP do next.config cobre API e Nextstrain; unsafe-eval só em dev', async () => {
+  it('CSP do next.config só permite o próprio site e a API própria; sem iframe; unsafe-eval e ws: só em dev', async () => {
     const { buildCsp } = await import('../next.config');
     const prod = buildCsp('https://api.example.test', false);
+    const directive = (csp: string, name: string) => csp.split('; ').find((d) => d.startsWith(`${name} `));
     expect(prod).toMatch(/default-src 'self'/);
-    expect(prod).toMatch(/connect-src 'self' https:\/\/api\.example\.test https:\/\/nextstrain\.org/);
-    expect(prod).toMatch(/frame-src https:\/\/nextstrain\.org/);
-    expect(prod).toMatch(/img-src 'self' data: blob:/);
+    expect(directive(prod, 'connect-src')).toBe("connect-src 'self' https://api.example.test");
+    expect(directive(prod, 'frame-src')).toBe("frame-src 'none'");
+    expect(directive(prod, 'img-src')).toBe("img-src 'self' data: blob:");
     expect(prod).not.toContain('unsafe-eval');
-    expect(buildCsp('http://localhost:3001', true)).toContain("'unsafe-eval'");
+    expect(prod).not.toMatch(/ wss?:/);
+    // nenhuma origem externa além da API própria
+    const origins = prod.match(/https?:\/\/[^\s;]+/g) ?? [];
+    expect(origins).toEqual(['https://api.example.test']);
+    const dev = buildCsp('http://localhost:3001', true);
+    expect(dev).toContain("'unsafe-eval'");
+    expect(directive(dev, 'connect-src')).toBe("connect-src 'self' http://localhost:3001 ws: wss:");
   });
 
   it('IngestConsole em falha não exibe execução antiga como atual', async () => {
@@ -255,5 +258,42 @@ describe('defaultWeekIndex', () => {
     expect(defaultWeekIndex(weeks, countries)).toBe(7);
     expect(defaultWeekIndex(weeks, [])).toBe(9);
     expect(defaultWeekIndex([], countries)).toBe(0);
+  });
+});
+
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
+
+describe('sem conexão externa em runtime (só o próprio site e a API própria)', () => {
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir)) {
+      const f = path.join(dir, e);
+      if (statSync(f).isDirectory()) walk(f, out);
+      else if (/\.(ts|tsx|css)$/.test(e)) out.push(f);
+    }
+    return out;
+  };
+  const FORBIDDEN: ReadonlyArray<[RegExp, string]> = [
+    [/<iframe/i, 'iframe'],
+    [/fetch\(\s*[`'"]https?:/, 'fetch para URL absoluta'],
+    [/\bsrc=\{?\s*[`'"]https?:/, 'src externo'],
+    [/url\(\s*['"]?https?:/, 'url() externa em CSS'],
+    [/from ['"](ai|@ai-sdk\/[^'"]+|cmdk)['"]/, 'SDK de IA ou paleta cmdk'],
+    [/nextstrain\.org/i, 'Nextstrain'],
+  ];
+
+  it('src/ não tem iframe, fetch/src/url() para outra origem nem SDK de IA', () => {
+    const hits = walk(path.join(process.cwd(), 'src')).flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .flatMap((line, i) => FORBIDDEN.filter(([re]) => re.test(line)).map(([, what]) => `${path.relative(process.cwd(), file)}:${i + 1}: ${what}`)),
+    );
+    expect(hits, hits.join('\n')).toEqual([]);
+  });
+
+  it('package.json não depende de SDK de IA nem da paleta cmdk', () => {
+    const pkg = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+    const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+    expect(deps.filter((d) => d === 'ai' || d === 'cmdk' || d.startsWith('@ai-sdk/'))).toEqual([]);
   });
 });

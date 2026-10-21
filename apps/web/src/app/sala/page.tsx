@@ -11,7 +11,6 @@ import { GLOBE_WINDOW_WEEKS, TIMELINE_START, defaultWeekIndex } from '@/lib/time
 import { JsonLd } from '@/components/JsonLd';
 import { DataUnavailable, FreshnessNote, NoDataPublished } from '@/components/Notices';
 import { freshnessState } from '@/lib/api';
-import { AssistentePanel } from '@/components/assistente/AssistentePanel';
 import { BrazilStrip, type MapOption } from '@/components/sala/BrazilStrip';
 import { COMPOSITION_COLORS, CompositionChart, type CompositionLayer } from '@/components/sala/CompositionChart';
 import { EarsTable } from '@/components/sala/EarsTable';
@@ -21,7 +20,6 @@ import { LatestChip } from '@/components/sala/LatestChip';
 import { HudFooter } from '@/components/sala/HudFooter';
 import { HudTopbar } from '@/components/sala/HudTopbar';
 import { IngestConsole } from '@/components/sala/IngestConsole';
-import { NextstrainPanel } from '@/components/sala/NextstrainPanel';
 import { Panel } from '@/components/sala/Panel';
 import { SeasonsChart } from '@/components/sala/SeasonsChart';
 import { TimelineProvider } from '@/components/sala/TimelineContext';
@@ -274,45 +272,16 @@ export default async function SalaDeDados() {
         </Panel>
       </section>
 
-      {/* ===== EVOLUÇÃO DO VÍRUS + CONSOLE ===== */}
-      <section aria-labelledby="h-virus" className="mt-16 grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-12">
-          <SectionTitle id="h-virus" kicker="Vírus e bastidores">
-            Evolução do vírus e execuções dos conectores
-          </SectionTitle>
-        </div>
-        <div className="lg:col-span-7">
-          <Panel
-            id="painel-nextstrain"
-            label="Filogenia · A(H1N1)pdm09 · HA · 2 anos"
-            minHeight={480}
-            meta={
-              <>
-                Nextstrain (Hadfield et al. 2018), dados GISAID; visualização externa, não redistribuída.{' '}
-                <a href="https://nextstrain.org/seasonal-flu/h1n1pdm/ha/2y" rel="noopener noreferrer" target="_blank">
-                  Abrir no Nextstrain
-                </a>
-              </>
-            }
-          >
-            <NextstrainPanel />
-          </Panel>
-        </div>
-        <div className="lg:col-span-5">
-          <Panel id="painel-console" label="Execuções dos conectores · últimas 30" minHeight={480} meta="Cada linha é uma execução registrada de um conector, com linhas lidas e publicadas. Falhas mantêm a versão anterior claramente datada (regra 10).">
-            <IngestConsole runs={runs} />
-          </Panel>
-        </div>
-      </section>
-
-      {/* ===== PERGUNTE ===== */}
-      <section aria-labelledby="h-pergunte" className="mt-16">
+      {/* ===== BASTIDORES: execuções dos conectores ===== */}
+      <section aria-labelledby="h-bastidores" className="mt-16">
         <div className="mb-4">
-          <SectionTitle id="h-pergunte" kicker="Assistente">
-            Pergunte ao observatório
+          <SectionTitle id="h-bastidores" kicker="Bastidores">
+            Execuções dos conectores
           </SectionTitle>
         </div>
-        <AssistentePanel />
+        <Panel id="painel-console" label="Execuções dos conectores · últimas 30" minHeight={480} meta="Cada linha é uma execução registrada de um conector, com linhas lidas e publicadas. Falhas mantêm a versão anterior claramente datada (regra 10).">
+          <IngestConsole runs={runs} />
+        </Panel>
       </section>
 
       <div className="mt-16">

@@ -4,7 +4,6 @@ import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { SkipLink } from '@/components/SkipLink';
-import { CommandPalette } from '@/components/terminal/CommandPalette';
 import { siteChrome } from '@/lib/nav';
 import { SITE } from '@/lib/site';
 
@@ -34,7 +33,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Footer nav={nav} institutional={institutional} />
-        <CommandPalette />
       </body>
     </html>
   );

@@ -1,94 +1,148 @@
 'use client';
 /**
- * Rótulos das peças (drei <Html>) ancorados a pontos 3D que acompanham o explode.
+ * Rótulos das peças: os 6 cartões são DOM comum, montados pelo explainer sobre o palco (sem drei <Html>, que
+ * perdia cartões com React 19 em modo estrito). Aqui, a cada quadro (prioridade -1, depois do driver), o ponto
+ * 3D de cada peça é projetado para a tela, o centro do cartão é limitado ao retângulo útil do palco e o estilo
+ * (transform/opacity/visibility) é escrito direto no elemento; uma linha-guia fina vai da peça ao cartão.
+ * Opacidade amortecida por ref (expDamp) a partir de `stateRef.current.labels` (4 principais) ou de hover/seleção.
  */
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
-import type { Vec3 } from '@/lib/virus/geometry';
-import { PART_BY_ID, type PartId } from '@/lib/virus/parts';
-import { R_ENV, closestDir, toVector, type StateRef } from './shared';
+import { expDamp } from '@/lib/virus/damping';
+import { LABEL_IDS, LABEL_POINTER_THRESHOLD, clampToStage, labelPosition, labelTarget, spreadLabels } from '@/lib/virus/explainer';
+import type { PartId } from '@/lib/virus/parts';
+import { partAnchor, type SpikeLayout } from '@/lib/virus/pose';
+import type { StateRef } from './shared';
 
-const LABEL_IDS: readonly PartId[] = ['ha', 'na', 'rna', 'envelope', 'm1', 'm2'];
+export type LabelCards = MutableRefObject<Record<PartId, HTMLButtonElement | null>>;
 
-export function Labels({
-  stateRef,
-  haDirs,
-  naDirs,
-  m2Dirs,
-  labelsOn,
-  hovered,
-  selected,
-  onSelect,
-}: {
-  stateRef: StateRef;
-  haDirs: readonly Vec3[];
-  naDirs: readonly Vec3[];
-  m2Dirs: readonly Vec3[];
-  labelsOn: boolean;
-  hovered: PartId | null;
-  selected: PartId | null;
-  onSelect: (p: PartId) => void;
-}) {
-  const refs = useRef<Record<PartId, THREE.Group | null>>({ ha: null, na: null, rna: null, envelope: null, m1: null, m2: null });
-  const anchors = useMemo(() => {
-    const ha = toVector(haDirs[closestDir(haDirs, { x: -0.55, y: 0.6, z: 0.55 })]!);
-    const na = toVector(naDirs[closestDir(naDirs, { x: 0.7, y: -0.35, z: 0.6 })]!);
-    const m2 = toVector(m2Dirs[closestDir(m2Dirs, { x: 0.6, y: 0.5, z: 0.6 })]!);
-    return { ha, na, m2 };
-  }, [haDirs, naDirs, m2Dirs]);
-  useFrame(() => {
-    const e = stateRef.current.openSpikes;
-    const r = refs.current;
-    r.ha?.position.copy(anchors.ha).multiplyScalar(R_ENV + 0.5 + e * 0.8).setY(anchors.ha.y * (R_ENV + 0.5 + e * 0.8) + e * 0.35);
-    r.na?.position.copy(anchors.na).multiplyScalar(R_ENV + 0.55 + e * 0.95).add(new THREE.Vector3(-e * 0.35, -e * 0.3, 0));
-    r.rna?.position.set(0, -0.75, 0.4 + e * 1.25);
-    r.envelope?.position.set(0, R_ENV + 0.12 + e * 0.78, 0);
-    r.m1?.position.set(-0.55, e * 0.34 + 0.2, 0.7);
-    r.m2?.position.copy(anchors.m2).multiplyScalar(R_ENV + 0.2 + e * 0.55).add(new THREE.Vector3(e * 0.3, 0, 0));
-  });
-  return (
-    <>
-      {LABEL_IDS.map((id) => {
-        const part = PART_BY_ID.get(id)!;
-        const forced = hovered === id || selected === id;
-        const show = forced || (labelsOn && (id === 'ha' || id === 'na' || id === 'rna' || id === 'envelope'));
-        return (
-          <group
-            key={id}
-            ref={(g) => {
-              refs.current[id] = g;
-            }}
-          >
-            {show && (
-              <Html center zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(id)}
-                  className={`pointer-events-auto max-w-[15rem] rounded-xl border bg-white/95 px-3 py-2 text-left text-[13px] leading-snug text-ink shadow-[0_8px_30px_-12px_rgba(11,18,32,.28)] backdrop-blur ${forced ? 'border-primary-600' : 'border-line'}`}
-                >
-                  <span className={`mr-1.5 inline-block h-2 w-2 rounded-full align-middle ${dotClass(id)}`} aria-hidden="true" />
-                  {part.label}
-                </button>
-              </Html>
-            )}
-          </group>
-        );
-      })}
-    </>
-  );
+/** Token line-strong de globals.css (linha-guia). */
+const LINE_STRONG = '#c7d0de';
+
+function makeLine(): THREE.Line {
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const mat = new THREE.LineBasicMaterial({ color: LINE_STRONG, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+  const line = new THREE.Line(geom, mat);
+  line.visible = false;
+  line.frustumCulled = false;
+  line.renderOrder = 5;
+  return line;
 }
 
-function dotClass(id: PartId): string {
-  switch (id) {
-    case 'ha':
-      return 'bg-primary-600';
-    case 'na':
-      return 'bg-h1n1';
-    case 'rna':
-      return 'bg-infb';
-    default:
-      return 'bg-line-strong';
-  }
+export function Labels({ stateRef, layout, hovered, selected, cards }: { stateRef: StateRef; layout: SpikeLayout; hovered: PartId | null; selected: PartId | null; cards: LabelCards }) {
+  const root = useRef<THREE.Group>(null);
+  const lines = useMemo(() => {
+    const out = {} as Record<PartId, THREE.Line>;
+    for (const id of LABEL_IDS) out[id] = makeLine();
+    return out;
+  }, []);
+  const opacity = useRef<Record<PartId, number>>({ ha: 0, na: 0, rna: 0, envelope: 0, m1: 0, m2: 0 });
+  const tmp = useMemo(() => ({ v: new THREE.Vector3(), n: new THREE.Vector3() }), []);
+  // posições de tela por rótulo (reutilizadas por quadro, sem alocação)
+  const screen = useMemo(() => {
+    const out = {} as Record<PartId, { x: number; y: number; z: number; on: boolean }>;
+    for (const id of LABEL_IDS) out[id] = { x: 0, y: 0, z: 0, on: false };
+    return out;
+  }, []);
+  const visible = useMemo(() => [] as Array<{ x: number; y: number }>, []);
+  useEffect(
+    () => () => {
+      for (const id of LABEL_IDS) {
+        lines[id].geometry.dispose();
+        (lines[id].material as THREE.Material).dispose();
+      }
+    },
+    [lines],
+  );
+  // hover/seleção vêm por props; o quadro lê a cópia por ref (sem re-render por quadro)
+  const hot = useRef<{ hovered: PartId | null; selected: PartId | null }>({ hovered, selected });
+  hot.current.hovered = hovered;
+  hot.current.selected = selected;
+  // ao desmontar o canvas, esconde os cartões (eles vivem no explainer)
+  useEffect(
+    () => () => {
+      for (const id of LABEL_IDS) {
+        const card = cards.current[id];
+        if (card) {
+          card.style.opacity = '0';
+          card.style.visibility = 'hidden';
+          card.style.pointerEvents = 'none';
+        }
+      }
+    },
+    [cards],
+  );
+
+  useFrame(({ camera, size }, delta) => {
+    const g = root.current;
+    if (!g) return;
+    // o driver (prioridade -10) acabou de mover câmera e grupos: atualiza as matrizes antes de projetar
+    g.updateWorldMatrix(true, false);
+    camera.updateMatrixWorld();
+    const dt = Math.min(Math.max(0, delta), 0.05);
+    const s = stateRef.current;
+    const { hovered: h, selected: sel } = hot.current;
+    visible.length = 0;
+    for (const id of LABEL_IDS) {
+      const target = labelTarget(id, s.labels, h, sel);
+      const op = expDamp(opacity.current[id], target, dt, 0.12);
+      opacity.current[id] = op;
+      const sc = screen[id];
+      sc.on = op > 0.01;
+      if (!sc.on) continue;
+      const a = partAnchor(id, s, layout);
+      const p = labelPosition(id, a);
+      // peça → mundo → tela; centro do cartão limitado ao palco
+      tmp.v.set(p.x, p.y, p.z).applyMatrix4(g.matrixWorld);
+      tmp.n.copy(tmp.v).project(camera);
+      const c = clampToStage(((tmp.n.x + 1) / 2) * size.width, ((1 - tmp.n.y) / 2) * size.height, size.width, size.height);
+      sc.x = c.x;
+      sc.y = c.y;
+      sc.z = tmp.n.z;
+      visible.push(sc);
+    }
+    // cartões empurrados para a mesma borda não podem se cobrir
+    spreadLabels(visible, size.width, size.height);
+    for (const id of LABEL_IDS) {
+      const op = opacity.current[id];
+      const line = lines[id];
+      const card = cards.current[id];
+      const sc = screen[id];
+      if (!sc.on) {
+        line.visible = false;
+        if (card && card.style.visibility !== 'hidden') {
+          card.style.opacity = '0';
+          card.style.visibility = 'hidden';
+          card.style.pointerEvents = 'none';
+        }
+        continue;
+      }
+      if (card) {
+        card.style.transform = `translate(-50%, -50%) translate(${sc.x.toFixed(1)}px, ${sc.y.toFixed(1)}px)`;
+        card.style.opacity = op.toFixed(3);
+        card.style.visibility = 'visible';
+        card.style.pointerEvents = op > LABEL_POINTER_THRESHOLD ? 'auto' : 'none';
+      }
+      // fim da linha-guia: o centro do cartão (já limitado) de volta ao espaço local, na mesma profundidade
+      const a = partAnchor(id, s, layout);
+      tmp.n.set((sc.x / size.width) * 2 - 1, 1 - (sc.y / size.height) * 2, sc.z).unproject(camera);
+      g.worldToLocal(tmp.n);
+      const pos = line.geometry.getAttribute('position') as THREE.BufferAttribute;
+      pos.setXYZ(0, a.x, a.y, a.z);
+      pos.setXYZ(1, tmp.n.x, tmp.n.y, tmp.n.z);
+      pos.needsUpdate = true;
+      line.visible = true;
+      (line.material as THREE.LineBasicMaterial).opacity = op * 0.9;
+    }
+  }, -1);
+
+  return (
+    <group ref={root}>
+      {LABEL_IDS.map((id) => (
+        <primitive key={id} object={lines[id]} />
+      ))}
+    </group>
+  );
 }

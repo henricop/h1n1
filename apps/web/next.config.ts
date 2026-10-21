@@ -5,8 +5,9 @@ const DEV = process.env.NODE_ENV !== 'production';
 
 /**
  * Content-Security-Policy (achado e). `unsafe-inline` em script-src é exigido pelo bootstrap do Next e pelo JSON-LD;
- * `unsafe-eval` só em desenvolvimento (React Refresh). Imagens/fonts locais ou data:/blob: (globo WebGL, next/font);
- * conexões só ao próprio site, à API e ao Nextstrain (iframe sob demanda).
+ * `unsafe-eval` só em desenvolvimento (React Refresh). Imagens/fonts locais ou data:/blob: (globo WebGL, next/font
+ * auto-hospedada). Sem conexão externa em runtime: o navegador só fala com o próprio site e com a API própria
+ * (NEXT_PUBLIC_API_URL); ws:/wss: só em desenvolvimento (HMR). Nenhum iframe.
  */
 export function buildCsp(apiUrl = API_URL, dev = DEV): string {
   const directives = [
@@ -15,8 +16,8 @@ export function buildCsp(apiUrl = API_URL, dev = DEV): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    `connect-src 'self' ${apiUrl} https://nextstrain.org${dev ? ' ws: wss:' : ''}`,
-    'frame-src https://nextstrain.org',
+    `connect-src 'self' ${apiUrl}${dev ? ' ws: wss:' : ''}`,
+    "frame-src 'none'",
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

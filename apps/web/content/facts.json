@@ -898,5 +898,221 @@
     "quote": "The segmented nature of the influenza viral genome enables reassortment, that is, interchange, of genomic RNA segments",
     "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
     "verified_at": "2026-10-21"
+  },
+  {
+    "id": "harris-2006-diametro-esferico-120nm",
+    "claim": "Por crio-tomografia, os vírions esféricos de influenza A mediram de 84 a 170 nm de diâmetro externo (média de 120 nm).",
+    "source_title": "Harris A. et al. — Influenza virus pleiomorphy characterized by cryoelectron tomography. PNAS, 103(50) (2006); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1748186/",
+    "quote": "The outer diameters of the spherical virions ranged from 84 to 170 nm (mean, 120 nm).",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "noda-2012-diametro-80-120nm-filamentoso",
+    "claim": "Os vírus influenza A são envelopados, de forma elíptica ou filamentosa, com 80 a 120 nm de diâmetro.",
+    "source_title": "Noda T. et al. — Three-dimensional analysis of ribonucleoprotein complexes in influenza A virus. Nature Communications, 3:639 (2012); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3272569/",
+    "quote": "Influenza A viruses are enveloped, with an elliptical or filamentous shape, ranging from 80 to 120 nm in diameter",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "harris-2006-contagem-ha-na",
+    "claim": "Em dois vírions contados por crio-tomografia havia 301 e 290 espinhos de HA contra 50 e 38 de NA: a HA é várias vezes mais numerosa.",
+    "source_title": "Harris A. et al. — Influenza virus pleiomorphy characterized by cryoelectron tomography. PNAS, 103(50) (2006); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1748186/",
+    "quote": "yielding 351 (301 HA plus 50 NA) and 328 (290 HA plus 38 NA) spikes per virion.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "harris-2006-na-em-grupos",
+    "claim": "Na superfície do vírion predominam aglomerados de HA, a proteína mais abundante; a NA aparece isolada, cercada de HA, ou em pequenos grupos locais.",
+    "source_title": "Harris A. et al. — Influenza virus pleiomorphy characterized by cryoelectron tomography. PNAS, 103(50) (2006); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1748186/",
+    "quote": "congregations of the more abundant HA spikes are the pattern most frequently observed; then single NA spikes surrounded by HA, and local clusters of NA",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "harris-2006-ha-trimero-na-tetramero",
+    "claim": "Nas imagens de crio-tomografia, os espinhos de HA, de seção triangular, distinguem-se dos espinhos de NA, de seção quadrada.",
+    "source_title": "Harris A. et al. — Influenza virus pleiomorphy characterized by cryoelectron tomography. PNAS, 103(50) (2006); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1748186/",
+    "quote": "triangular HA spikes (e.g., white arrowhead in a) are distinguishable from square NA spikes",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "harris-2006-altura-ha-na-haste",
+    "claim": "A ponta da HA fica a cerca de 14 nm da membrana, sobre uma haste de cerca de 2 nm; a da NA fica a cerca de 16 nm, sobre uma haste de cerca de 10 nm.",
+    "source_title": "Harris A. et al. — Influenza virus pleiomorphy characterized by cryoelectron tomography. PNAS, 103(50) (2006); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1748186/",
+    "quote": "its outer tip is ≈14 nm from the membrane surface (i.e., there is a 2-nm stem), whereas for NA spikes, this spacing is ≈16 nm (i.e., a 10-nm stem).",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "pdb101-na-tetramero-haste-longa",
+    "claim": "A neuraminidase é formada por quatro subunidades idênticas dispostas em quadrado e se prende à superfície do vírus por uma haste proteica longa.",
+    "source_title": "Goodsell D. S. — Molecule of the Month: Influenza Neuraminidase. RCSB PDB-101 (2009)",
+    "source_url": "https://pdb101.rcsb.org/motm/113",
+    "quote": "is composed of four identical subunits arranged in a square. It is normally attached to the virus surface through a long protein stalk (not shown).",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "harris-2006-camada-m1-sob-envelope",
+    "claim": "Sob a bicamada lipídica onde se fixam as glicoproteínas do vírus há uma camada que os autores interpretam como monocamada de proteína da matriz (M1).",
+    "source_title": "Harris A. et al. — Influenza virus pleiomorphy characterized by cryoelectron tomography. PNAS, 103(50) (2006); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1748186/",
+    "quote": "We interpret the outer layer as the lipid bilayer in which the transmembrane segments of the glycoproteins are implanted and the inner layer as a monolayer of matrix protein.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "noda-2012-rnp-bastonetes-comprimentos",
+    "claim": "As ribonucleoproteínas (RNPs) do vírus têm forma de bastonete e comprimentos diferentes, de 30 a 110 nm, que acompanham o tamanho de cada segmento de RNA.",
+    "source_title": "Noda T. et al. — Three-dimensional analysis of ribonucleoprotein complexes in influenza A virus. Nature Communications, 3:639 (2012); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3272569/",
+    "quote": "The rod-like RNPs vary in length from 30 to 110 nm, which correlates with the length of each vRNA segment",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "noda-2012-arranjo-7-mais-1",
+    "claim": "Nos vírions em brotamento, as oito RNPs, de comprimentos diferentes, seguem um padrão específico: sete ao redor de uma central (arranjo 7+1).",
+    "source_title": "Noda T. et al. — Three-dimensional analysis of ribonucleoprotein complexes in influenza A virus. Nature Communications, 3:639 (2012); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3272569/",
+    "quote": "eight RNPs of different lengths are arranged in a specific pattern, with seven RNPs surrounding a central one in each budding virion",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "harris-2006-polimerase-na-ponta-da-rnp",
+    "claim": "Cada RNP tem uma alça numa ponta e, na outra, as extremidades pareadas do RNA, onde fica presa a polimerase viral.",
+    "source_title": "Harris A. et al. — Influenza virus pleiomorphy characterized by cryoelectron tomography. PNAS, 103(50) (2006); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1748186/",
+    "quote": "with a loop at one end, whereas the other end has a duplex formed by base pairing of the termini to which the viral polymerase is bound",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "dou-2018-ha-liga-acido-sialico",
+    "claim": "O sítio de ligação da HA prende o vírus a moléculas da superfície da célula que terminam em ácido siálico, um açúcar.",
+    "source_title": "Dou D. et al. — Influenza A Virus Cell Entry, Replication, Virion Assembly and Movement. Frontiers in Immunology (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6062596/",
+    "quote": "the HA receptor-binding site attaches the virus to surface glycoconjugates that contain terminal SA residues",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "dou-2018-entrada-endocitose",
+    "claim": "A ligação da HA ao receptor faz a célula engolir o vírus, num processo chamado endocitose.",
+    "source_title": "Dou D. et al. — Influenza A Virus Cell Entry, Replication, Virion Assembly and Movement. Frontiers in Immunology (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6062596/",
+    "quote": "HA-mediated binding to the receptor triggers endocytosis of the virion",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "dou-2018-m2-acidifica-solta-rnp-m1",
+    "claim": "A abertura do canal M2 acidifica o interior da partícula viral, e isso solta as RNPs empacotadas da proteína M1.",
+    "source_title": "Dou D. et al. — Influenza A Virus Cell Entry, Replication, Virion Assembly and Movement. Frontiers in Immunology (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6062596/",
+    "quote": "Opening of the M2 ion channel acidifies the inside of the viral particle, releasing the packaged vRNPs from M1",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-endossomo-acido-ha-fusao",
+    "claim": "O endossomo que carrega o vírus fica ácido; isso muda a forma da HA, que funde o envelope do vírus com a membrana do endossomo.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "the endosome is trafficked and acidified, which triggers a conformational change in the viral HA that induces the fusion of the viral envelope with that of the endosome",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-rnps-vao-ao-nucleo",
+    "claim": "As RNPs do vírus são levadas para o núcleo da célula infectada, onde o RNA viral é transcrito e copiado.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "vRNPs are subsequently imported into the nucleus of the infected cells, where transcription and replication of the viral RNA takes place",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-montagem-brotamento-membrana",
+    "claim": "Os novos vírus brotam da célula: as RNPs são incorporadas a novas partículas, envoltas por uma membrana derivada da membrana da célula.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "Budding of new virions takes place, resulting in the incorporation of the vRNPs into new virus particles with a membrane derived from the host plasma membrane",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "dou-2018-na-corta-acido-sialico-libera",
+    "claim": "Ao remover o ácido siálico da superfície, a NA impede que a HA prenda o vírus novo à célula e facilita sua liberação durante o brotamento.",
+    "source_title": "Dou D. et al. — Influenza A Virus Cell Entry, Replication, Virion Assembly and Movement. Frontiers in Immunology (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6062596/",
+    "quote": "By removing local SA residues, NA prevents HA binding at the cell surface, which facilitates the release of the virus during budding",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "dou-2018-virus-100-nm",
+    "claim": "Uma partícula esférica de influenza A mede cerca de 100 nanômetros de diâmetro; também existem formas filamentosas, muito mais compridas.",
+    "source_title": "Dou D. et al. — Influenza A Virus Cell Entry, Replication, Virion Assembly and Movement. Frontiers in Immunology (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6062596/",
+    "quote": "IAVs can either form spheres with a diameter of ~100 nm or filaments that can reach up to 20 µm in length",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "cdc-goticulas-tosse-espirro-fala",
+    "claim": "Segundo o CDC, a maioria dos especialistas considera que os vírus da gripe se espalham principalmente por gotículas produzidas quando a pessoa doente tosse, espirra ou fala.",
+    "source_title": "CDC — How Flu Spreads. cdc.gov",
+    "source_url": "https://www.cdc.gov/flu/spread/index.html",
+    "quote": "Most experts think that influenza viruses spread mainly by droplets made when people with flu cough, sneeze, or talk.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-transmissao-goticulas-aerossois-fomites",
+    "claim": "A transmissão de pessoa para pessoa pode ocorrer por gotículas respiratórias, por aerossóis ou pela autoinoculação depois de tocar objetos contaminados.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "Human-to-human transmission of seasonal or pandemic human viruses can be mediated by respiratory droplets, aerosols or self-inoculation after touching of fomites.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "oms-goticulas-infectam-pessoas-proximas",
+    "claim": "Segundo a OMS, quando uma pessoa infectada tosse ou espirra, gotículas com vírus se espalham pelo ar e podem infectar quem está por perto; mãos contaminadas também espalham o vírus.",
+    "source_title": "OMS — Influenza (seasonal), fact sheet",
+    "source_url": "https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)",
+    "quote": "When an infected person coughs or sneezes, droplets containing viruses (infectious droplets) are dispersed into the air and can infect persons in close proximity. [...] The virus can also be spread by hands contaminated with influenza viruses.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "krammer-2018-deriva-antigenica-vacina-anual",
+    "claim": "Os vírus influenza escapam da imunidade de infecções ou vacinações anteriores acumulando aos poucos mutações na HA e na NA; essa deriva antigênica exige atualizações frequentes das vacinas.",
+    "source_title": "Krammer F. et al. — Influenza. Nature Reviews Disease Primers, 4, 3 (2018); texto integral no PubMed Central (NIH/NLM)",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7097467/",
+    "quote": "Influenza viruses are capable of evading the antibody-mediated immunity induced during previous infections or vaccinations by gradually accumulating mutations in HA and NA [...] This process, known as antigenic drift, necessitates frequent updates of influenza vaccines to ensure sufficient antigenic relatedness between the vaccine and emerging virus variants.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
+  },
+  {
+    "id": "ms-vacinacao-anual-mudanca-virus",
+    "claim": "Segundo o Ministério da Saúde, a constante mudança dos vírus influenza exige monitoramento global e reformulação frequente da vacina, e por isso é necessária a vacinação anual contra a gripe.",
+    "source_title": "Ministério da Saúde — Gripe (influenza)",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza",
+    "quote": "A constante mudança dos vírus influenza requer um monitoramento global e frequente reformulação da vacina contra a gripe. [...] Devido a essa mudança dos vírus, é necessário a vacinação anual contra a gripe.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-21"
   }
 ]

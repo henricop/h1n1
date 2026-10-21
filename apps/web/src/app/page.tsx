@@ -49,7 +49,6 @@ export default function Home() {
     { href: q(['/vacina/', '/prevencao/']), title: 'Vacina e prevenção', text: 'O que a vacina da gripe faz e quem deve tomar.' },
     { href: '/dados/brasil/', title: 'Dados do Brasil', text: 'Séries oficiais por semana, com fonte e data da base.' },
     { href: '/sala/', title: 'Sala de dados', text: 'Globo, mapa por UF, tendência e composição viral, para quem quer ir fundo.' },
-    { href: '/terminal/', title: 'Terminal', text: 'Consultas diretas aos indicadores, por comando.' },
   ].filter((l): l is { href: string; title: string; text: string } => l.href !== null);
 
   return (

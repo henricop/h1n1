@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadFacts } from '@/lib/content';
 import { CHAPTERS, progressFromLayout } from '@/lib/virus/chapters';
-import { BEATS, CHAPTER_COUNT, MOUTH_LEFT, MOUTH_RIGHT, POSES, START, STEPS_PER_CHAPTER, ambient, chapterFromProgress, fitDistance, progressFromSteps, sceneAt, settledProgress } from '@/lib/virus/choreography';
+import { BEATS, CARRY_LEFT, CARRY_RIGHT, CHAPTER_COUNT, POSES, START, STEPS_PER_CHAPTER, ambient, chapterFromProgress, fitDistance, progressFromSteps, sceneAt, settledProgress } from '@/lib/virus/choreography';
 import { dampTo, expDamp } from '@/lib/virus/damping';
 import { BOUNDS, REST, SCENE_KEYS, UNIT_KEYS } from '@/lib/virus/scenestate';
 import { CHAPTER_COPY, HOME_FACT_IDS, allFreeText, copyForChapter } from '@/lib/virus/copy';
@@ -140,12 +140,12 @@ describe('coreografia: rolagem → estado da cena (função pura)', () => {
     expect(sceneAt(2.95).release).toBeCloseTo(1, 3);
     expect(sceneAt(2.95).spin).toBe(0);
     // cap. 4: brota com a câmera ainda perto; pessoas só depois de afastar; o vírion viaja até a boca direita
-    expect(sceneAt(3.15).bud).toBeCloseTo(1, 3);
-    expect(sceneAt(3.15).camZ).toBeCloseTo(POSES[2]!.camZ, 3);
+    expect(sceneAt(3.14).bud).toBeCloseTo(1, 3);
+    expect(sceneAt(3.14).camZ).toBeCloseTo(POSES[2]!.camZ, 3);
     expect(sceneAt(3.5).people).toBeCloseTo(1, 3);
     expect(sceneAt(3.5).membrane).toBeCloseTo(0, 3);
-    expect(sceneAt(3.5).virusX).toBeCloseTo(MOUTH_LEFT.x, 3);
-    expect(sceneAt(3.82).virusX).toBeCloseTo(MOUTH_RIGHT.x, 3);
+    expect(sceneAt(3.5).virusX).toBeCloseTo(CARRY_LEFT.x, 3);
+    expect(sceneAt(3.82).virusX).toBeCloseTo(CARRY_RIGHT.x, 3);
     expect(sceneAt(3.82).droplets).toBeCloseTo(1, 3);
     // cap. 5: pessoas somem ao aproximar; anticorpos antes do bloqueio; deriva antes de regrudar
     expect(sceneAt(4.2).people).toBeCloseTo(0, 3);
@@ -229,6 +229,22 @@ describe('coreografia: rolagem → estado da cena (função pura)', () => {
     expect(() => copyForChapter('nao-existe')).toThrow();
     expect(CHAPTERS.some((c) => c.id === 'por-dentro')).toBe(true); // alvo do botão "Explorar o vírus"
   });
+
+  it('texto em passos: contagem = STEPS_PER_CHAPTER, lead = 1.º passo, 1 a 3 frases e no máximo 3 fatos por passo', () => {
+    // heurística de frase: termina em . ! ? seguido de espaço ou fim do texto
+    const sentences = (t: string) => t.split(/(?<=[.!?])\s+/).filter((x) => x.trim().length > 0);
+    CHAPTER_COPY.forEach((c, i) => {
+      expect(c.steps.length, `${c.id}: passos`).toBe(STEPS_PER_CHAPTER[i]);
+      expect(c.lead, `${c.id}: lead ≠ texto do 1.º passo`).toBe(c.steps[0]!.text);
+      c.steps.forEach((st, k) => {
+        const n = sentences(st.text).length;
+        expect(n, `${c.id} passo ${k + 1}: ${n} frases`).toBeGreaterThanOrEqual(1);
+        expect(n, `${c.id} passo ${k + 1}: ${n} frases`).toBeLessThanOrEqual(3);
+        expect((st.factIds ?? []).length, `${c.id} passo ${k + 1}: fatos demais`).toBeLessThanOrEqual(3);
+        expect(new Set(st.factIds ?? []).size, `${c.id} passo ${k + 1}: fato repetido`).toBe((st.factIds ?? []).length);
+      });
+    });
+  });
 });
 
 describe('peças e fatos', () => {
@@ -246,14 +262,31 @@ describe('peças e fatos', () => {
   });
 
   it('fatos novos de virologia têm fonte, citação e verificação datada', () => {
-    const ids = ['ms-subtipos-influenza-a-hemaglutinina-e-neuraminidase', 'krammer-2018-hemaglutinina-entrada-neuraminidase-saida', 'krammer-2018-neuraminidase-libera-novos-virus', 'krammer-2018-genoma-oito-segmentos-rna', 'krammer-2018-envelope-lipidico-derivado-da-celula-e-canal-m2', 'krammer-2018-ha-e-na-alvos-principais-dos-anticorpos', 'nomenclatura-ah1n1pdm09'];
+    const ids = [
+      'ms-subtipos-influenza-a-hemaglutinina-e-neuraminidase', 'krammer-2018-hemaglutinina-entrada-neuraminidase-saida', 'krammer-2018-neuraminidase-libera-novos-virus', 'krammer-2018-genoma-oito-segmentos-rna', 'krammer-2018-envelope-lipidico-derivado-da-celula-e-canal-m2', 'krammer-2018-ha-e-na-alvos-principais-dos-anticorpos', 'nomenclatura-ah1n1pdm09',
+      // explicador 3D v2 (docs/pesquisa/explicador-3d-virion.md e explicador-3d-ciclo-transmissao.md)
+      'harris-2006-diametro-esferico-120nm', 'noda-2012-diametro-80-120nm-filamentoso', 'harris-2006-contagem-ha-na', 'harris-2006-na-em-grupos', 'harris-2006-ha-trimero-na-tetramero', 'harris-2006-altura-ha-na-haste', 'pdb101-na-tetramero-haste-longa', 'harris-2006-camada-m1-sob-envelope', 'noda-2012-rnp-bastonetes-comprimentos', 'noda-2012-arranjo-7-mais-1', 'harris-2006-polimerase-na-ponta-da-rnp',
+      'dou-2018-ha-liga-acido-sialico', 'dou-2018-entrada-endocitose', 'dou-2018-m2-acidifica-solta-rnp-m1', 'krammer-2018-endossomo-acido-ha-fusao', 'krammer-2018-rnps-vao-ao-nucleo', 'krammer-2018-montagem-brotamento-membrana', 'dou-2018-na-corta-acido-sialico-libera', 'dou-2018-virus-100-nm', 'cdc-goticulas-tosse-espirro-fala', 'krammer-2018-transmissao-goticulas-aerossois-fomites', 'oms-goticulas-infectam-pessoas-proximas', 'krammer-2018-deriva-antigenica-vacina-anual', 'ms-vacinacao-anual-mudanca-virus',
+    ];
     for (const id of ids) {
       const f = facts.get(id);
       expect(f, id).toBeDefined();
-      expect(f!.source_url).toMatch(/^https:\/\//);
-      expect(f!.quote && f!.quote.length > 20).toBe(true);
-      expect(f!.verified_by).toContain('Redação H1N1');
+      expect(id, id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+      expect(f!.source_url, id).toMatch(/^https:\/\//);
+      expect(f!.quote && f!.quote.length >= 20, id).toBe(true);
+      expect(f!.verified_by, id).toContain('Redação H1N1');
+      expect(f!.verified_at, id).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
+    // a citação remontada do CDC ("1 dia antes … 5–7 dias depois") não entra sem conferência manual
+    for (const f of facts.values()) expect(f.quote ?? '', f.id).not.toMatch(/one day before symptoms develop and up to five to seven days/i);
+  });
+
+  it('facts.json não tem id duplicado', () => {
+    const raw = JSON.parse(readFileSync(path.join(process.cwd(), 'content', 'facts.json'), 'utf8')) as Array<{ id: string }>;
+    const ids = raw.map((f) => f.id);
+    const dup = ids.filter((id, i) => ids.indexOf(id) !== i);
+    expect(dup, dup.join(', ')).toEqual([]);
+    expect(facts.size).toBe(ids.length);
   });
 
   it('as seis peças são únicas, com 2 a 5 frases, e a navegação circular funciona', () => {
@@ -273,7 +306,7 @@ describe('peças e fatos', () => {
   });
 
   it('texto livre não traz números soltos de dias, horas, semanas ou percentuais (ficam só nos <Fato>)', () => {
-    const re = /\d+\s*(%|por cento|dias?|horas?|h\b|semanas?|meses|mês|anos?)\b/i;
+    const re = /\d+\s*(%|por cento|dias?|horas?|h\b|semanas?|meses|mês|anos?|nm|µm|°C)\b/i;
     for (const t of allFreeText()) expect(t, t).not.toMatch(re);
     for (const t of allFreeText()) expect(t.toLowerCase(), t).not.toContain('tempo real');
   });

@@ -79,7 +79,6 @@ export function Footer({ nav, institutional }: FooterProps) {
                 </a>
               </li>
             ))}
-            <li>Nextstrain (Hadfield et al. 2018), dados GISAID: visualização externa, não redistribuída.</li>
           </ul>
           <p className="mt-4 text-muted">Os microdados são de autoria dos órgãos de origem. As interpretações publicadas aqui são do projeto H1N1.</p>
           {!SITE.analyticsConsent.enabled && (

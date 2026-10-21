@@ -12,7 +12,7 @@ export interface VirusPart {
   label: string;
   /** Cor (token do tema) */
   color: 'primary' | 'h1n1' | 'infb' | 'muted';
-  /** 3 a 5 frases em linguagem simples */
+  /** 2 a 5 frases em linguagem simples */
   explanation: string[];
   /** ids de content/facts.json renderizados com <Fato> no painel */
   factIds: string[];
@@ -44,12 +44,13 @@ export const VIRUS_PARTS: readonly VirusPart[] = [
     label: 'Hemaglutinina (o H): a chave que abre a célula',
     color: 'primary',
     explanation: [
-      'A hemaglutinina é a proteína mais numerosa na superfície do vírus: cada espinho azul é um trio dela, com uma haste e uma cabeça.',
-      'É a cabeça que reconhece e se prende a um açúcar (o ácido siálico) presente na superfície das células das vias respiratórias.',
-      'Esse encaixe é o primeiro passo da infecção: sem ele, o vírus não entra.',
+      'A hemaglutinina é, de longe, a proteína mais numerosa da superfície do vírus: há várias delas para cada neuraminidase.',
+      'Cada espinho azul tem uma cabeça larga, de seção triangular, apoiada numa haste curta.',
+      'É a cabeça que reconhece e se prende a um açúcar das células das vias respiratórias, o ácido siálico: esse encaixe é o primeiro passo para o vírus entrar.',
+      'Essa mesma cabeça é o principal alvo dos anticorpos que bloqueiam o vírus.',
       'O "H1" do nome H1N1 identifica o tipo de hemaglutinina deste subtipo.',
     ],
-    factIds: ['krammer-2018-hemaglutinina-entrada-neuraminidase-saida', 'krammer-2018-hemaglutinina-liga-acido-sialico'],
+    factIds: ['harris-2006-contagem-ha-na', 'harris-2006-ha-trimero-na-tetramero', 'krammer-2018-hemaglutinina-liga-acido-sialico', 'krammer-2018-anticorpos-contra-cabeca-da-ha-neutralizam'],
   },
   {
     id: 'na',
@@ -57,12 +58,13 @@ export const VIRUS_PARTS: readonly VirusPart[] = [
     label: 'Neuraminidase (o N): a tesoura que libera novos vírus',
     color: 'h1n1',
     explanation: [
-      'A neuraminidase é a segunda proteína da superfície, menos numerosa, com uma cabeça achatada em forma de cogumelo.',
-      'Ela funciona como uma tesoura: corta o açúcar ao qual a hemaglutinina se prende.',
-      'Sem esse corte, os vírus recém-formados ficariam grudados na célula que os produziu e uns nos outros.',
+      'A neuraminidase é a segunda proteína da superfície, bem menos numerosa que a hemaglutinina; aparece sozinha entre elas ou em pequenos grupos.',
+      'Tem uma cabeça quadrada, de quatro partes iguais, no alto de uma haste longa e fina, e por isso fica um pouco acima dos espinhos azuis.',
+      'Ela funciona como uma tesoura: corta o ácido siálico, o açúcar ao qual a hemaglutinina se prende.',
+      'Sem esse corte, os vírus recém-formados tenderiam a ficar presos à célula que os produziu.',
       'O "N1" do nome identifica o tipo de neuraminidase deste subtipo.',
     ],
-    factIds: ['krammer-2018-neuraminidase-libera-novos-virus'],
+    factIds: ['krammer-2018-neuraminidase-libera-novos-virus', 'harris-2006-na-em-grupos', 'pdb101-na-tetramero-haste-longa', 'harris-2006-altura-ha-na-haste'],
   },
   {
     id: 'rna',
@@ -70,11 +72,12 @@ export const VIRUS_PARTS: readonly VirusPart[] = [
     label: '8 segmentos de RNA: o manual de instruções do vírus, em 8 partes',
     color: 'infb',
     explanation: [
-      'O material genético do influenza A não é uma molécula única: vem dividido em oito segmentos de RNA, cada um embrulhado por proteínas virais.',
-      'Cada segmento carrega a receita de uma ou mais proteínas do vírus, inclusive da hemaglutinina e da neuraminidase.',
+      'O material genético do influenza A vem dividido em oito segmentos de RNA, cada um enrolado em proteínas do vírus: são as ribonucleoproteínas (RNPs).',
+      'Cada segmento forma um bastonete de comprimento diferente; dentro do vírus, sete ficam em volta de um central.',
+      'Numa das pontas de cada bastonete fica presa a polimerase, a enzima do vírus que copia esse RNA dentro da célula.',
       'Por ser segmentado, dois vírus influenza que infectam a mesma célula podem trocar segmentos entre si (rearranjo); o vírus de 2009 trazia uma combinação de genes nunca vista antes.',
     ],
-    factIds: ['krammer-2018-genoma-oito-segmentos-rna', 'krammer-2018-genoma-segmentado-permite-rearranjo', 'cdc-designacao-ah1n1pdm09'],
+    factIds: ['krammer-2018-genoma-oito-segmentos-rna', 'noda-2012-arranjo-7-mais-1', 'harris-2006-polimerase-na-ponta-da-rnp', 'krammer-2018-genoma-segmentado-permite-rearranjo', 'cdc-designacao-ah1n1pdm09'],
   },
   {
     id: 'envelope',
@@ -82,11 +85,12 @@ export const VIRUS_PARTS: readonly VirusPart[] = [
     label: 'Envelope: a capa que ele rouba da célula',
     color: 'muted',
     explanation: [
-      'O vírus é envolto por uma membrana de gordura que não é fabricada por ele: é um pedaço da membrana da célula infectada, levado quando o novo vírus brota.',
+      'O vírus é envolto por uma membrana de gordura que ele não fabrica: é um pedaço da membrana da célula infectada, levado quando o vírus novo brota.',
       'Nessa capa ficam espetadas a hemaglutinina, a neuraminidase e o canal M2.',
-      'Essa capa é a parte mais exposta do vírus fora do corpo; as medidas gerais de prevenção recomendadas pelo Ministério da Saúde, como a higiene das mãos, estão na fonte abaixo.',
+      'A partícula é minúscula e nem sempre redonda: pode ser arredondada, oval ou alongada como um filamento.',
+      'Além da vacina, o Ministério da Saúde recomenda medidas gerais de prevenção contra doenças respiratórias, descritas na fonte abaixo.',
     ],
-    factIds: ['krammer-2018-envelope-lipidico-derivado-da-celula-e-canal-m2', 'ms-medidas-gerais-comprovadamente-eficazes'],
+    factIds: ['krammer-2018-envelope-lipidico-derivado-da-celula-e-canal-m2', 'krammer-2018-montagem-brotamento-membrana', 'noda-2012-diametro-80-120nm-filamentoso', 'ms-medidas-gerais-comprovadamente-eficazes'],
   },
   {
     id: 'm1',
@@ -94,11 +98,12 @@ export const VIRUS_PARTS: readonly VirusPart[] = [
     label: 'Matriz M1: o esqueleto por baixo da capa',
     color: 'muted',
     explanation: [
-      'Logo abaixo do envelope há uma camada de proteína M1 que dá forma e sustentação à partícula.',
-      'Ela também ajuda a organizar os segmentos de RNA na hora de montar novos vírus dentro da célula.',
-      'Na ilustração, é a esfera fosca que aparece quando as duas metades da capa se afastam.',
+      'Logo abaixo da capa há um forro fino de proteína M1, uma camada única colada por dentro da membrana.',
+      'Acredita-se que esse forro sirva de arcabouço para a partícula e ajude a guiar os segmentos de RNA dentro da célula.',
+      'Quando o vírus já foi engolido e seu interior fica ácido, o material genético se solta da M1 e fica livre para seguir viagem.',
+      'Na ilustração, é a casca fosca que aparece logo por baixo quando as duas metades da capa se afastam.',
     ],
-    factIds: ['krammer-2018-m1-arcabouco-do-virion'],
+    factIds: ['harris-2006-camada-m1-sob-envelope', 'krammer-2018-m1-arcabouco-do-virion', 'dou-2018-m2-acidifica-solta-rnp-m1'],
   },
   {
     id: 'm2',
@@ -106,11 +111,12 @@ export const VIRUS_PARTS: readonly VirusPart[] = [
     label: 'Canal M2: a portinhola que ajuda a abrir o pacote',
     color: 'muted',
     explanation: [
-      'Espalhados pela capa há poucos canais M2, pequenos túneis que deixam passar prótons.',
-      'Dentro da célula, eles ajudam o vírus a se "desembrulhar" e soltar o RNA; sem isso, a infecção não avança.',
-      'Na ilustração, são os pequenos cilindros cinza espetados na capa, bem menos numerosos que os espinhos.',
+      'Atravessando a capa há canais M2, pequenos túneis que deixam passar prótons.',
+      'Quando a célula engole o vírus e a bolsa em volta dele fica ácida, os canais M2 levam essa acidez para dentro, e o material genético se solta do forro de M1.',
+      'O M2 é necessário nas duas pontas da infecção: na entrada do vírus na célula e na saída dos vírus novos.',
+      'Na ilustração, são poucos cilindros cinza espetados na capa, bem menos numerosos que os espinhos.',
     ],
-    factIds: ['krammer-2018-envelope-lipidico-derivado-da-celula-e-canal-m2'],
+    factIds: ['krammer-2018-envelope-lipidico-derivado-da-celula-e-canal-m2', 'dou-2018-m2-acidifica-solta-rnp-m1'],
   },
 ];
 
