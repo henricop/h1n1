@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono, Manrope } from 'next/font/google';
+import { Big_Shoulders, Instrument_Serif, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -7,10 +7,13 @@ import { SkipLink } from '@/components/SkipLink';
 import { siteChrome } from '@/lib/nav';
 import { SITE } from '@/lib/site';
 
-/* As três famílias expõem as variáveis CSS referenciadas pelos tokens de globals.css (--font-sans/--font-display/--font-mono). */
+/* DESIGN.md v3: quatro famílias auto-hospedadas (next/font baixa no build; nada é carregado de outra origem em runtime).
+   Expõem as variáveis referenciadas pelos tokens de globals.css (--font-sans/--font-display/--font-condensed/--font-mono). */
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-const manrope = Manrope({ subsets: ['latin'], variable: '--font-display-face', display: 'swap', weight: ['600', '700', '800'] });
-const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap', weight: ['400', '500', '700'] });
+const instrument = Instrument_Serif({ subsets: ['latin'], variable: '--font-instrument', display: 'swap', weight: '400', style: ['normal', 'italic'] });
+// Big Shoulders só nos pesos usados (condensed-xl 800, condensed-md 700): evita baixar o eixo variável inteiro.
+const bigShoulders = Big_Shoulders({ subsets: ['latin'], variable: '--font-big-shoulders', display: 'swap', weight: ['700', '800'], preload: false });
+const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap', weight: ['400', '500'], preload: false });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -20,12 +23,12 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true, 'max-image-preview': 'large' },
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#ffffff', colorScheme: 'light' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#f4f1ea', colorScheme: 'light' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const { nav, institutional } = siteChrome();
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${manrope.variable} ${jetbrains.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${instrument.variable} ${bigShoulders.variable} ${jetbrains.variable}`}>
       <body className="flex min-h-screen flex-col bg-bg text-ink">
         <SkipLink />
         <Header nav={nav} />

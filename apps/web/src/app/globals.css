@@ -1,39 +1,43 @@
 @import 'tailwindcss';
 
+/* ====== DESIGN v3 · "papel, cinema, dado" (apps/web/DESIGN.md, docs/reformulacao-v4.md) ======
+   Papel quente com grão, tinta quase preta, uma cor de ação (cobalto), paleta de dados inalterada.
+   Tipografia: Instrument Serif (display), Big Shoulders (condensada), Inter (corpo), JetBrains Mono.
+   Temas por seção (`paper`, `deep`, `warm`): o shell interpola as variáveis de cor no <html>; aqui ficam os
+   valores estáticos de cada tema (sem JS / reduced-motion: `html[data-theme-current]`). */
+
 @theme {
   --font-sans: var(--font-inter), 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: var(--font-display-face), 'Manrope', 'Inter', system-ui, sans-serif;
+  --font-display: var(--font-instrument), 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --font-condensed: var(--font-big-shoulders), 'Big Shoulders', 'Arial Narrow', Impact, sans-serif;
   --font-mono: var(--font-jetbrains), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* ====== TEMA CLARO · "claro, forte, humano" (DESIGN.md v2) ======
-     Fundo branco e cinza-azulado muito leve; tinta quase preta; uma cor primária forte (cobalto)
-     para ação e dado principal; rosa forte para A(H1N1)pdm09; verde-água para influenza B;
-     violeta para A(H3); âmbar para provisório/atenção; vermelho só para emergência.
-     Contraste AA (WCAG, calculado): ink (#0b1220) 18.7:1, muted (#4a5568) 7.5:1 e faint (#64707f) 5.0:1 sobre branco
-     (4.7:1 sobre bg-soft); primary-600 (#2451d6) 6.5:1 sobre branco e branco 6.5:1 sobre primary-600; primary-700 7.9:1
-     sobre primary-50; attention-700 (#9a5b00) 4.9:1 sobre attention-100 e 5.4:1 sobre branco; urgent-700 (#b42318) 5.8:1
-     sobre urgent-50; ok-700 (#126e42) 5.5:1 sobre ok-100; h1n1 (#d6007f) 5.0:1 sobre branco (texto grande/dados);
-     h1n1-700 (#b8006d) 5.3:1 sobre h1n1-soft (texto pequeno em botões/chips rosa). */
-  --color-bg: #ffffff;
-  --color-bg-soft: #f5f7fb;        /* seções alternadas */
-  --color-bg-tint: #eef3ff;        /* tint do primário para destaques */
-  --color-card: #ffffff;
-  --color-line: #e3e8f0;
-  --color-line-strong: #c7d0de;
-  --color-ink: #0b1220;
-  --color-muted: #4a5568;
-  --color-faint: #64707f;
+  /* Tema `paper` (padrão). Contraste AA (WCAG, calculado): ink (#14130f) 16.9:1, muted (#4d4a42) 7.6:1 e
+     faint (#625e55) 6.4:1 sobre paper (#f4f1ea) e 5.3:1 sobre paper-2; primary-600 (#2451d6) 6.0:1 sobre paper e branco 6.5:1 sobre
+     primary-600; h1n1 (#d6007f) 4.6:1 sobre paper (texto grande/dados); h1n1-700 sobre h1n1-soft 5.3:1. */
+  --color-bg: #f4f1ea;             /* papel */
+  --color-paper: #f4f1ea;          /* alias semântico de bg */
+  --color-bg-soft: #ece8df;        /* faixas alternadas */
+  --color-paper-2: #ece8df;        /* alias */
+  --color-bg-tint: #eef3ff;        /* tint do cobalto para destaques */
+  --color-card: #fbfaf7;
+  --color-veil: rgba(244, 241, 234, 0.92); /* véu de papel sob texto que flutua sobre o palco (alfa ≥ .92: muted ≥ 6:1 sobre preto) */
+  --color-line: #dcd7cb;
+  --color-line-strong: #8a8475;    /* borda de campo/controle ≥ 3:1 sobre papel */
+  --color-ink: #14130f;
+  --color-muted: #4d4a42;
+  --color-faint: #625e55;          /* 5.3:1 sobre paper-2 e 4.8:1 sobre warm */
   --color-primary-700: #1e3fae;
-  --color-primary-600: #2451d6;    /* cobalto: botões, links, dado principal */
+  --color-primary-600: #2451d6;    /* cobalto: ações, links, dado principal */
   --color-primary-500: #3b6cf0;
   --color-primary-100: #dbe5ff;
   --color-primary-50: #eef3ff;
   --color-h1n1: #d6007f;           /* rosa forte: A(H1N1)pdm09 */
   --color-h1n1-soft: #ffe1f1;
-  --color-h1n1-700: #b8006d;      /* texto pequeno sobre h1n1-soft */
+  --color-h1n1-700: #b8006d;
   --color-h3: #6d5df6;             /* violeta: A(H3) */
   --color-infb: #0f9f93;           /* verde-água: influenza B */
-  --color-srag: #f29a0a;           /* âmbar: SRAG total / provisório (em gráficos) */
+  --color-srag: #f29a0a;           /* âmbar: SRAG total / provisório (gráficos) */
   --color-attention-700: #9a5b00;  /* âmbar legível em texto */
   --color-attention-100: #fff1d6;
   --color-urgent-700: #b42318;
@@ -41,31 +45,80 @@
   --color-ok-700: #126e42;
   --color-ok-100: #dff5e8;
 
-  --shadow-card: 0 8px 30px -12px rgba(11, 18, 32, 0.18);
+  --shadow-card: 0 10px 40px -16px rgba(20, 19, 15, 0.22);
   --radius-card: 20px;
+}
+
+/* ====== Temas por seção (valores estáticos; o shell interpola entre eles com JS) ======
+   `deep`: mergulho dentro da célula (capítulo 3). Tinta clara sobre azul profundo: 15.1:1; muted 10.9:1.
+   `warm`: vacina (capítulo 5). Mesma tinta do papel sobre creme quente: 16.2:1. */
+html[data-theme-current='deep'] {
+  color-scheme: dark;
+  --color-bg: #0b1a2e;
+  --color-paper: #0b1a2e;
+  --color-bg-soft: #10233b;
+  --color-paper-2: #10233b;
+  --color-bg-tint: #16305a;
+  --color-card: #10233b;
+  /* em `deep` NÃO há véu sob texto (texto direto no campo); pílulas e cartões de rótulo ficam em papel claro opaco */
+  --color-veil: rgba(244, 241, 234, 0.96);
+  --color-line: rgba(244, 241, 234, 0.18);
+  --color-line-strong: rgba(244, 241, 234, 0.36);
+  --color-ink: #f4f1ea;
+  --color-muted: #c9d2e3;
+  --color-faint: #a7b3c8;
+  --color-primary-600: #8fb0ff;
+  --color-primary-700: #b7ccff;
+  --color-primary-100: #1d3a6b;
+  --color-primary-50: #16305a;
+}
+html[data-theme-current='warm'] {
+  --color-bg: #f7e8d5;
+  --color-paper: #f7e8d5;
+  --color-bg-soft: #f0dcc2;
+  --color-paper-2: #f0dcc2;
+  --color-card: #fdf6ec;
+  --color-veil: rgba(247, 232, 213, 0.92);
+  --color-line: #e2cfb5;
+  --color-line-strong: #c9b092;
 }
 
 :root {
   color-scheme: light;
+  /* altura do rodapé revelado (o shell atualiza por ResizeObserver) */
+  --footer-height: 0px;
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Lenis cuida da suavidade; âncoras por teclado continuam instantâneas e previsíveis */
+  scroll-behavior: auto;
+}
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 body {
   @apply bg-bg text-ink font-sans antialiased;
-  font-size: 17px;
+  font-size: 1.125rem;
   line-height: 1.6;
 }
-
 @media (min-width: 768px) {
   body {
-    font-size: 18px;
+    font-size: 1.1875rem;
   }
 }
 
-/* Foco visível e consistente (WCAG 2.4.7): cobalto em tudo. */
+/* Foco visível e consistente (WCAG 2.4.7). Em `deep` o cobalto claro continua legível. */
 :focus-visible {
   outline: 3px solid var(--color-primary-600);
   outline-offset: 2px;
@@ -75,11 +128,88 @@ body {
   a {
     @apply text-primary-600 underline underline-offset-2 decoration-line-strong hover:decoration-primary-600;
   }
+  ::selection {
+    background: var(--color-primary-100);
+    color: var(--color-ink);
+  }
 }
 
-/* ====== Utilitários do sistema de design claro ====== */
+/* ====== Escala tipográfica editorial ====== */
 
-/* Cartão/painel: branco, borda line, raio 20 px, sombra suave. */
+/* Abertura e títulos de capítulo (Instrument Serif). */
+.display-xl {
+  @apply font-display font-normal text-ink;
+  font-size: clamp(4rem, 2rem + 8vw, 10rem);
+  line-height: 0.95;
+  letter-spacing: -0.015em;
+}
+.display-lg {
+  @apply font-display font-normal text-ink;
+  font-size: clamp(2.5rem, 1.25rem + 4.5vw, 6rem);
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+}
+.display-md {
+  @apply font-display font-normal text-ink;
+  font-size: clamp(2rem, 1.25rem + 2.5vw, 3.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+}
+/* Palavra em condensada gigante ("H1N1", numerais de ato): único uso permitido de caixa alta. */
+.condensed-xl {
+  @apply font-condensed uppercase text-ink;
+  font-weight: 800;
+  font-size: clamp(6rem, 2rem + 24vw, 26rem);
+  line-height: 0.82;
+  letter-spacing: 0.01em;
+}
+.condensed-md {
+  @apply font-condensed uppercase text-ink;
+  font-weight: 700;
+  font-size: clamp(1.75rem, 1rem + 2.5vw, 4rem);
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+}
+/* Subtítulo em serifa itálica (Instrument Serif itálico nunca abaixo de 24 px; romano nunca abaixo de 28 px). */
+.lead {
+  @apply font-display italic text-ink;
+  font-size: clamp(1.5rem, 1rem + 1.6vw, 1.875rem);
+  line-height: 1.25;
+}
+/* Número gigante (sempre acompanhado de unidade, universo, fonte e "base de"). */
+.bignum {
+  @apply font-display tabular-nums text-ink;
+  font-size: clamp(4.5rem, 2rem + 10vw, 12.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+/* Etiqueta mono "[ 02 ]" (caixa normal). */
+.kicker-mono {
+  @apply font-mono text-[13px] font-medium leading-none text-muted;
+  letter-spacing: 0.02em;
+}
+/* Kicker em cobalto acima de títulos. */
+.eyebrow,
+.kicker {
+  @apply text-[13px] font-semibold leading-snug text-primary-600;
+}
+/* Rótulo pequeno e discreto. */
+.label {
+  @apply text-[13px] font-medium leading-snug text-muted;
+}
+/* Rodapé de metadados de um painel: fonte · licença · base. */
+.meta {
+  @apply mt-3 border-t border-line pt-2 font-mono text-[12px] leading-relaxed text-faint;
+}
+/* Contador em display (painéis de dados). */
+.value {
+  @apply font-display text-4xl tabular-nums tracking-[-0.02em] text-ink md:text-5xl;
+}
+
+/* ====== Superfícies ====== */
+
+/* Cartão: só para DADO (números, gráficos, tabelas). Nunca em volta de narrativa ou do palco. */
 .card {
   @apply rounded-[20px] border border-line bg-card;
   box-shadow: var(--shadow-card);
@@ -87,32 +217,43 @@ body {
 .card-soft {
   @apply rounded-[20px] border border-line bg-bg-soft;
 }
-
-/* Rótulo pequeno e discreto (caixa normal, nunca caixa alta). */
-.label {
-  @apply text-[13px] font-medium leading-snug text-muted;
+/* Véu de papel sob texto que flutua sobre o palco 3D (só ink/muted dentro dele; nunca faint nem link sem fundo próprio). */
+.veil {
+  background: var(--color-veil);
 }
-/* Kicker em cobalto acima de títulos. */
-.kicker {
-  @apply text-[13px] font-semibold leading-snug text-primary-600;
-}
-/* Rodapé de metadados de um painel: fonte · licença · base. */
-.meta {
-  @apply mt-3 border-t border-line pt-2 text-[12px] leading-relaxed text-faint;
-}
-/* Contador em display. */
-.value {
-  @apply font-display text-3xl font-bold tabular-nums tracking-[-0.02em] text-ink md:text-4xl;
+@media (hover: hover) and (pointer: fine) {
+  .veil {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 }
 
-/* Botões pílula (alvo ≥ 44 px). */
+/* Grão de papel (SVG inline, sem rede): ABAIXO do texto e acima do canvas (dentro do palco), sem blend; desligado em `deep`. */
+.paper-grain {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+}
+html[data-theme-current='deep'] .paper-grain {
+  display: none;
+}
+
+/* ====== Controles ====== */
+
 .btn {
   min-height: 44px;
-  @apply inline-flex items-center justify-center gap-2 rounded-full border border-line-strong bg-card px-4 py-2 text-[15px] font-medium text-ink no-underline transition-colors hover:border-primary-600 hover:bg-primary-50 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-2 rounded-full border border-line-strong bg-card px-5 py-2 text-[15px] font-medium text-ink no-underline transition-colors hover:border-primary-600 hover:bg-primary-50 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50;
 }
 .btn[aria-pressed='true'],
 .btn-primary {
   @apply border-primary-600 bg-primary-600 text-white hover:border-primary-700 hover:bg-primary-700 hover:text-white;
+}
+html[data-theme-current='deep'] .btn-primary {
+  color: #0b1a2e;
 }
 .btn-h1n1 {
   @apply border-h1n1 bg-h1n1-soft text-h1n1-700 hover:border-h1n1 hover:bg-h1n1-soft hover:text-h1n1-700;
@@ -120,6 +261,17 @@ body {
 .btn-sm {
   min-height: 36px;
   @apply px-3 py-1 text-[14px];
+}
+/* Pílula flutuante do shell (Menu, marca): papel claro OPACO em qualquer tema (nunca vidro escuro). */
+.pill {
+  min-height: 44px;
+  @apply inline-flex items-center justify-center gap-2 rounded-full border px-5 text-[15px] font-medium no-underline transition-colors;
+  color: #14130f;
+  background: #fbfaf7;
+  border-color: #8a8475;
+}
+.pill:hover {
+  border-color: #14130f;
 }
 .select-field {
   min-height: 44px;
@@ -134,61 +286,68 @@ body {
   @apply inline-flex items-center rounded-full border border-line bg-bg-soft px-3 py-1 text-[14px] text-ink no-underline transition-colors hover:border-primary-600 hover:bg-primary-50 hover:text-primary-700;
 }
 
-/* Faixas de rolagem discretas. */
 .scroll-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line-strong) transparent;
 }
 
-/* Link "pular para o conteúdo". */
 .skip-link {
   @apply sr-only;
 }
 .skip-link:focus {
-  @apply not-sr-only fixed top-2 left-2 z-50 rounded-full border border-primary-600 bg-primary-50 px-4 py-3 text-primary-700 no-underline;
+  @apply not-sr-only fixed top-2 left-2 z-[100] rounded-full border border-primary-600 bg-primary-50 px-4 py-3 text-primary-700 no-underline;
 }
 
-/* Tipografia do corpo editorial (MDX) */
+/* Alvos de toque >= 44px */
+.touch {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ====== Corpo editorial (MDX) ====== */
 .prose {
-  max-width: 68ch;
+  max-width: 64ch;
 }
 .prose h2 {
-  @apply mt-12 mb-3 font-display text-2xl font-bold tracking-[-0.02em] text-ink md:text-3xl;
-  scroll-margin-top: 5rem;
+  @apply mt-14 mb-4 font-display text-3xl text-ink md:text-4xl;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  scroll-margin-top: 6rem;
 }
 .prose h3 {
-  @apply mt-8 mb-2 font-display text-xl font-bold text-ink;
+  @apply mt-10 mb-2 font-display text-[28px] text-ink md:text-3xl;
+  line-height: 1.1;
 }
 .prose p {
-  @apply my-4;
+  @apply my-5;
 }
 .prose ul {
-  @apply my-4 list-disc pl-6;
+  @apply my-5 list-disc pl-6;
 }
 .prose ol {
-  @apply my-4 list-decimal pl-6;
+  @apply my-5 list-decimal pl-6;
 }
 .prose li {
-  @apply my-1;
+  @apply my-1.5;
 }
 .prose blockquote {
-  @apply my-4 border-l-4 border-primary-100 pl-4 text-muted;
+  @apply my-6 border-l-2 border-ink pl-5 font-display text-[28px] italic leading-snug text-ink;
 }
 .prose table {
-  @apply my-6 w-full border-collapse text-sm;
+  @apply my-6 w-full border-collapse text-[15px];
 }
 .prose th,
 .prose td {
-  @apply border border-line px-3 py-2 text-left align-top;
+  @apply border-b border-line px-3 py-2 text-left align-top;
 }
 .prose th {
-  @apply bg-bg-soft font-semibold;
+  @apply font-mono text-[12px] font-medium text-muted;
 }
 .prose code {
   @apply rounded bg-bg-soft px-1 font-mono text-[0.9em];
 }
 .prose hr {
-  @apply my-8 border-line;
+  @apply my-10 border-line;
 }
 .prose a {
   color: var(--color-primary-600);
@@ -199,17 +358,17 @@ body {
 
 /* Tabelas de dados */
 .data-table {
-  @apply w-full border-collapse text-sm;
+  @apply w-full border-collapse text-[14px];
 }
 .data-table caption {
-  @apply py-2 text-left text-sm text-muted;
+  @apply py-2 text-left font-mono text-[12px] text-muted;
 }
 .data-table th,
 .data-table td {
   @apply border-b border-line px-2 py-2 text-left;
 }
 .data-table th {
-  @apply bg-bg-soft font-semibold text-ink;
+  @apply font-mono text-[12px] font-medium text-muted;
 }
 .data-table td.num {
   @apply text-right font-mono text-[0.95em] tabular-nums;
@@ -246,13 +405,7 @@ body {
   line-height: 1.45;
 }
 
-/* Alvos de toque >= 44px */
-.touch {
-  min-height: 44px;
-  min-width: 44px;
-}
-
-/* ====== Sala de dados: scrubber, mapa, console ====== */
+/* ====== Dados: scrubber, mapa, lista de execuções ====== */
 
 .scrubber {
   -webkit-appearance: none;
@@ -301,7 +454,6 @@ body {
   outline-offset: 4px;
 }
 
-/* Mapa de UFs */
 .uf-path {
   stroke: var(--color-card);
   stroke-width: 0.8;
@@ -315,9 +467,9 @@ body {
   outline: none;
 }
 
-/* Console de ingestão: lista limpa, sem efeitos de terminal. */
+/* Lista de execuções de ingestão: lista limpa, sem efeitos de terminal. */
 .console {
-  @apply rounded-2xl border border-line bg-bg-soft p-3 text-[13px] leading-relaxed text-muted;
+  @apply rounded-2xl border border-line bg-bg-soft p-3 font-mono text-[13px] leading-relaxed text-muted;
 }
 .console .ok { color: var(--color-ok-700); }
 .console .failed { color: var(--color-urgent-700); }
@@ -329,6 +481,22 @@ body {
 @keyframes console-in {
   from { opacity: 0; transform: translateY(2px); }
   to { opacity: 1; transform: none; }
+}
+
+/* ====== Movimento ====== */
+
+/* Revelação de linhas de título (GSAP SplitText aplica a classe nas linhas); folga vertical para não cortar acentos. */
+.reveal-line {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.1em;
+  margin-block: -0.1em;
+}
+
+/* Rolagem por âncora não esconde o alvo sob o cromo fixo (WCAG 2.4.11); barra de rolagem estável (sem salto ao abrir o menu). */
+html {
+  scroll-padding-top: 5rem;
+  scrollbar-gutter: stable;
 }
 
 @media (prefers-reduced-motion: reduce) {

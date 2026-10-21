@@ -1,29 +1,10 @@
 import Link from 'next/link';
 import type { NavItem } from '@/lib/content';
+import { resolvePrimaryNav } from '@/lib/nav';
 import { SITE } from '@/lib/site';
 
-/**
- * Navegação primária (DESIGN.md v2). Os grupos editoriais (Sintomas, Vacina) só aparecem quando há página elegível:
- * o href vem da navegação derivada do conteúdo; sem página, o item fica de fora.
- */
-export const PRIMARY_NAV: ReadonlyArray<{ label: string; href: string; group?: string }> = [
-  { label: 'Entenda', href: '/o-que-e-h1n1/', group: 'Entenda o H1N1' },
-  { label: 'Sintomas e cuidados', href: '', group: 'Sintomas e cuidados' },
-  { label: 'Vacina e prevenção', href: '', group: 'Vacina e prevenção' },
-  { label: 'Dados do Brasil', href: '/dados/brasil/' },
-  { label: 'Sala de dados', href: '/sala/' },
-  { label: 'Fontes', href: '/dados/fontes/' },
-];
-
-/** Resolve a navegação primária contra os grupos editoriais elegíveis. */
-export function resolvePrimaryNav(nav: NavItem[]): Array<{ label: string; href: string }> {
-  return PRIMARY_NAV.flatMap((item) => {
-    if (!item.group) return [{ label: item.label, href: item.href }];
-    const found = nav.find((n) => n.label === item.group);
-    if (found) return [{ label: item.label, href: found.href }];
-    return item.href ? [{ label: item.label, href: item.href }] : [];
-  });
-}
+/** @deprecated use `@/lib/nav` (o Header será removido pela frente A da reformulação v4). */
+export { PRIMARY_NAV, resolvePrimaryNav } from '@/lib/nav';
 
 export function Header({ nav }: { nav: NavItem[] }) {
   const items = resolvePrimaryNav(nav);

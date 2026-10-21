@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { SPIN_RATE, ambient, fitDistance, sceneAt, settledProgress } from '@/lib/virus/choreography';
 import { dampTo, type Damped } from '@/lib/virus/damping';
 import { CANVAS_BACKGROUND, frameloopPolicy, shouldRenderFrame, transmissionScale, type FrameloopMode } from '@/lib/virus/explainer';
+import type { ThemeRGB } from '@/lib/motion/theme';
 import type { PartId } from '@/lib/virus/parts';
 import { spikeLayout, type Quality } from '@/lib/virus/pose';
 import { cloneState, REST } from '@/lib/virus/scenestate';
@@ -48,6 +49,16 @@ export interface VirusCanvasProps {
   onQualityFallback?: () => void;
   /** contexto WebGL perdido: o explainer volta ao pôster/versão em texto */
   onContextLost?: () => void;
+  /** v4 (frente C): cor viva do fundo do tema, objeto MUTÁVEL lido por quadro (`getLiveTheme()`); canvas opaco, `scene.background` mutado em useFrame */
+  themeColor?: ThemeRGB;
+  /** v4 (frente C): fração da viewport aplicada com `camera.setViewOffset` (mobile y = 0.25; desktop x pequeno e positivo) */
+  viewShift?: { x: number; y: number };
+  /** v4 (frente C): ancestral comum do palco e do texto, passado ao `<Canvas eventSource>` (sem isso o DOM por cima impede o hover nas peças) */
+  eventSource?: React.RefObject<HTMLElement | null>;
+  /** v4 (frente C): só no modo "explorar" (ato 2) o canvas recebe ponteiro; fora dele `pointer-events: none` + `touch-action: pan-y` */
+  interactive?: boolean;
+  /** v4 (frente C): região (frações 0–1 da largura/altura do canvas) onde os cartões de rótulo podem ficar, longe do texto */
+  labelRegion?: { left: number; top: number; right: number; bottom: number };
 }
 
 /** Driver: escreve o estado da cena e posiciona câmera e grupo micro; roda antes de todos (prioridade -10). */

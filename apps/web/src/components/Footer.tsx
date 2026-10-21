@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { NavItem } from '@/lib/content';
 import { SITE } from '@/lib/site';
-import { resolvePrimaryNav } from './Header';
+import { resolvePrimaryNav } from '@/lib/nav';
 
 interface FooterProps {
   nav: NavItem[];
