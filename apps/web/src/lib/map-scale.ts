@@ -6,7 +6,7 @@
 
 export const MAP_COLOR_LOW = '#eef3ff'; // primary-50
 export const MAP_COLOR_HIGH = '#d6007f'; // h1n1 (rosa forte)
-export const MAP_COLOR_ZERO = '#f5f7fb'; // bg-soft: zero publicado (distinto de "sem dado")
+export const MAP_COLOR_ZERO = '#e3e8f0'; // line: zero publicado (visível sobre bg-soft, distinto de "sem dado")
 export const MAP_COLOR_NODATA = 'url(#hatch-nodata)';
 
 function hexToRgb(hex: string): [number, number, number] {
