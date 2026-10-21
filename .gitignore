@@ -12,3 +12,4 @@ data/pglite/
 .DS_Store
 *.tsbuildinfo
 .turbo/
+.qa/
