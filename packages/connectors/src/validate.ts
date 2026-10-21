@@ -1,4 +1,4 @@
-import { getIndicator, type IndicatorDefinition, type Observation } from '@h1n1/core';
+import { getIndicator, stratumKey, type IndicatorDefinition, type Observation } from '@h1n1/core';
 
 export const PERIOD_RE: Record<string, RegExp> = {
   epiweek: /^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/,
@@ -27,11 +27,139 @@ export interface IndicatorReport {
   null_values: number;
 }
 
+export interface CrossCheckViolation {
+  rule: string;
+  count: number;
+  samples: string[];
+}
+
 export interface ValidationReport {
   ok: boolean;
   total: number;
   indicators: Record<string, IndicatorReport>;
+  /** invariantes cruzadas entre indicadores da mesma célula (geo, período, estrato) */
+  cross_checks: CrossCheckViolation[];
+  /** erros reportados pelo conector (ctx.addError) */
+  connector_errors: string[];
   errors: string[];
+}
+
+/** Regra cruzada: `a ≤ b` ou `a + b + … ≤ c` dentro da mesma célula; só avaliada quando todos os termos existem. */
+interface CrossRule {
+  name: string;
+  /** ids somados do lado esquerdo */
+  lhs: string[];
+  /** id do lado direito */
+  rhs: string;
+}
+
+const S = (x: string) => `sivep_srag_${x}`;
+const F = (x: string) => `flunet_${x}`;
+
+/** Invariantes por célula (geo, período, estrato). */
+export const CROSS_RULES: readonly CrossRule[] = [
+  { name: 'sivep: ah1n1pdm09_confirmed ≤ influenza_confirmed', lhs: [S('ah1n1pdm09_confirmed')], rhs: S('influenza_confirmed') },
+  { name: 'sivep: influenza_confirmed ≤ notifications', lhs: [S('influenza_confirmed')], rhs: S('notifications') },
+  { name: 'sivep: ah1n1pdm09_deaths ≤ influenza_deaths', lhs: [S('ah1n1pdm09_deaths')], rhs: S('influenza_deaths') },
+  { name: 'sivep: influenza_deaths ≤ influenza_confirmed', lhs: [S('influenza_deaths')], rhs: S('influenza_confirmed') },
+  { name: 'sivep: influenza_icu ≤ influenza_confirmed', lhs: [S('influenza_icu')], rhs: S('influenza_confirmed') },
+  { name: 'flunet: ah1n1pdm09 + ah3 + not_subtyped + not_subtypable ≤ inf_a', lhs: [F('ah1n1pdm09_detections'), F('ah3_detections'), F('inf_a_not_subtyped'), F('inf_a_not_subtypable')], rhs: F('inf_a_detections') },
+  { name: 'flunet: inf_a ≤ inf_all', lhs: [F('inf_a_detections')], rhs: F('inf_all_detections') },
+];
+
+/** Indicadores de contagem do SIVEP: soma dos estratos age_group = total; soma das UFs ≤ total nacional. */
+export const SIVEP_COUNT_INDICATORS: readonly string[] = [
+  'notifications', 'influenza_confirmed', 'ah1n1pdm09_confirmed', 'ah3n2_confirmed', 'inf_a_not_subtyped',
+  'influenza_deaths', 'ah1n1pdm09_deaths', 'influenza_icu',
+].map(S);
+export const SIVEP_STRATUM_DIMENSION = 'age_group';
+const SIVEP_NATIONAL = 'BRA';
+
+const CROSS_INDICATORS: ReadonlySet<string> = new Set([
+  ...CROSS_RULES.flatMap((r) => [...r.lhs, r.rhs]),
+  ...SIVEP_COUNT_INDICATORS,
+]);
+
+class Violations {
+  readonly byRule = new Map<string, CrossCheckViolation>();
+  add(rule: string, sample: string) {
+    let v = this.byRule.get(rule);
+    if (!v) { v = { rule, count: 0, samples: [] }; this.byRule.set(rule, v); }
+    v.count++;
+    if (v.samples.length < 5) v.samples.push(sample);
+  }
+  list(): CrossCheckViolation[] { return [...this.byRule.values()]; }
+}
+
+/**
+ * Invariantes cruzadas entre indicadores. Guarda apenas valores dos indicadores participantes,
+ * por célula (geo_level, geo_code, período, estrato) — nunca linhas individuais.
+ */
+export class CrossValidator {
+  /** cellKey → indicator_id → value */
+  private cells = new Map<string, Map<string, number | null>>();
+  private seen = new Set<string>();
+
+  add(o: Observation): void {
+    if (!CROSS_INDICATORS.has(o.indicator_id)) return;
+    this.seen.add(o.indicator_id);
+    const key = `${o.geo_level}|${o.geo_code}|${o.period}|${stratumKey(o.stratum)}`;
+    let cell = this.cells.get(key);
+    if (!cell) { cell = new Map(); this.cells.set(key, cell); }
+    cell.set(o.indicator_id, o.value);
+  }
+
+  finish(): CrossCheckViolation[] {
+    const v = new Violations();
+    // (1) regras por célula
+    for (const [key, cell] of this.cells) {
+      for (const rule of CROSS_RULES) {
+        const rhs = cell.get(rule.rhs);
+        if (rhs === undefined || rhs === null) continue;
+        let sum = 0; let complete = true;
+        for (const id of rule.lhs) {
+          const x = cell.get(id);
+          if (x === undefined || x === null) { complete = false; break; }
+          sum += x;
+        }
+        if (!complete) continue;
+        if (sum > rhs) v.add(rule.name, `${key}: ${sum} > ${rhs}`);
+      }
+    }
+    // (2) SIVEP: soma dos estratos age_group = total; soma das UFs ≤ nacional
+    const sivepIds = SIVEP_COUNT_INDICATORS.filter((id) => this.seen.has(id));
+    if (sivepIds.length) {
+      // totals: indicator|geo_level|geo|period → value (estrato vazio); strata sums: indicator|geo_level|geo|period → soma
+      const totals = new Map<string, number>();
+      const strataSum = new Map<string, number>();
+      const ufSum = new Map<string, number>(); // indicator|period|stratum → soma das UFs
+      const natByStratum = new Map<string, number>(); // indicator|period|stratum → valor nacional
+      for (const [key, cell] of this.cells) {
+        const [level, geo, period, stratum] = key.split('|') as [string, string, string, string];
+        for (const id of sivepIds) {
+          const x = cell.get(id);
+          if (x === undefined || x === null) continue;
+          const cellId = `${id}|${level}|${geo}|${period}`;
+          if (stratum === '') totals.set(cellId, x);
+          else if (stratum.startsWith(`${SIVEP_STRATUM_DIMENSION}=`)) strataSum.set(cellId, (strataSum.get(cellId) ?? 0) + x);
+          const natKey = `${id}|${period}|${stratum}`;
+          if (level === 'state') ufSum.set(natKey, (ufSum.get(natKey) ?? 0) + x);
+          else if (level === 'country' && geo === SIVEP_NATIONAL) natByStratum.set(natKey, x);
+        }
+      }
+      for (const [cellId, sum] of strataSum) {
+        const total = totals.get(cellId);
+        if (total === undefined) { v.add('sivep: estratos age_group sem total', `${cellId}: soma ${sum}`); continue; }
+        if (sum !== total) v.add('sivep: soma dos estratos age_group = total', `${cellId}: ${sum} ≠ ${total}`);
+      }
+      for (const [natKey, sum] of ufSum) {
+        const nat = natByStratum.get(natKey);
+        if (nat === undefined) continue;
+        if (sum > nat) v.add('sivep: soma das UFs ≤ total nacional', `${natKey}: ${sum} > ${nat}`);
+      }
+    }
+    return v.list();
+  }
 }
 
 interface Acc {
@@ -60,7 +188,12 @@ function sample(acc: Acc, msg: string) {
  */
 export class Validator {
   private accs = new Map<string, Acc>();
+  private cross = new CrossValidator();
+  private connectorErrors: string[] = [];
   constructor(private readonly ctx: ValidationContext, private readonly expected: string[] = []) {}
+
+  /** Erro reportado pelo conector (ctx.addError): falha a validação sem derrubar a execução. */
+  addError(msg: string): void { this.connectorErrors.push(msg); }
 
   private acc(id: string): Acc {
     let a = this.accs.get(id);
@@ -78,6 +211,7 @@ export class Validator {
     for (const o of batch) {
       const a = this.acc(o.indicator_id);
       a.count++;
+      this.cross.add(o);
       const where = `${o.geo_code} ${o.period} [${Object.entries(o.stratum).map(([k, v]) => `${k}=${v}`).join(';')}]`;
       if (o.value === null) a.nullValues++;
       else if (typeof o.value !== 'number' || Number.isNaN(o.value) || !Number.isFinite(o.value)) { a.nan++; sample(a, `NaN em ${where}`); }
@@ -125,7 +259,10 @@ export class Validator {
       indicators[id] = { indicator_id: id, count: a.count, previous_count: prev, errors: errs, samples: a.samples, ok: errs.length === 0, null_values: a.nullValues };
       for (const e of errs) errors.push(`${id}: ${e}`);
     }
-    return { ok: errors.length === 0, total, indicators, errors };
+    const cross_checks = this.cross.finish();
+    for (const c of cross_checks) errors.push(`invariante cruzada violada (${c.rule}): ${c.count} célula(s), ex.: ${c.samples.slice(0, 2).join('; ')}`);
+    for (const e of this.connectorErrors) errors.push(`conector: ${e}`);
+    return { ok: errors.length === 0, total, indicators, cross_checks, connector_errors: [...this.connectorErrors], errors };
   }
 }
 

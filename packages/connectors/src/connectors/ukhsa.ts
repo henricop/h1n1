@@ -34,8 +34,8 @@ export interface UkhsaStats { rows: number; filtered: number; null_values: numbe
 
 /**
  * Total = linhas age='all' & sex='all' (stratum {}); demais idades viram {age}. Só faixas previstas no
- * stratum_schema da ontologia são emitidas; as demais (hoje '65-79' e '80+', que não se somam em '65+'
- * por serem percentuais) são contadas em stats.age_skipped.
+ * stratum_schema da ontologia ('0-4', '5-14', '15-44', '45-64', '65-79', '80+' — as faixas publicadas pela UKHSA)
+ * são emitidas; qualquer outra faixa que a API passe a devolver é descartada e contada em stats.age_skipped.
  */
 export function normalizeUkhsa(results: unknown[], snapshotId: string, stats?: UkhsaStats): Observation[] {
   const out: Observation[] = [];

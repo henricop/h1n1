@@ -3,13 +3,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getIndicators, getSource } from '@/lib/api';
 import { OBSERVATORY_INDICATORS } from '@/lib/observatory';
-import { absoluteUrl, SITE } from '@/lib/site';
 import { Breadcrumb } from '@/components/Breadcrumb';
-import { JsonLd } from '@/components/JsonLd';
 import { DataUnavailable } from '@/components/Notices';
 import { ApiVerifiedBadge } from '@/components/SourceCard';
 
-export const dynamic = 'force-dynamic';
+/** ISR: igual a API_REVALIDATE_SECONDS (src/lib/api.ts); literal por exigência do Next (ver test/cache-policy.test.ts). */
+export const revalidate = 3600;
 
 type Params = Promise<{ idOrSlug: string }>;
 
@@ -47,20 +46,7 @@ export default async function FontePage({ params }: { params: Params }) {
   return (
     <>
       <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Dados', href: null }, { label: 'Fontes oficiais', href: '/dados/fontes/' }, { label: s.name, href: `/dados/fontes/${s.slug}/` }]} />
-      <JsonLd
-        data={{
-          '@context': 'https://schema.org',
-          '@type': 'Dataset',
-          name: s.name,
-          description: `${s.category}. ${s.h1n1_scope}. ${s.notes}`,
-          url: absoluteUrl(`/dados/fontes/${s.slug}/`),
-          creator: { '@type': 'Organization', name: s.agency },
-          publisher: { '@type': 'Organization', name: SITE.name, url: SITE.url },
-          isBasedOn: s.url,
-          license: s.license,
-          includedInDataCatalog: { '@type': 'DataCatalog', name: 'Catálogo de fontes oficiais do H1N1', url: absoluteUrl('/dados/fontes/') },
-        }}
-      />
+      {/* Sem JSON-LD Dataset aqui: a fonte é catalogada (DataCatalog em /dados/fontes/); Dataset só no observatório (série derivada). */}
       <header className="mt-2">
         <p className="font-mono text-xs text-muted">{s.id}</p>
         <h1 className="text-3xl font-bold text-navy-900">{s.name}</h1>

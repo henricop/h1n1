@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -94,6 +96,81 @@ describe('falha de rede', () => {
     const err = await api.getIndicators();
     expect(!err.ok && err.status).toBe('unavailable');
     vi.unstubAllGlobals();
+  });
+});
+
+describe('contrato da API (zod) e normalização', () => {
+  it('payload sem `meta` vira unavailable com motivo logado, sem lançar', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '0');
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test');
+    const fixture = JSON.parse(readFileSync(path.join(process.cwd(), 'test', 'fixtures', 'api', 'series.sivep_srag_ah1n1pdm09_confirmed.json'), 'utf8'));
+    delete fixture.meta;
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(fixture)));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const api = await import('@/lib/api');
+    const r = await api.getSeries({ indicator: 'sivep_srag_ah1n1pdm09_confirmed' });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.status).toBe('unavailable');
+    expect(r.error).toMatch(/Contrato inválido/);
+    expect(r.error).toMatch(/meta/);
+    expect(error).toHaveBeenCalledWith(expect.stringMatching(/Contrato inválido .*meta/));
+    error.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it('corpo que não é JSON ou lista com forma errada também viram unavailable', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '0');
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test');
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/v1/freshness') ? new Response('<html>', { status: 200 }) : Response.json({ data: [{ nome: 'sem id' }] }))));
+    const api = await import('@/lib/api');
+    const fresh = await api.getFreshness();
+    expect(!fresh.ok && fresh.status).toBe('unavailable');
+    expect(!fresh.ok && fresh.error).toMatch(/não é JSON/);
+    const src = await api.getSources();
+    expect(!src.ok && src.status).toBe('unavailable');
+    expect(!src.ok && src.error).toMatch(/Contrato inválido/);
+    error.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it('toda observação suprimida recebida da API é normalizada para value = null', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '0');
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test');
+    const fixture = JSON.parse(readFileSync(path.join(process.cwd(), 'test', 'fixtures', 'api', 'series.sivep_srag_ah1n1pdm09_confirmed.json'), 'utf8'));
+    // API "vazou" o valor de uma célula suprimida
+    fixture.observations = fixture.observations.slice(0, 3).map((o: Record<string, unknown>, i: number) => (i === 1 ? { ...o, suppressed: true, value: 3 } : o));
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(fixture)));
+    const api = await import('@/lib/api');
+    const r = await api.getSeries({ indicator: 'sivep_srag_ah1n1pdm09_confirmed' });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data.observations[1]).toMatchObject({ suppressed: true, value: null });
+    expect(r.data.observations[0]!.value).not.toBeNull();
+    expect(r.data.observations.filter((o) => o.suppressed).every((o) => o.value === null)).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it('modo mock também normaliza célula suprimida com valor', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '1');
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const dir = mkdtempSync(path.join(tmpdir(), 'h1n1-fixtures-'));
+    const fixture = JSON.parse(readFileSync(path.join(process.cwd(), 'test', 'fixtures', 'api', 'series.sivep_srag_ah1n1pdm09_confirmed.json'), 'utf8'));
+    fixture.observations = fixture.observations.slice(0, 2).map((o: Record<string, unknown>) => ({ ...o, suppressed: true, value: 8 }));
+    writeFileSync(path.join(dir, 'series.sivep_srag_ah1n1pdm09_confirmed.json'), JSON.stringify(fixture));
+    vi.stubEnv('H1N1_FIXTURES_DIR', dir);
+    const api = await import('@/lib/api');
+    const r = await api.getSeries({ indicator: 'sivep_srag_ah1n1pdm09_confirmed', geo_level: 'country', geo_code: 'BRA' });
+    expect(r.ok && r.data.observations.every((o) => o.value === null)).toBe(true);
+  });
+
+  it('normalizeObservation é idempotente e preserva células não suprimidas', async () => {
+    const api = await import('@/lib/api');
+    const base = { geo_level: 'country' as const, geo_code: 'BRA', period: '2026-W01', period_start: '', period_end: '', value: 5, denominator: null, stratum: {}, suppressed: false, update_status: 'final' as const, quality_flags: [] };
+    expect(api.normalizeObservation(base).value).toBe(5);
+    expect(api.normalizeObservation({ ...base, suppressed: true }).value).toBeNull();
   });
 });
 

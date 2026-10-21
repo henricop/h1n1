@@ -13,7 +13,9 @@ function cell(v: unknown): string {
 }
 
 /** Serializa SeriesResult em CSV; células suprimidas saem com value vazio e suppressed=true. */
-export function seriesToCsv(r: SeriesResult): string {
+export type CsvSeriesInput = Pick<SeriesResult, 'observations' | 'meta' | 'source'>;
+
+export function seriesToCsv(r: CsvSeriesInput): string {
   const lines: string[] = [CSV_HEADER.join(',')];
   for (const o of r.observations) {
     const key = Object.keys(o.stratum).sort().map((k) => `${k}=${o.stratum[k]}`).join(';');

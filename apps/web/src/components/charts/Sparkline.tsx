@@ -1,9 +1,10 @@
 import type { SeriesObservation } from '@/lib/api';
 import { formatPeriod } from '@/lib/format';
+import { publishedValue } from '@/lib/series';
 
-/** Sparkline SVG simples; pontos provisórios em tracejado; sem valores (suprimidos) deixam lacuna. */
+/** Sparkline SVG simples; pontos provisórios em tracejado; células suprimidas ou sem valor deixam lacuna. */
 export function Sparkline({ obs, label, width = 240, height = 56 }: { obs: SeriesObservation[]; label: string; width?: number; height?: number }) {
-  const values = obs.map((o) => o.value).filter((v): v is number => v !== null);
+  const values = obs.map(publishedValue).filter((v): v is number => v !== null);
   if (values.length < 2) return <p className="text-sm text-muted">Série insuficiente para desenhar tendência.</p>;
   const max = Math.max(...values);
   const min = Math.min(0, ...values);
@@ -15,12 +16,13 @@ export function Sparkline({ obs, label, width = 240, height = 56 }: { obs: Serie
   let current: string[] = [];
   let currentProv = false;
   obs.forEach((o, i) => {
-    if (o.value === null) {
+    const v = publishedValue(o);
+    if (v === null) {
       if (current.length > 1) segments.push({ d: current.join(' '), provisional: currentProv });
       current = [];
       return;
     }
-    const pt = `${x(i).toFixed(1)},${y(o.value).toFixed(1)}`;
+    const pt = `${x(i).toFixed(1)},${y(v).toFixed(1)}`;
     const prov = o.update_status === 'provisional';
     if (current.length && prov !== currentProv) {
       current.push(pt);

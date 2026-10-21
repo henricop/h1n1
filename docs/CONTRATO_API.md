@@ -1,6 +1,6 @@
 # H1N1 · Contrato da API pública `/v1`
 
-**Versão do contrato:** 1.0 · **Data:** 2026-10-20 · **Implementação:** `apps/api` (Fastify 5, OpenAPI gerado) sobre `packages/db` (consultas) e `packages/core` (ontologia, supressão). **Status por endpoint:** "implementado" = rota existe em `apps/api/src/routes`; "especificado" = contrato definido neste documento, implementação pendente.
+**Versão do contrato:** 1.1 · **Data:** 2026-10-20 · **Implementação:** `apps/api` (Fastify 5, OpenAPI gerado) sobre `packages/db` (consultas) e `packages/core` (ontologia, supressão). **Status por endpoint:** "implementado" = rota existe em `apps/api/src/routes`; "especificado" = contrato definido neste documento, implementação pendente.
 
 Base URL: **a definir** (ex.: `https://api.<dominio>/`). Todas as rotas são `GET`, públicas, somente leitura, sem autenticação no MVP.
 
@@ -15,7 +15,8 @@ Base URL: **a definir** (ex.: `https://api.<dominio>/`). Todas as rotas são `GE
 Outras regras transversais:
 
 - A API serve **apenas** a snapshot com `status = 'current'` em `indicator_publications`. Snapshots `superseded` ou `rejected` só aparecem em `/v1/snapshots` e `/v1/diff`.
-- Supressão ocorre na camada de publicação: células suprimidas saem com `value: null` e `suppressed: true`. O valor bruto nunca é servido, nem em CSV.
+- Supressão ocorre na camada de publicação: células suprimidas saem com `value: null` e `suppressed: true`. O valor bruto nunca é servido, nem em CSV. A supressão complementar é calculada sobre o **grupo completo** (total + todos os estratos da mesma geo/período) mesmo quando a consulta pede um único estrato (`stratum.<dim>=`).
+- Campos operacionais internos (`storage_path` da snapshot) nunca aparecem em respostas públicas.
 - Sem publicação vigente, `/v1/series` responde `200` com `observations: []` e `meta.data_as_of: null`. A API nunca inventa dado, nunca devolve zero no lugar de ausência.
 - Nenhuma resposta contém a expressão "tempo real".
 - Indicadores de fontes do mesmo `mirror_group` não devem ser somados pelo cliente (lista em `/v1/indicators` e `/v1/sources`).
@@ -30,12 +31,13 @@ Outras regras transversais:
 | Envelope | Listas: `{ "data": [...] }` (+ `count` em `sources`); itens: `{ "data": {...}, ... }`; séries: `SeriesResult` (seção 3.6) |
 | Erros | Sempre `{ "error": { "code": string, "message": string } }`, nunca stack trace |
 | Datas | `YYYY-MM-DD` (date) e ISO 8601 com fuso (`timestamptz`) |
-| Períodos | `AAAA` (ano), `AAAA-Www` (semana; `epiweek` ou `isoweek` conforme o indicador), `AAAA-Mmm` (mês) |
+| Períodos | `AAAA` (ano), `AAAA-Www` (semana; `epiweek` ou `isoweek` conforme o indicador), `AAAA-Mnn` (mês); regex `^\d{4}(-(W\d{2}\|M\d{2}))?$`. Em `from`/`to`, `AAAA` é expandido conforme o `period_type` do indicador: `from` → primeiro período do ano (`AAAA-W01` / `AAAA-M01` / `AAAA`), `to` → último (`AAAA-W53` / `AAAA-M12` / `AAAA`) |
 | Códigos geográficos | País: ISO 3166-1 alfa-3 (`BRA`, `GBR`, `USA`); mundo: `WLD`; região do Brasil: `BR-N`, `BR-NE`, `BR-SE`, `BR-S`, `BR-CO`; UF: `BR-` + sigla (`BR-SP`); Inglaterra: `ENG` (filho de `GBR`) |
-| Estratos | Chave canônica textual `stratum_key` = pares `dim=valor` ordenados por dimensão e unidos por `;` (ex.: `age_group=0-4`); total = `''` |
+| Estratos | Chave canônica textual `stratum_key` = pares `dim=valor` ordenados por dimensão e unidos por `;` (ex.: `age_group=0-4`); total = `''`. Valores de estrato não contêm `;` nem `=` |
+| Parâmetros de texto | Todo parâmetro textual (query ou path) tem no máximo **200 caracteres** e **não pode conter caracteres de controle** (C0 incl. `\u0000`, DEL, C1) → `400`. Path acima de 200 caracteres → `414` no formato padrão |
 | Identificadores | `indicator.id` em snake_case (`sivep_srag_ah1n1pdm09_confirmed`); `source.id` (`BR-03`) ou `source.slug` (`br_sivep_gripe`); `snapshot.id` UUID |
 | Ordenação | `series`: `geo_code, period, stratum_key`; `snapshots`: `fetched_at desc`; `sources`: `priority, id` |
-| Limites | `series.limit` 1–100000 (padrão 20000); `snapshots.limit` 1–1000 (padrão 100); `diff.limit` 1–100000 (padrão 5000) |
+| Limites | `series.limit` 1–100000 (padrão 20000) — `meta.truncated: true` (JSON) / `X-Truncated: true` (CSV) quando o número de observações atingiu `limit`; `snapshots.limit` 1–1000 (padrão 100); `diff.limit` 1–100000 (padrão 5000) |
 
 ---
 
@@ -43,10 +45,11 @@ Outras regras transversais:
 
 | HTTP | `error.code` | Quando | Status |
 |---|---|---|---|
-| 400 | `validation_error` | Parâmetro inválido ou ausente; mensagem lista `campo: motivo` separados por `; ` | implementado |
-| 404 | `not_found` | Indicador, fonte ou snapshot inexistente | implementado |
-| 429 | `rate_limited` | Limite por IP excedido (seção 5) | especificado |
-| 500 | `internal_error` | Falha não prevista; detalhes só em log | especificado (handler global) |
+| 400 | `validation_error` | Parâmetro inválido ou ausente (formato, tamanho > 200, caractere de controle, `from > to`, snapshot sem `status = ok` no diff...); mensagem lista `campo: motivo` separados por `; `. Também 413/415 | implementado |
+| 404 | `not_found` | Indicador, fonte, snapshot ou rota inexistente; a mensagem nunca ecoa a URL | implementado |
+| 414 e outros 4xx | `client_error` | Erros 4xx não mapeados mantêm o status original (ex.: `414` para parâmetro de caminho > 200 caracteres) | implementado |
+| 429 | `rate_limited` | Limite por IP excedido (seção 5) | implementado |
+| 500 | `internal_error` | Falha não prevista; detalhes só em log | implementado (handler global) |
 | 503 | — | `/health` quando o banco não responde (corpo `{ status: "error", db, time }`) | implementado |
 
 Exemplo de erro:
@@ -201,13 +204,15 @@ Série temporal publicada de um indicador (snapshot vigente, supressão aplicada
 | `indicator` | string | sim | Id do indicador |
 | `geo_level` | `world \| country \| region \| state` | não | Nível geográfico |
 | `geo_code` | string (1–16) | não | `BRA`, `BR-SP`, `WLD`... |
-| `from` | período | não | Inicial, inclusive (`2025-W01`) |
-| `to` | período | não | Final, inclusive (`2026-W52`) |
+| `from` | período | não | Inicial, inclusive. `AAAA`, `AAAA-Www` ou `AAAA-Mnn`; `AAAA` → primeiro período do ano (`2026` → `2026-W01` para `epiweek`/`isoweek`, `2026-M01` para `month`) |
+| `to` | período | não | Final, inclusive. `AAAA` → último período do ano (`2026` → `2026-W53` / `2026-M12`). `from > to` → `400` |
 | `include_strata` | `true \| false` | não | Inclui estratos além do total; padrão só total (`stratum_key = ''`) |
-| `stratum.<dim>` | string (1–64) | não | Filtro de estrato; `<dim>` em `^[a-z][a-z0-9_]{0,31}$` (ex.: `stratum.age_group=0-4`) |
-| `limit` | inteiro 1–100000 | não | Padrão 20000 |
+| `stratum.<dim>` | string (1–64) | não | Filtro de estrato; `<dim>` em `^[a-z][a-z0-9_]{0,31}$`; valor sem `;` nem `=` (ex.: `stratum.age_group=0-4`) |
+| `limit` | inteiro 1–100000 | não | Padrão 20000; `meta.truncated: true` quando atingido |
 
-Comparação de período é lexicográfica sobre o id (`AAAA-Www`), válida dentro do mesmo `period_type`.
+Comparação de período é lexicográfica sobre o id (`AAAA-Www`), válida dentro do mesmo `period_type`. Formato fora da regex → `400`.
+
+Supressão complementar sobre o grupo completo: com `stratum.<dim>` ou `include_strata=true`, a API lê **todas** as células do grupo (total + todos os estratos) das geos/períodos selecionados, aplica a supressão sobre o conjunto completo e só então filtra o que foi pedido. Consultar um único estrato nunca devolve um valor que sairia suprimido na consulta completa. `limit` é aplicado depois da supressão.
 
 Exemplo: `GET /v1/series?indicator=sivep_srag_ah1n1pdm09_confirmed&geo_level=state&geo_code=BR-SP&from=2026-W30&to=2026-W33&include_strata=true`
 
@@ -227,7 +232,6 @@ Resposta `200`:
     "bytes": 273678336,
     "content_type": "text/csv",
     "license": "CC-BY (portal dadosabertos.saude.gov.br)",
-    "storage_path": "data/snapshots/BR-03/2026-10-20T12-31-44Z_INFLUD26-19-10-2026.csv",
     "data_as_of": "2026-10-19",
     "status": "ok",
     "notes": null
@@ -246,12 +250,13 @@ Resposta `200`:
     "license": "CC-BY (portal dadosabertos.saude.gov.br)",
     "suppression_threshold": 5,
     "caveats": ["..."],
-    "count": 4
+    "count": 4,
+    "truncated": false
   }
 }
 ```
 
-Os valores numéricos do exemplo são ilustrativos de formato, não dados reais.
+Os valores numéricos do exemplo são ilustrativos de formato, não dados reais. `snapshot` não inclui `storage_path` (caminho interno).
 
 Semântica dos campos de observação:
 
@@ -265,11 +270,13 @@ Semântica dos campos de observação:
 | `quality_flags` | Ex.: `reporting_delay`, `denominator_below_minimum`, `schema_changed` |
 | `suppressed` | `true` quando a célula foi suprimida (valor < 5 em recorte subnacional/estratificado, ou supressão complementar) |
 
-Sem publicação vigente: `publication: null`, `snapshot: null`, `observations: []`, `meta.data_as_of: null`, `meta.count: 0`, HTTP `200`.
+`meta.truncated` é `true` quando o número de observações atingiu `limit`: refine a consulta (geo, período) para garantir que nada ficou de fora.
+
+Sem publicação vigente: `publication: null`, `snapshot: null`, `observations: []`, `meta.data_as_of: null`, `meta.count: 0`, `meta.truncated: false`, HTTP `200`.
 
 ### 3.7. `GET /v1/series.csv` — implementado
 
-Mesma consulta e parâmetros de `/v1/series`, em CSV. Cabeçalhos: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="<indicator_id>.csv"`.
+Mesma consulta e parâmetros de `/v1/series`, em CSV. Cabeçalhos: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="<indicator_id>.csv"`, `X-Truncated: true|false` (equivalente a `meta.truncated`). Limite próprio de requisições (seção 5).
 
 Colunas, nesta ordem: `indicator_id, geo_level, geo_code, period_type, period, period_start, period_end, value, denominator, suppressed, update_status, stratum_key, quality_flags, snapshot_id, data_as_of, source_id, license`. `quality_flags` separadas por `|`; células suprimidas com `value` vazio e `suppressed=true`.
 
@@ -308,11 +315,11 @@ Snapshots imutáveis baixadas das fontes.
 | `source_id` | string | Filtra por fonte |
 | `limit` | inteiro 1–1000 | Padrão 100 |
 
-Resposta `200`: `{ "data": Snapshot[] }` ordenado por `fetched_at desc`. Inclui snapshots com `status` `ok`, `failed` e `quarantined` (transparência de operação); apenas `ok` podem ser publicadas.
+Resposta `200`: `{ "data": Snapshot[] }` ordenado por `fetched_at desc`. Inclui snapshots com `status` `ok`, `failed` e `quarantined` (transparência de operação); apenas `ok` podem ser publicadas. O campo `storage_path` (caminho interno de armazenamento) **não** é exposto.
 
 ### 3.10. `GET /v1/snapshots/:id` — implementado
 
-Uma snapshot por UUID. `404` se o id não for UUID válido ou não existir.
+Uma snapshot por UUID, sem `storage_path`. `404` se o id não for UUID válido ou não existir.
 
 ### 3.11. `GET /v1/diff` — implementado
 
@@ -321,22 +328,24 @@ Diferenças célula a célula entre duas snapshots do mesmo indicador (revisões
 | Parâmetro | Tipo | Obrigatório |
 |---|---|---|
 | `indicator` | string | sim |
-| `a` | UUID | sim |
-| `b` | UUID | sim |
+| `a` | UUID de snapshot com `status = 'ok'` da fonte do indicador | sim |
+| `b` | UUID de snapshot com `status = 'ok'` da fonte do indicador | sim |
 | `limit` | inteiro 1–100000 | não (padrão 5000) |
+
+Regras: `404 not_found` se o indicador ou uma das snapshots não existir; `400 validation_error` se a snapshot não estiver com `status = 'ok'` (`failed`/`quarantined`) ou pertencer a outra fonte. **Restrição desta versão:** o resultado contém apenas células com `geo_level = 'country'` e `stratum_key = ''` (total nacional); células subnacionais ou estratificadas — as sujeitas a supressão — nunca saem do diff.
 
 Resposta `200`:
 
 ```json
 {
   "data": [
-    { "geo_level": "state", "geo_code": "BR-RS", "period": "2026-W35", "stratum_key": "", "value_a": 18, "value_b": 23 },
-    { "geo_level": "country", "geo_code": "BRA", "period": "2026-W38", "stratum_key": "", "value_a": null, "value_b": 61 }
+    { "geo_level": "country", "geo_code": "BRA", "period": "2026-W35", "stratum_key": "", "value_a": 18, "value_b": 23, "suppressed": false },
+    { "geo_level": "country", "geo_code": "BRA", "period": "2026-W38", "stratum_key": "", "value_a": null, "value_b": 61, "suppressed": false }
   ]
 }
 ```
 
-`value_a`/`value_b` são valores armazenados (`null` = célula ausente na snapshot). Atenção: `/v1/diff` compara observações **antes** da supressão de publicação; por isso o endpoint só expõe diffs de células já publicáveis — a implementação deve aplicar o mesmo `suppression_threshold` do indicador antes de responder (requisito para a versão 1.1; até lá, `diff` deve ser restrito a `geo_level = country` sem estrato no deploy público).
+`value_a`/`value_b` são valores armazenados (`null` = célula ausente na snapshot). Como o diff é restrito ao total nacional sem estrato (nunca suprimido), `suppressed` é sempre `false` nesta versão; a máscara de `suppression_threshold` permanece na implementação como defesa em profundidade. Ampliar o diff para recortes subnacionais/estratificados exige uma política de supressão entre snapshots e fica para uma versão futura.
 
 ### 3.12. `GET /v1/geo` — implementado
 
@@ -369,21 +378,24 @@ Especificação OpenAPI gerada pelo Fastify a partir dos esquemas de rota. Este 
 | `/health` | `no-store` | — |
 | `/v1/sources*`, `/v1/geo` | `public, max-age=3600, stale-while-revalidate=86400` | Deploy/seed |
 | `/v1/indicators*` | `public, max-age=3600, stale-while-revalidate=86400` | Deploy/seed ou nova publicação (campo `publication`) |
-| `/v1/series`, `/v1/series.csv` | `public, max-age=300, stale-while-revalidate=3600` + `ETag` derivado de `(indicator, snapshot_id, query)` | Nova publicação do indicador |
+| `/v1/series`, `/v1/series.csv` | `public, max-age=300, stale-while-revalidate=3600` + `ETag` forte = sha256 do corpo serializado (32 hex); `If-None-Match` (lista, `W/`, `*`) → `304` sem corpo | Nova publicação do indicador (muda o corpo, logo a ETag) |
 | `/v1/freshness` | `public, max-age=60` | — |
 | `/v1/snapshots*`, `/v1/diff` | `public, max-age=300` | Nova snapshot |
 
-Status: **especificado**; cabeçalhos a implementar como plugin global no Fastify. A web (ISR) revalida páginas por evento de publicação, não por cron.
+Só respostas `200` a `GET`/`HEAD` levam `Cache-Control` (exceto `/health`, sempre `no-store`); erros 4xx/5xx não levam. CORS: `GET`, `HEAD`, `OPTIONS` liberados para qualquer origem; preflight responde `204`.
+
+Status: **implementado** (hook `onSend` global em `apps/api/src/app.ts`, política declarada por rota em `config.cache`). A web (ISR) revalida páginas por evento de publicação, não por cron.
 
 ---
 
 ## 5. Rate limit
 
-- Limite por IP: **120 requisições/minuto** para JSON e **20/minuto** para `series.csv`, com resposta `429 rate_limited` e cabeçalhos `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`.
+- Limite por IP: **120 requisições/minuto** para JSON e **20/minuto** para `series.csv` (contadores separados), com resposta `429 rate_limited` e cabeçalhos no padrão draft da IETF `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` (+ `Retry-After` no `429`). Os limites são configuráveis (`API_RATE_LIMIT_MAX`, `API_CSV_RATE_LIMIT_MAX`; `API_RATE_LIMIT=off` desliga).
+- O IP considerado é o da conexão; `X-Forwarded-For` só é honrado com `TRUST_PROXY` ligado (padrão desligado), para evitar forjar o IP do contador.
 - Sem chaves de API no MVP. Se houver demanda institucional, chaves com limites maiores entram na versão 1.x sem alterar o contrato público.
 - IPs são usados apenas em memória para o contador, não persistidos (LGPD_E_PRIVACIDADE.md).
 
-Status: **especificado**.
+Status: **implementado**.
 
 ---
 
@@ -403,7 +415,8 @@ Status: **especificado**.
 1. Exibir `meta.universe_note` ao lado de qualquer número.
 2. Exibir `meta.data_as_of` (data da base) e `source.name` com link para `source.url`.
 3. Tratar `observations: []` como "sem dados publicados", nunca como zero.
-4. Tratar `suppressed: true` como "< 5", nunca como zero ou ausência.
+4. Tratar `suppressed: true` como "< 5", nunca como zero ou ausência, e nunca tentar reconstruir a célula por diferença (entre estratos, entre níveis geográficos ou entre snapshots).
+4b. Se `meta.truncated` (ou `X-Truncated`) for `true`, refinar a consulta: o resultado pode estar incompleto.
 5. Distinguir `update_status: provisional` visualmente.
 6. Nunca somar indicadores de fontes com o mesmo `mirror_group`.
 7. Nunca comparar `epiweek` e `isoweek` como se fossem a mesma semana sem conversão por `period_start`.

@@ -1,16 +1,16 @@
 import Link from 'next/link';
-import type { ApiResult, FreshnessRow, SeriesResult } from '@/lib/api';
-import { isStale } from '@/lib/api';
+import type { ApiResult, FreshnessState, SeriesResult } from '@/lib/api';
 import { formatDateBR, formatNumberBR, formatPeriod, UNIT_LABEL } from '@/lib/format';
-import { lastPublished, sliceInterval, totalSeries } from '@/lib/series';
+import { indicatorLabel } from '@/lib/observatory';
+import { lastPublished, publishedValue, sliceInterval, totalSeries } from '@/lib/series';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { SeriesTable } from '@/components/charts/SeriesTable';
-import { DataUnavailable, StaleBadge } from '@/components/Notices';
+import { DataUnavailable, FreshnessNote } from '@/components/Notices';
 
 interface Props {
   id: string;
   series: ApiResult<SeriesResult>;
-  freshness: FreshnessRow | null;
+  freshness: FreshnessState;
   weeks: number;
   geoLabel: string;
   withSparkline?: boolean;
@@ -22,7 +22,7 @@ export function IndicatorCard({ id, series, freshness, weeks, geoLabel, withSpar
     return (
       <section aria-labelledby={`${id}-t`} className="rounded-md border border-line bg-paper p-4">
         <h3 id={`${id}-t`} className="text-base font-semibold text-navy-900">
-          {id}
+          {indicatorLabel(id)}
         </h3>
         <div className="mt-2">
           <DataUnavailable attemptedAt={series.attemptedAt} detail={series.error} />
@@ -41,11 +41,11 @@ export function IndicatorCard({ id, series, freshness, weeks, geoLabel, withSpar
         {r.indicator.name}
       </h3>
       <p className="mt-1 text-xs text-muted">
-        {geoLabel} · base de {formatDateBR(r.meta.data_as_of)} {isStale(freshness) && <StaleBadge ageDays={freshness?.age_days ?? null} />}
+        {geoLabel} · base de {formatDateBR(r.meta.data_as_of)} <FreshnessNote state={freshness} />
       </p>
       {last ? (
         <p className="mt-3">
-          <span className="text-3xl font-bold tabular-nums text-navy-900">{formatNumberBR(last.value, unit)}</span>{' '}
+          <span className="text-3xl font-bold tabular-nums text-navy-900">{formatNumberBR(publishedValue(last), unit)}</span>{' '}
           <span className="text-sm text-muted">
             {UNIT_LABEL[unit] ?? unit} em {formatPeriod(last.period, r.indicator.period_type)}
             {last.update_status === 'provisional' ? ' (provisório)' : ''}

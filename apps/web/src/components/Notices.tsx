@@ -1,3 +1,4 @@
+import type { FreshnessState } from '@/lib/api';
 import { SITE } from '@/lib/site';
 
 export function ReviewBanner() {
@@ -34,4 +35,23 @@ export function StaleBadge({ ageDays }: { ageDays: number | null }) {
       Dado defasado{ageDays !== null ? ` (${ageDays} dias desde a última coleta)` : ''}
     </span>
   );
+}
+
+/**
+ * Nota de frescor ao lado do valor: selo "Dado defasado" quando verificado e defasado; "frescor não verificado"
+ * quando /v1/freshness falhou (nunca esconder o selo em silêncio); nada quando verificado e atual.
+ */
+export function FreshnessNote({ state }: { state: FreshnessState }) {
+  if (!state.verified) {
+    return (
+      <span
+        className="inline-flex items-center rounded-full border border-line bg-navy-50 px-2 py-0.5 text-xs font-medium text-navy-900"
+        title="Não foi possível consultar /v1/freshness; a idade da base não pôde ser confirmada."
+      >
+        frescor não verificado
+      </span>
+    );
+  }
+  if (state.stale) return <StaleBadge ageDays={state.row?.age_days ?? null} />;
+  return null;
 }

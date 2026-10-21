@@ -63,6 +63,10 @@ class Aggregator {
   rowsNoDate = 0;
   rowsOutsideYear = 0;
   rowsWeekMismatch = 0;
+  rowsWeekFromDate = 0;
+  rowsAgeUnknown = 0;
+  /** semanas com ao menos uma linha sem UF válida (flag uf_ignored no recorte nacional) */
+  readonly ufIgnoredWeeks = new Set<number>();
 
   constructor(year: number) { this.year = year; }
 
@@ -70,14 +74,21 @@ class Aggregator {
 
   add(rec: Record<string, string>): void {
     this.rowsTotal++;
+    // Período: SEM_PRI (semana epidemiológica dos primeiros sintomas) quando válida (1..53); o ano epidemiológico
+    // vem de epiWeek(DT_SIN_PRI) quando a data existe (senão, ano do arquivo). DT_SIN_PRI só define a semana
+    // quando SEM_PRI é inválida. Divergências SEM_PRI ≠ epiWeek(DT_SIN_PRI).week são contadas (rows_sem_pri_mismatch).
     const dt = parseFlexibleDate(rec.DT_SIN_PRI);
-    let year: number; let week: number;
+    const epi = dt ? epiWeek(dt) : null;
     const semPri = toInt(rec.SEM_PRI);
-    if (dt) {
-      ({ year, week } = epiWeek(dt));
-      if (semPri !== null && semPri !== week) this.rowsWeekMismatch++;
-    } else if (semPri !== null && semPri >= 1 && semPri <= 53) {
-      year = this.year; week = semPri;
+    const semValid = semPri !== null && Number.isInteger(semPri) && semPri >= 1 && semPri <= 53;
+    let year: number; let week: number;
+    if (semValid) {
+      week = semPri;
+      year = epi ? epi.year : this.year;
+      if (epi && epi.week !== semPri) this.rowsWeekMismatch++;
+    } else if (epi) {
+      ({ year, week } = epi);
+      this.rowsWeekFromDate++;
     } else { this.rowsNoDate++; return; }
     if (year !== this.year || week < 1 || week > 53) { this.rowsOutsideYear++; return; }
     this.rowsUsed++;
@@ -89,9 +100,16 @@ class Aggregator {
     };
     const uf = (rec.SG_UF ?? '').trim().toUpperCase();
     const state = BR_STATE_BY_UF.get(uf);
-    if (!state) this.rowsUfIgnored++;
+    if (!state) { this.rowsUfIgnored++; this.ufIgnoredWeeks.add(week); }
+    // Idade: TP_IDADE 1 = dias, 2 = meses (→ 0 anos), 3 = anos. TP_IDADE nulo/inválido ou NU_IDADE_N ausente → 'NA'.
     const idadeN = toInt(rec.NU_IDADE_N);
-    const years = idadeN === null ? null : toInt(rec.TP_IDADE) === 3 ? idadeN : 0;
+    const tpIdade = toInt(rec.TP_IDADE);
+    let years: number | null = null;
+    if (idadeN !== null && idadeN >= 0) {
+      if (tpIdade === 3) years = idadeN;
+      else if (tpIdade === 1 || tpIdade === 2) years = 0;
+    }
+    if (years === null) this.rowsAgeUnknown++;
     const age = ageGroupFromYears(years);
 
     for (const rule of COUNT_RULES) {
@@ -118,16 +136,18 @@ class Aggregator {
       { code: 'BRA', level: 'country' },
       ...[...BR_STATE_BY_UF.values()].map((s) => ({ code: stateGeoCode(s.uf), level: 'state' as const })),
     ];
-    const natFlags = this.rowsUfIgnored > 0 ? ['uf_ignored'] : [];
     for (let week = 1; week <= this.maxWeek; week++) {
       const period = weekPeriodId(this.year, week);
       const update_status: UpdateStatus = week > this.maxWeek - PROVISIONAL_WEEKS ? 'provisional' : 'final';
+      // uf_ignored só nas semanas em que houve linhas sem UF válida, no total nacional e nos seus estratos
+      const natFlags = this.ufIgnoredWeeks.has(week) ? ['uf_ignored'] : [];
       for (const rule of COUNT_RULES) {
         for (const g of geos) {
           const base = { snapshot_id: snapshotId, indicator_id: rule.id, geo_level: g.level, geo_code: g.code, period_type: 'epiweek' as const, period, update_status };
-          out.push(makeObs({ ...base, value: this.cells.get(`${rule.id}|${g.code}|${week}|`) ?? 0, stratum: {}, quality_flags: g.code === 'BRA' ? natFlags : [] }));
+          const flags = g.code === 'BRA' ? natFlags : [];
+          out.push(makeObs({ ...base, value: this.cells.get(`${rule.id}|${g.code}|${week}|`) ?? 0, stratum: {}, quality_flags: flags }));
           for (const age of AGE_GROUPS) {
-            out.push(makeObs({ ...base, value: this.cells.get(`${rule.id}|${g.code}|${week}|${age}`) ?? 0, stratum: { age_group: age } }));
+            out.push(makeObs({ ...base, value: this.cells.get(`${rule.id}|${g.code}|${week}|${age}`) ?? 0, stratum: { age_group: age }, quality_flags: flags }));
           }
         }
       }
@@ -144,7 +164,8 @@ class Aggregator {
   summary(): Record<string, number> {
     return {
       rows_total: this.rowsTotal, rows_used: this.rowsUsed, rows_uf_ignored: this.rowsUfIgnored, rows_no_date: this.rowsNoDate,
-      rows_outside_year: this.rowsOutsideYear, rows_sem_pri_mismatch: this.rowsWeekMismatch, max_week: this.maxWeek,
+      rows_outside_year: this.rowsOutsideYear, rows_sem_pri_mismatch: this.rowsWeekMismatch, rows_week_from_date: this.rowsWeekFromDate,
+      rows_age_unknown: this.rowsAgeUnknown, uf_ignored_weeks: this.ufIgnoredWeeks.size, max_week: this.maxWeek,
     };
   }
 }
@@ -167,10 +188,14 @@ export async function aggregateSivepCsv(path: string, year: number, maxRows?: nu
   return { observations: agg.observations(''), summary: agg.summary(), maxWeek: agg.maxWeek };
 }
 
+export const SIVEP_RAW_NOTE = 'microdados individuais; apenas agregados são retidos';
+
 export const sivepConnector: Connector = {
   id: 'sivep',
   sourceId: 'BR-03',
   indicators: SIVEP_INDICATORS,
+  /** Microdados individuais: o CSV bruto é apagado pelo pipeline após a agregação (só o sidecar .meta.json fica). */
+  retainRaw: false,
 
   async fetch(ctx: FetchContext): Promise<RawSnapshot> {
     const year = ctx.options.year;
@@ -184,15 +209,16 @@ export const sivepConnector: Connector = {
     const d = await downloadToFile(url, path);
     return {
       url, urls: [SIVEP_DATASET_URL, url], path, ext: 'csv', sha256: d.sha256, bytes: d.bytes, content_type: d.content_type ?? 'text/csv',
-      license: SIVEP_LICENSE, data_as_of: dataAsOfFromUrl(url), fetched_at, extra: { year, microdata: 'não persistidos; agregados em streaming' },
+      license: SIVEP_LICENSE, data_as_of: dataAsOfFromUrl(url), fetched_at,
+      extra: { year, microdata: `${SIVEP_RAW_NOTE}; agregados em streaming; CSV bruto apagado após a agregação (raw_file_deleted)` },
     };
   },
 
   async normalize(raw: RawSnapshot, ctx: NormalizeContext): Promise<Observation[]> {
     const year = ctx.options.year ?? Number((raw.extra?.year as number | undefined) ?? NaN);
     if (!Number.isInteger(year)) throw new Error('sivep: ano desconhecido');
-    const maxRows = ctx.options.maxRows ?? (process.env.SIVEP_MAX_ROWS ? Number(process.env.SIVEP_MAX_ROWS) : undefined);
-    if (maxRows) ctx.log(`[sivep] limite de desenvolvimento: ${maxRows} linhas`);
+    const maxRows = ctx.options.maxRows;
+    if (maxRows) ctx.log(`[sivep] AVISO: limite de desenvolvimento ${maxRows} linhas — execução parcial, a snapshot não será publicada`);
     const r = await aggregateSivepCsv(raw.path, year, maxRows, (n) => ctx.log(`[sivep] ${n} linhas lidas…`));
     ctx.countRowsIn(r.summary.rows_total ?? 0);
     Object.assign(ctx.report, r.summary, { year, max_rows: maxRows ?? null });
@@ -200,7 +226,7 @@ export const sivepConnector: Connector = {
     if (r.maxWeek > 0) {
       for (const id of SIVEP_INDICATORS) ctx.setCoverage(id, weekPeriodId(year, 1), weekPeriodId(year, 53));
     }
-    ctx.log(`[sivep] ${r.summary.rows_total} linhas; ${r.summary.rows_uf_ignored} sem UF válida; ${r.summary.rows_no_date} sem data/semana; ${r.summary.rows_outside_year} fora do ano ${year}; última SE ${r.maxWeek}`);
+    ctx.log(`[sivep] ${r.summary.rows_total} linhas; ${r.summary.rows_uf_ignored} sem UF válida (${r.summary.uf_ignored_weeks} semana(s)); ${r.summary.rows_no_date} sem data/semana; ${r.summary.rows_outside_year} fora do ano ${year}; ${r.summary.rows_sem_pri_mismatch} com SEM_PRI ≠ epiWeek(DT_SIN_PRI); ${r.summary.rows_age_unknown} sem idade válida; última SE ${r.maxWeek}`);
     return r.observations;
   },
 };

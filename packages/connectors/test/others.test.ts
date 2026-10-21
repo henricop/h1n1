@@ -45,12 +45,12 @@ describe('worldbank', () => {
 
 describe('ukhsa', () => {
   const env = load('ukhsa_results.json');
-  it('total = age all; estratos por idade; semana ISO; provisório em atraso', () => {
+  it('total = age all; estratos nas faixas da UKHSA (0-4 … 65-79, 80+); semana ISO; provisório em atraso', () => {
     const stats = { rows: 0, filtered: 0, null_values: 0, duplicates: 0, age_skipped: {} as Record<string, number> };
     const obs = normalizeUkhsa(env.results, 's', stats);
-    // 65-79 e 80+ não existem no stratum_schema da ontologia (65+) e não podem ser somados: ignorados e contados
-    expect(obs).toHaveLength(6);
-    expect(stats.age_skipped).toEqual({ '65-79': 1, '80+': 1 });
+    // 2 totais (2017-W27 e 2026-W41) + 6 faixas de 2017-W27, todas previstas no stratum_schema da ontologia
+    expect(obs).toHaveLength(8);
+    expect(stats.age_skipped).toEqual({});
     const total = obs.find((o) => o.period === '2017-W27' && Object.keys(o.stratum).length === 0)!;
     expect(total.value).toBe(1.71);
     expect(total.geo_code).toBe('ENG');
@@ -58,8 +58,18 @@ describe('ukhsa', () => {
     expect(obs.find((o) => o.period === '2017-W27' && o.stratum.age === '0-4')!.value).toBe(0.35);
     expect(obs.find((o) => o.period === '2017-W27' && o.stratum.age === '5-14')!.value).toBe(0);
     expect(obs.find((o) => o.period === '2017-W27' && o.stratum.age === '15-44')!.value).toBe(3.59);
+    expect(obs.find((o) => o.period === '2017-W27' && o.stratum.age === '65-79')).toBeTruthy();
+    expect(obs.find((o) => o.period === '2017-W27' && o.stratum.age === '80+')).toBeTruthy();
+    expect(new Set(obs.filter((o) => o.stratum.age).map((o) => o.stratum.age))).toEqual(new Set(['0-4', '5-14', '15-44', '45-64', '65-79', '80+']));
     const late = obs.find((o) => o.period === '2026-W41')!;
     expect(late.update_status).toBe('provisional');
     expect(dataAsOfFromResults(env.results)).toBe('2026-10-11');
+  });
+  it('faixa fora do stratum_schema continua descartada e contada', () => {
+    const stats = { rows: 0, filtered: 0, null_values: 0, duplicates: 0, age_skipped: {} as Record<string, number> };
+    const extra = { ...(env.results[1] as Record<string, unknown>), age: '90+' };
+    const obs = normalizeUkhsa([...env.results, extra], 's', stats);
+    expect(obs).toHaveLength(8);
+    expect(stats.age_skipped).toEqual({ '90+': 1 });
   });
 });

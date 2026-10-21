@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { freshnessFor, getFreshness, getSeries } from '@/lib/api';
+import { freshnessState, getFreshness, getSeries } from '@/lib/api';
 import { eligiblePages, firstEligible } from '@/lib/content';
 import { formatDateBR } from '@/lib/format';
 import { SITE } from '@/lib/site';
 import { IndicatorCard } from '@/components/IndicatorCard';
 import { JsonLd } from '@/components/JsonLd';
 
-export const dynamic = 'force-dynamic';
+/** ISR: igual a API_REVALIDATE_SECONDS (src/lib/api.ts); literal por exigência do Next (ver test/cache-policy.test.ts). */
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: `${SITE.name}: ${SITE.tagline}`,
@@ -94,8 +95,8 @@ export default async function HomePage() {
           Indicadores de vigilância com nome exato do que medem. Semanas recentes são provisórias e sobem em revisões. Não é um painel de casos em tempo real, pois as bases chegam com atraso de notificação.
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <IndicatorCard id={HOME_INDICATORS.sivep} series={sivep} freshness={freshnessFor(fresh, HOME_INDICATORS.sivep)} weeks={8} geoLabel="Brasil" />
-          <IndicatorCard id={HOME_INDICATORS.flunet} series={flunet} freshness={freshnessFor(fresh, HOME_INDICATORS.flunet)} weeks={8} geoLabel="Brasil (BRA)" />
+          <IndicatorCard id={HOME_INDICATORS.sivep} series={sivep} freshness={freshnessState(fresh, HOME_INDICATORS.sivep)} weeks={8} geoLabel="Brasil" />
+          <IndicatorCard id={HOME_INDICATORS.flunet} series={flunet} freshness={freshnessState(fresh, HOME_INDICATORS.flunet)} weeks={8} geoLabel="Brasil (BRA)" />
         </div>
         <p className="mt-5">
           <Link href="/dados/brasil/" className="touch inline-flex items-center rounded-md bg-navy-900 px-5 py-3 font-medium text-white no-underline hover:bg-navy-800">

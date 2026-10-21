@@ -19,7 +19,8 @@ export const FluNetRow = z.object({
   ISO_YEAR: z.number().int(),
   ISO_WEEK: z.number().int(),
   ISO_WEEKSTARTDATE: z.string(),
-  ORIGIN_SOURCE: z.enum(['SENTINEL', 'NONSENTINEL', 'NOTDEFINED']),
+  /** valores conhecidos em KNOWN_ORIGINS; outros não derrubam a execução (flag origin_source_unknown) */
+  ORIGIN_SOURCE: z.string(),
   SPEC_PROCESSED_NB: num,
   AH1N12009: num,
   AH3: num,
@@ -30,6 +31,29 @@ export const FluNetRow = z.object({
   INF_ALL: num,
 });
 export type FluNetRow = z.infer<typeof FluNetRow>;
+
+/** Origens previstas no stratum_schema da ontologia (origin_source). */
+export const KNOWN_ORIGINS: ReadonlySet<string> = new Set(['SENTINEL', 'NONSENTINEL', 'NOTDEFINED']);
+export const COUNTRY_RE = /^[A-Z]{3}$/;
+
+export interface FluNetStats {
+  rows: number;
+  /** linhas repetidas por (COUNTRY_CODE, ISO_YEAR, ISO_WEEK, ORIGIN_SOURCE); só a primeira é usada */
+  duplicates: number;
+  duplicate_samples: string[];
+  /** linhas com ORIGIN_SOURCE fora de KNOWN_ORIGINS: entram no total (flag origin_source_unknown), sem estrato próprio */
+  origin_source_unknown: number;
+  unknown_origins: Record<string, number>;
+}
+export const newFluNetStats = (): FluNetStats => ({ rows: 0, duplicates: 0, duplicate_samples: [], origin_source_unknown: 0, unknown_origins: {} });
+
+/** Normaliza e valida a lista de `--country` (ISO3, três letras maiúsculas) antes de montar qualquer filtro OData. */
+export function validateCountries(list: string[]): string[] {
+  const out = list.map((c) => c.trim().toUpperCase());
+  const bad = out.filter((c) => !COUNTRY_RE.test(c));
+  if (bad.length) throw new Error(`flunet: código(s) de país inválido(s) em --country (esperado ISO3, ex.: BRA): ${bad.join(', ')}`);
+  return [...new Set(out)];
+}
 
 /** Indicadores de contagem: coluna FluNet → id do indicador */
 export const COUNT_COLUMNS = {
@@ -52,6 +76,7 @@ export const FLUNET_INDICATORS = [
 ];
 
 export function flunetUrl(country: string, skip = 0): string {
+  if (!COUNTRY_RE.test(country)) throw new Error(`flunet: código de país inválido: ${country}`);
   const filter = encodeURIComponent(`COUNTRY_CODE eq '${country}'`);
   return `${FLUNET_BASE_URL}?$filter=${filter}&$orderby=ISO_WEEKSTARTDATE,ORIGIN_SOURCE&$top=${PAGE}&$skip=${skip}`;
 }
@@ -93,9 +118,32 @@ export function dataAsOfFromRows(rows: FluNetRow[]): string | null {
   return m ? addDays(m, 6) : null;
 }
 
-/** Gera observações a partir de linhas FluNet (sem supressão: isso é da camada de publicação). */
-export function normalizeFluNetRows(rawRows: unknown[], snapshotId: string, geo?: GeoEntry[]): Observation[] {
-  const rows = rawRows.map((r) => FluNetRow.parse(r));
+/**
+ * Gera observações a partir de linhas FluNet (sem supressão: isso é da camada de publicação).
+ * Linhas duplicadas por (COUNTRY_CODE, ISO_YEAR, ISO_WEEK, ORIGIN_SOURCE) são descartadas (só a primeira conta) e
+ * contadas em stats.duplicates — o conector transforma isso em quarentena. ORIGIN_SOURCE desconhecido entra no
+ * total com a flag 'origin_source_unknown' e não gera estrato (valor fora do stratum_schema).
+ */
+export function normalizeFluNetRows(rawRows: unknown[], snapshotId: string, geo?: GeoEntry[], stats?: FluNetStats): Observation[] {
+  const st = stats ?? newFluNetStats();
+  const rows: FluNetRow[] = [];
+  const seen = new Set<string>();
+  for (const raw of rawRows) {
+    const r = FluNetRow.parse(raw);
+    st.rows++;
+    const key = `${r.COUNTRY_CODE}|${r.ISO_YEAR}|${r.ISO_WEEK}|${r.ORIGIN_SOURCE}`;
+    if (seen.has(key)) {
+      st.duplicates++;
+      if (st.duplicate_samples.length < 5) st.duplicate_samples.push(key);
+      continue;
+    }
+    seen.add(key);
+    if (!KNOWN_ORIGINS.has(r.ORIGIN_SOURCE)) {
+      st.origin_source_unknown++;
+      st.unknown_origins[r.ORIGIN_SOURCE] = (st.unknown_origins[r.ORIGIN_SOURCE] ?? 0) + 1;
+    }
+    rows.push(r);
+  }
   const byCountry = new Map<string, FluNetRow[]>();
   for (const r of rows) {
     const arr = byCountry.get(r.COUNTRY_CODE);
@@ -117,20 +165,21 @@ export function normalizeFluNetRows(rawRows: unknown[], snapshotId: string, geo?
       const { year, week } = { year: wrows[0]!.ISO_YEAR, week: wrows[0]!.ISO_WEEK };
       const weekStart = isoDate(isoWeekStart(year, week));
       const update_status: UpdateStatus = weekStart >= provisionalFrom ? 'provisional' : 'final';
-      const groups: Array<{ stratum: Record<string, string>; rows: FluNetRow[] }> = [{ stratum: {}, rows: wrows }];
-      for (const r of wrows) groups.push({ stratum: { origin_source: r.ORIGIN_SOURCE }, rows: [r] });
+      const unknownInWeek = wrows.some((r) => !KNOWN_ORIGINS.has(r.ORIGIN_SOURCE));
+      const groups: Array<{ stratum: Record<string, string>; rows: FluNetRow[]; flags: string[] }> = [{ stratum: {}, rows: wrows, flags: unknownInWeek ? ['origin_source_unknown'] : [] }];
+      for (const r of wrows) if (KNOWN_ORIGINS.has(r.ORIGIN_SOURCE)) groups.push({ stratum: { origin_source: r.ORIGIN_SOURCE }, rows: [r], flags: [] });
       for (const g of groups) {
         const base = { snapshot_id: snapshotId, geo_level: 'country' as const, geo_code: country, period_type: 'isoweek' as const, period, stratum: g.stratum, update_status };
         const totals: Partial<Record<CountColumn, number | null>> = {};
         for (const col of COLS) {
           const v = sumNullable(g.rows.map((r) => r[col]));
           totals[col] = v;
-          if (v !== null) out.push(makeObs({ ...base, indicator_id: COUNT_COLUMNS[col], value: v }));
+          if (v !== null) out.push(makeObs({ ...base, indicator_id: COUNT_COLUMNS[col], value: v, quality_flags: [...g.flags] }));
         }
         const share = percent(totals.AH1N12009 ?? null, totals.INF_A ?? null, 20);
-        if (share) out.push(makeObs({ ...base, indicator_id: 'flunet_ah1n1pdm09_share_of_inf_a', value: share.value, denominator: share.denominator, quality_flags: share.quality_flags }));
+        if (share) out.push(makeObs({ ...base, indicator_id: 'flunet_ah1n1pdm09_share_of_inf_a', value: share.value, denominator: share.denominator, quality_flags: [...g.flags, ...share.quality_flags] }));
         const pos = percent(totals.INF_ALL ?? null, totals.SPEC_PROCESSED_NB ?? null, 20);
-        if (pos) out.push(makeObs({ ...base, indicator_id: 'flunet_influenza_positivity', value: pos.value, denominator: pos.denominator, quality_flags: pos.quality_flags }));
+        if (pos) out.push(makeObs({ ...base, indicator_id: 'flunet_influenza_positivity', value: pos.value, denominator: pos.denominator, quality_flags: [...g.flags, ...pos.quality_flags] }));
       }
     }
   }
@@ -145,7 +194,7 @@ export const flunetConnector: Connector = {
   indicators: FLUNET_INDICATORS,
 
   async fetch(ctx: FetchContext): Promise<RawSnapshot> {
-    const countries = (ctx.options.countries?.length ? ctx.options.countries : ['BRA']).map((c) => c.toUpperCase());
+    const countries = validateCountries(ctx.options.countries?.length ? ctx.options.countries : ['BRA']);
     const fetched_at = new Date().toISOString();
     const env: FluNetEnvelope = { countries, urls: [], value: [] };
     for (const c of countries) {
@@ -167,9 +216,18 @@ export const flunetConnector: Connector = {
     const env = JSON.parse(await readFile(raw.path, 'utf8')) as FluNetEnvelope;
     ctx.countRowsIn(env.value.length);
     const geo: GeoEntry[] = [];
-    const obs = normalizeFluNetRows(env.value, ctx.snapshotId, geo);
+    const stats = newFluNetStats();
+    const obs = normalizeFluNetRows(env.value, ctx.snapshotId, geo, stats);
     ctx.ensureGeo(geo);
     ctx.report.countries = geo.map((g) => g.code);
+    Object.assign(ctx.report, { rows: stats.rows, duplicates: stats.duplicates, duplicate_samples: stats.duplicate_samples, origin_source_unknown: stats.origin_source_unknown, unknown_origins: stats.unknown_origins });
+    if (stats.duplicates > 0) {
+      ctx.addError(`${stats.duplicates} linha(s) duplicada(s) por (COUNTRY_CODE, ISO_YEAR, ISO_WEEK, ORIGIN_SOURCE), ex.: ${stats.duplicate_samples.slice(0, 3).join('; ')}`);
+      ctx.log(`[flunet] ERRO: ${stats.duplicates} linha(s) duplicada(s) na origem — snapshot irá para quarentena`);
+    }
+    if (stats.origin_source_unknown > 0) {
+      ctx.log(`[flunet] AVISO: ${stats.origin_source_unknown} linha(s) com ORIGIN_SOURCE desconhecido (${Object.entries(stats.unknown_origins).map(([k, v]) => `${k}: ${v}`).join(', ')}) — incluídas no total com flag origin_source_unknown`);
+    }
     return obs;
   },
 };

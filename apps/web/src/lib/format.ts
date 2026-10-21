@@ -53,3 +53,14 @@ export const UNIT_LABEL: Record<string, string> = {
   percent: '%',
   persons: 'pessoas',
 };
+
+/** Slug seguro para ids de elemento HTML: sem acentos, espaços ou símbolos ('América Latina' → 'america-latina'). */
+export function slugify(value: string): string {
+  const base = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return base || 'secao';
+}

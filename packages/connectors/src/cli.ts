@@ -19,6 +19,8 @@ function usage(): void {
   pnpm ingest <conector> [--year 2026] [--country BRA,USA] [--years 2021-2025] [--max-rows N] [--force] [--dry-run]
   pnpm ingest status     # frescor por indicador (getFreshness)
   pnpm ingest list       # conectores disponíveis
+--max-rows N / SIVEP_MAX_ROWS: execução PARCIAL (desenvolvimento) — a snapshot fica em quarentena e nunca é publicada.
+--country: apenas códigos ISO3 (três letras maiúsculas).
 conectores: ${CONNECTORS.map((c) => c.id).join(', ')}`);
 }
 
@@ -73,6 +75,8 @@ async function main(): Promise<void> {
     const res = await runConnector(connector, options, { db, snapshotRoot: snapshotRoot(), log: (m) => console.log(m) });
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     console.log(`\n[${connector.id}] resultado: ${res.status} em ${secs}s — ${res.rowsIn} linha(s) lida(s), ${res.rowsOut} observação(ões), data_as_of ${res.dataAsOf ?? '—'}, snapshot ${res.snapshotId ?? '—'}`);
+    if (res.partial) console.log(`[${connector.id}] AVISO: execução parcial (--max-rows/SIVEP_MAX_ROWS) — snapshot em quarentena, NÃO publicada; a publicação vigente permanece`);
+    if (res.rawFileDeleted) console.log(`[${connector.id}] bruto apagado após a agregação (microdados individuais; apenas agregados são retidos); sidecar .meta.json mantido`);
     if (res.error) console.log(`[${connector.id}] erro: ${res.error}`);
     if (res.status === 'failed') process.exitCode = 1;
     if (res.status === 'quarantined') process.exitCode = 2;

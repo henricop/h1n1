@@ -58,6 +58,11 @@ export interface NormalizeContext {
   /** Linhas lidas da origem (microdados ou registros de API) */
   countRowsIn: (n: number) => void;
   /**
+   * Erro de integridade detectado pelo conector (ex.: linhas duplicadas na origem). Entra no
+   * validation_report e coloca a snapshot em quarentena sem derrubar a execução.
+   */
+  addError: (msg: string) => void;
+  /**
    * Cobertura temporal da snapshot por indicador (períodos [from, to] inclusive).
    * Observações da publicação anterior fora desse intervalo são carregadas adiante (carry-forward),
    * permitindo que arquivos anuais (SIVEP 2025 e 2026) componham uma única série vigente.
@@ -76,6 +81,12 @@ export interface Connector {
   id: string;
   sourceId: string;
   indicators: string[];
+  /**
+   * Se false, o arquivo bruto é apagado de data/snapshots logo após a normalização (microdados individuais:
+   * só os agregados são retidos; o sidecar .meta.json com sha256/bytes/url/fetched_at/licença permanece).
+   * Default true.
+   */
+  retainRaw?: boolean;
   fetch(ctx: FetchContext): Promise<RawSnapshot>;
   normalize(raw: RawSnapshot, ctx: NormalizeContext): Promise<Observation[]> | AsyncIterable<Observation[]>;
 }
@@ -92,7 +103,12 @@ export interface IngestResult {
   sourceId: string;
   status: 'ok' | 'quarantined' | 'failed' | 'unchanged' | 'dry-run';
   snapshotId: string | null;
+  /** null quando o conector não retém o bruto (retainRaw: false) ou a execução foi no-op */
   storagePath: string | null;
+  /** true quando o bruto foi apagado após a normalização (retainRaw: false) */
+  rawFileDeleted: boolean;
+  /** true quando a execução foi parcial (--max-rows/SIVEP_MAX_ROWS): snapshot em quarentena, nunca publicada */
+  partial: boolean;
   sha256: string;
   rowsIn: number;
   rowsOut: number;

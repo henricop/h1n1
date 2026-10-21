@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeFluNetRows, dataAsOfFromRows, FluNetRow, flunetUrl } from '../src/connectors/flunet.js';
+import { normalizeFluNetRows, dataAsOfFromRows, FluNetRow, flunetUrl, flunetConnector, newFluNetStats, validateCountries } from '../src/connectors/flunet.js';
 import type { GeoEntry } from '../src/types.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -70,4 +70,50 @@ describe('flunet normalize', () => {
   it('URL OData com filtro por país', () => {
     expect(flunetUrl('BRA')).toContain("COUNTRY_CODE%20eq%20'BRA'");
   });
+
+  it('linhas duplicadas por (COUNTRY_CODE, ISO_YEAR, ISO_WEEK, ORIGIN_SOURCE): só a primeira conta, duplicatas contadas', () => {
+    const rows = [...env.value, { ...(env.value[2] as Record<string, unknown>), AH1N12009: 999 }];
+    const stats = newFluNetStats();
+    const out = normalizeFluNetRows(rows, 's', undefined, stats);
+    expect(stats.rows).toBe(4);
+    expect(stats.duplicates).toBe(1);
+    expect(stats.duplicate_samples[0]).toBe('BRA|2026|40|NONSENTINEL');
+    // valores iguais aos da normalização sem a duplicata
+    expect(find(out, 'flunet_ah1n1pdm09_detections', '2026-W40')!.value).toBe(2);
+    expect(out).toHaveLength(obs.length);
+  });
+
+  it('ORIGIN_SOURCE desconhecido não derruba a execução: entra no total com flag origin_source_unknown, sem estrato', () => {
+    const rows = [...env.value, { ...(env.value[2] as Record<string, unknown>), ORIGIN_SOURCE: 'OUTRA', AH1N12009: 3, INF_A: 3 }];
+    const stats = newFluNetStats();
+    const out = normalizeFluNetRows(rows, 's', undefined, stats);
+    expect(stats.origin_source_unknown).toBe(1);
+    expect(stats.unknown_origins).toEqual({ OUTRA: 1 });
+    const total = find(out, 'flunet_ah1n1pdm09_detections', '2026-W40')!;
+    expect(total.value).toBe(2 + 3);
+    expect(total.quality_flags).toContain('origin_source_unknown');
+    expect(find(out, 'flunet_ah1n1pdm09_detections', '2026-W40', { origin_source: 'OUTRA' })).toBeUndefined();
+    expect(find(out, 'flunet_ah1n1pdm09_detections', '2026-W40', { origin_source: 'NONSENTINEL' })!.value).toBe(2);
+    expect(find(out, 'flunet_ah1n1pdm09_detections', '2026-W40', { origin_source: 'NONSENTINEL' })!.quality_flags).not.toContain('origin_source_unknown');
+    expect(find(out, 'flunet_ah1n1pdm09_detections', '2026-W41')!.quality_flags).not.toContain('origin_source_unknown');
+    // nenhum estrato fora do stratum_schema é emitido
+    expect(out.every((o) => !o.stratum.origin_source || ['SENTINEL', 'NONSENTINEL', 'NOTDEFINED'].includes(o.stratum.origin_source))).toBe(true);
+  });
+
+  it('--country: só ISO3 (A-Z{3}); inválidos são rejeitados antes de montar o filtro OData', async () => {
+    expect(validateCountries(['bra', ' usa '])).toEqual(['BRA', 'USA']);
+    expect(() => validateCountries(['BRA', "X' or 1 eq 1"])).toThrow(/inválido/);
+    expect(() => validateCountries(['BR'])).toThrow(/BR/);
+    expect(() => flunetUrl("BRA' or 1")).toThrow();
+    const realFetch = globalThis.fetch;
+    let called = false;
+    globalThis.fetch = (async () => { called = true; throw new Error('rede não deveria ser usada'); }) as typeof fetch;
+    try {
+      await expect(flunetConnector.fetch({ options: { countries: ['BRA', 'B R A'] }, log: () => {}, tmpDir: '/tmp' })).rejects.toThrow(/inválido/);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(called).toBe(false);
+  });
 });
+

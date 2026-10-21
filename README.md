@@ -47,7 +47,7 @@ Para usar PostgreSQL real, defina `DATABASE_URL`. Variáveis em `.env.example`.
 9. Não divulgar células pequenas ou cruzamentos que aumentem risco de reidentificação.
 10. Bloquear publicação de indicadores com falha de validação, mantendo versão anterior claramente datada.
 
-Cada número publicado sai de uma snapshot versionada de fonte oficial e é acompanhado do texto de universo do indicador. Conteúdo clínico nasce como "em revisão clínica", sem indexação, até revisão por profissional habilitado.
+Cada número publicado sai de uma snapshot versionada de fonte oficial e é acompanhado do texto de universo do indicador. Conteúdo clínico nasce como "em revisão clínica" e sem indexação até revisão por profissional habilitado; a única exceção explícita é a página de sinais de alerta (`index_policy: index`), que cita literalmente a orientação oficial e exibe o banner de revisão.
 
 ## Licenças dos dados
 

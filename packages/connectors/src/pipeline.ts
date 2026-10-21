@@ -8,6 +8,11 @@ import { nowStamp } from './util.js';
 
 const BATCH = 1000;
 
+/** Motivo gravado no sidecar quando o bruto é apagado (conectores com retainRaw: false). */
+export const RAW_DELETED_REASON = 'microdados individuais; apenas agregados são retidos';
+export const NOTE_PROCESSING = 'em processamento';
+export const partialNote = (maxRows: number) => `execução parcial (max-rows=${maxRows}); não publicável`;
+
 async function insertBatch(db: Db, rows: Observation[]): Promise<void> {
   if (!rows.length) return;
   const cols = 14;
@@ -43,23 +48,25 @@ async function upsertGeo(db: Db, entries: GeoEntry[]): Promise<number> {
   return n;
 }
 
+interface PreviousPublication { snapshotId: string; count: number; dataAsOf: string | null }
+
 /**
- * Contagem de observações da publicação vigente por indicador. Quando o conector declara cobertura,
- * a contagem é restrita a esse intervalo de períodos (o restante é carregado adiante, não comparado).
+ * Publicação vigente por indicador: snapshot, data_as_of e contagem de observações. Quando o conector declara
+ * cobertura, a contagem é restrita a esse intervalo de períodos (o restante é carregado adiante, não comparado).
  */
-async function previousCounts(db: Db, indicatorIds: string[], coverage: ReadonlyMap<string, { from: string; to: string }>): Promise<Map<string, { snapshotId: string; count: number }>> {
-  const out = new Map<string, { snapshotId: string; count: number }>();
+async function previousPublications(db: Db, indicatorIds: string[], coverage: ReadonlyMap<string, { from: string; to: string }>): Promise<Map<string, PreviousPublication>> {
+  const out = new Map<string, PreviousPublication>();
   for (const id of indicatorIds) {
     const cov = coverage.get(id);
-    const r = await db.query<{ snapshot_id: string; n: string }>(
-      `select p.snapshot_id::text as snapshot_id,
+    const r = await db.query<{ snapshot_id: string; data_as_of: string | null; n: string }>(
+      `select p.snapshot_id::text as snapshot_id, p.data_as_of::text as data_as_of,
               (select count(*) from observations o where o.indicator_id = p.indicator_id and o.snapshot_id = p.snapshot_id
                  and ($2::text is null or (o.period >= $2 and o.period <= $3)))::text as n
          from indicator_publications p where p.indicator_id = $1 and p.status = 'current' limit 1`,
       [id, cov?.from ?? null, cov?.to ?? null],
     );
     const row = r.rows[0];
-    if (row) out.set(id, { snapshotId: row.snapshot_id, count: Number(row.n) });
+    if (row) out.set(id, { snapshotId: row.snapshot_id, count: Number(row.n), dataAsOf: row.data_as_of ? row.data_as_of.slice(0, 10) : null });
   }
   return out;
 }
@@ -85,10 +92,27 @@ async function carryForward(db: Db, indicatorId: string, fromSnapshot: string, t
   return Number(r.rows[0]?.n ?? 0);
 }
 
-export async function runConnector(connector: Connector, options: ConnectorOptions, deps: PipelineDeps): Promise<IngestResult> {
+/** data_as_of da publicação: nunca retrocede (carga retroativa não rebaixa a data da vigente). */
+export function maxDataAsOf(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a >= b ? a : b;
+}
+
+/** --max-rows / SIVEP_MAX_ROWS: resolve uma única vez (CLI ou env); ≤ 0 ou NaN é ignorado. */
+function resolveMaxRows(options: ConnectorOptions): number | undefined {
+  const raw = options.maxRows ?? (process.env.SIVEP_MAX_ROWS ? Number(process.env.SIVEP_MAX_ROWS) : undefined);
+  return raw !== undefined && Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : undefined;
+}
+
+export async function runConnector(connector: Connector, inputOptions: ConnectorOptions, deps: PipelineDeps): Promise<IngestResult> {
   const { db } = deps;
   const log = deps.log ?? ((m: string) => console.log(m));
   const now = deps.now ?? (() => new Date());
+  const options: ConnectorOptions = { ...inputOptions };
+  const maxRows = resolveMaxRows(options);
+  if (maxRows !== undefined) options.maxRows = maxRows; else delete options.maxRows;
+  const retainRaw = connector.retainRaw !== false;
   const source = await getSource(db, connector.sourceId);
   if (!source) throw new Error(`Fonte ${connector.sourceId} não existe no banco; rode o seed primeiro`);
   const sourceDir = join(deps.snapshotRoot, source.slug);
@@ -106,8 +130,8 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
   }
 
   const result: IngestResult = {
-    connector: connector.id, sourceId: connector.sourceId, status: 'failed', snapshotId: null, storagePath: null, sha256: '',
-    rowsIn: 0, rowsOut: 0, dataAsOf: null, publishedIndicators: [], rejectedIndicators: [], validation: {},
+    connector: connector.id, sourceId: connector.sourceId, status: 'failed', snapshotId: null, storagePath: null, rawFileDeleted: false,
+    partial: maxRows !== undefined, sha256: '', rowsIn: 0, rowsOut: 0, dataAsOf: null, publishedIndicators: [], rejectedIndicators: [], validation: {},
   };
   const finishRun = async (status: 'ok' | 'failed' | 'quarantined', error: string | null) => {
     if (runId === null) return;
@@ -118,7 +142,26 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
   };
 
   let raw: RawSnapshot | null = null;
+  let meta: Record<string, unknown> | null = null;
+  let metaPath: string | null = null;
+  let snapshotId: string | null = null;
+  /**
+   * Conectores com retainRaw: false (microdados): apaga o bruto de data/snapshots, mantém o sidecar com
+   * raw_file_deleted e zera storage_path da snapshot. Idempotente; chamado após a normalização e em qualquer erro.
+   */
+  const discardRaw = async () => {
+    if (retainRaw || !raw || !meta || !metaPath || result.rawFileDeleted) return;
+    await rm(raw.path, { force: true });
+    Object.assign(meta, { storage_path: null, raw_file_deleted: true, raw_file_deleted_reason: RAW_DELETED_REASON, raw_file_deleted_at: now().toISOString() });
+    await writeFile(metaPath, JSON.stringify(meta, null, 2));
+    if (!dryRun && snapshotId) await db.query('update snapshots set storage_path = null where id = $1', [snapshotId]).catch(() => {});
+    result.rawFileDeleted = true;
+    result.storagePath = null;
+    log(`[${connector.id}] bruto apagado (${RAW_DELETED_REASON}); sidecar mantido: ${basename(metaPath)}`);
+  };
+
   try {
+    if (maxRows !== undefined) log(`[${connector.id}] AVISO: --max-rows=${maxRows} — execução parcial; a snapshot ficará em quarentena e NÃO será publicada`);
     // (2) fetch → arquivo bruto + sidecar
     log(`[${connector.id}] baixando…`);
     raw = await connector.fetch({ options, log, tmpDir });
@@ -129,16 +172,17 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
     const finalPath = join(sourceDir, fileName);
     await rename(raw.path, finalPath);
     raw.path = finalPath;
-    const meta = {
+    meta = {
       url: raw.url, urls: raw.urls, fetched_at: raw.fetched_at, sha256: raw.sha256, bytes: raw.bytes,
       content_type: raw.content_type, license: raw.license, data_as_of: raw.data_as_of, connector: connector.id,
-      source_id: connector.sourceId, options, ...(raw.extra ?? {}),
+      source_id: connector.sourceId, options, retain_raw: retainRaw, raw_file_deleted: false, ...(raw.extra ?? {}),
     };
-    await writeFile(`${finalPath}.meta.json`, JSON.stringify(meta, null, 2));
+    metaPath = `${finalPath}.meta.json`;
+    await writeFile(metaPath, JSON.stringify(meta, null, 2));
     result.storagePath = finalPath;
     log(`[${connector.id}] bruto gravado: ${basename(finalPath)} (${raw.bytes} bytes, sha256 ${raw.sha256.slice(0, 12)}…, data_as_of ${raw.data_as_of ?? '?'})`);
 
-    // Idempotência
+    // Idempotência: só uma snapshot 'ok' (publicada) com o mesmo sha256 bloqueia a reingestão.
     if (!dryRun && !options.force) {
       const dup = await db.query<{ id: string; fetched_at: string }>(
         `select id::text as id, fetched_at::text as fetched_at from snapshots where source_id = $1 and sha256 = $2 and status = 'ok' order by fetched_at desc limit 1`,
@@ -147,7 +191,7 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
       if (dup.rows[0]) {
         log(`[${connector.id}] sem mudança: sha256 idêntico à snapshot ${dup.rows[0].id} de ${dup.rows[0].fetched_at}; nada a reingerir (use --force para forçar)`);
         await rm(finalPath, { force: true });
-        await rm(`${finalPath}.meta.json`, { force: true });
+        await rm(metaPath, { force: true });
         result.status = 'unchanged';
         result.snapshotId = dup.rows[0].id;
         result.storagePath = null;
@@ -156,16 +200,16 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
       }
     }
 
-    // (3) snapshot
-    let snapshotId = 'dry-run';
+    // (3) snapshot: nasce em quarentena ('em processamento') e só vira 'ok' na transação de publicação
+    let ctxSnapshotId = 'dry-run';
     if (!dryRun) {
       const r = await db.query<{ id: string }>(
         `insert into snapshots (source_id, url, fetched_at, sha256, bytes, content_type, license, storage_path, data_as_of, status, notes)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'ok',$10) returning id::text as id`,
-        [connector.sourceId, raw.url, raw.fetched_at, raw.sha256, raw.bytes, raw.content_type, raw.license, finalPath, raw.data_as_of,
-          `conector ${connector.id}; urls: ${raw.urls.length}`],
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'quarantined',$10) returning id::text as id`,
+        [connector.sourceId, raw.url, raw.fetched_at, raw.sha256, raw.bytes, raw.content_type, raw.license, retainRaw ? finalPath : null, raw.data_as_of, NOTE_PROCESSING],
       );
       snapshotId = r.rows[0]!.id;
+      ctxSnapshotId = snapshotId;
       result.snapshotId = snapshotId;
       if (runId !== null) await db.query('update ingestion_runs set snapshot_id = $2 where id = $1', [runId, snapshotId]);
     }
@@ -174,18 +218,18 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
     const geoEntries: GeoEntry[] = [];
     const coverage = new Map<string, { from: string; to: string }>();
     const report: Record<string, unknown> = {};
+    const validGeo = new Set((await db.query<{ code: string }>('select code from geo')).rows.map((r) => r.code));
+    const validator = new Validator({ validGeoCodes: validGeo, previousCounts: new Map() }, connector.indicators);
     const ctx = {
-      snapshotId, options, log, report,
+      snapshotId: ctxSnapshotId, options, log, report,
       ensureGeo: (e: GeoEntry[]) => { geoEntries.push(...e); },
       countRowsIn: (n: number) => { result.rowsIn += n; },
+      addError: (msg: string) => { validator.addError(msg); },
       setCoverage: (id: string, from: string, to: string) => { coverage.set(id, { from, to }); },
     };
     const out = await connector.normalize(raw, ctx);
     const batches: AsyncIterable<Observation[]> | Iterable<Observation[]> = Array.isArray(out) ? [out] : out;
-
-    const validGeo = new Set((await db.query<{ code: string }>('select code from geo')).rows.map((r) => r.code));
     for (const g of geoEntries) validGeo.add(g.code);
-    const validator = new Validator({ validGeoCodes: validGeo, previousCounts: new Map() }, connector.indicators);
 
     let pending: Observation[] = [];
     const flush = async () => {
@@ -198,7 +242,7 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
     if (!dryRun && geoEntries.length) log(`[${connector.id}] geo: ${await upsertGeo(db, geoEntries)} código(s) garantido(s)`);
     for await (const batch of batches) {
       for (const o of batch) {
-        if (o.snapshot_id !== snapshotId) o.snapshot_id = snapshotId;
+        if (o.snapshot_id !== ctxSnapshotId) o.snapshot_id = ctxSnapshotId;
         validator.add([o]);
         pending.push(o);
         if (pending.length >= BATCH) await flush();
@@ -212,23 +256,42 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
     }
     for (const g of geoEntries) validGeo.add(g.code);
     log(`[${connector.id}] normalização: ${result.rowsIn} linha(s) lida(s) → ${result.rowsOut} observação(ões)`);
+    // microdados: o bruto já cumpriu seu papel; só agregados ficam
+    await discardRaw();
 
-    // (5) validação + publicação (contagem anterior restrita à cobertura declarada pelo conector)
-    const prev = await previousCounts(db, connector.indicators, coverage);
+    // (5) validação (contagem anterior restrita à cobertura declarada pelo conector)
+    const prev = await previousPublications(db, connector.indicators, coverage);
     const validation: ValidationReport = validator.finish(new Map([...prev].map(([k, v]) => [k, v.count])));
-    result.validation = { ...validation, report, coverage: Object.fromEntries(coverage) };
+    result.validation = { ...validation, report, coverage: Object.fromEntries(coverage), max_rows: maxRows ?? null, partial: maxRows !== undefined };
     for (const [id, ir] of Object.entries(validation.indicators)) {
       log(`[${connector.id}]   ${ir.ok ? 'ok ' : 'ERRO'} ${id}: ${ir.count} obs${ir.previous_count !== null ? ` (vigente: ${ir.previous_count})` : ''}${ir.errors.length ? ' — ' + ir.errors.join('; ') : ''}`);
     }
+    for (const c of validation.cross_checks) log(`[${connector.id}]   ERRO invariante cruzada (${c.rule}): ${c.count} célula(s), ex.: ${c.samples.slice(0, 2).join('; ')}`);
+    for (const e of validation.connector_errors) log(`[${connector.id}]   ERRO conector: ${e}`);
     if (dryRun) {
       result.status = 'dry-run';
       log(`[${connector.id}] dry-run: nada gravado no banco (validação ${validation.ok ? 'ok' : 'FALHOU'})`);
       return result;
     }
+    const sid = snapshotId!;
+    const rawAsOf = raw.data_as_of;
+    const urlCount = raw.urls.length;
+
+    // (5a) execução parcial (--max-rows): nunca publicável, nunca conta como snapshot 'ok' idempotente
+    if (maxRows !== undefined) {
+      const note = [partialNote(maxRows), ...(validation.ok ? [] : [validation.errors.join(' | ')])].join(' | ').slice(0, 2000);
+      await db.query(`update snapshots set status = 'quarantined', notes = $2 where id = $1`, [sid, note]);
+      result.status = 'quarantined';
+      log(`[${connector.id}] AVISO: execução parcial (max-rows=${maxRows}); snapshot ${sid} em quarentena, NÃO publicada; a publicação vigente permanece e a próxima ingestão completa não é bloqueada`);
+      await finishRun('quarantined', note);
+      return result;
+    }
+
+    // (5b) falha de validação: quarentena, publicação anterior permanece vigente
     if (!validation.ok) {
-      await db.query(`update snapshots set status = 'quarantined', notes = $2 where id = $1`, [snapshotId, validation.errors.join(' | ').slice(0, 2000)]);
+      await db.query(`update snapshots set status = 'quarantined', notes = $2 where id = $1`, [sid, validation.errors.join(' | ').slice(0, 2000)]);
       for (const id of connector.indicators) {
-        await rejectPublication(db, id, snapshotId, result.validation);
+        await rejectPublication(db, id, sid, result.validation);
         result.rejectedIndicators.push(id);
       }
       result.status = 'quarantined';
@@ -236,20 +299,38 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
       await finishRun('quarantined', validation.errors.join(' | ').slice(0, 2000));
       return result;
     }
-    let carried = 0;
-    for (const id of connector.indicators) {
-      const cov = coverage.get(id);
-      const p = prev.get(id);
-      if (cov && p) carried += await carryForward(db, id, p.snapshotId, snapshotId, cov.from, cov.to);
-      await publishIndicator(db, { indicatorId: id, snapshotId, dataAsOf: raw.data_as_of, validationReport: { ...result.validation, carried_forward_rows: carried } });
-      result.publishedIndicators.push(id);
+
+    // (6) publicação atômica: carry-forward + publishIndicator de TODOS os indicadores + snapshot 'ok' na mesma transação
+    const published = await db.transaction(async (tx) => {
+      let carried = 0;
+      for (const id of connector.indicators) {
+        const cov = coverage.get(id);
+        const p = prev.get(id);
+        if (cov && p) carried += await carryForward(tx, id, p.snapshotId, sid, cov.from, cov.to);
+      }
+      let dataAsOf: string | null = null;
+      const retained: string[] = [];
+      const ids: string[] = [];
+      for (const id of connector.indicators) {
+        const p = prev.get(id);
+        const asOf = maxDataAsOf(rawAsOf, p?.dataAsOf ?? null);
+        if (p?.dataAsOf && rawAsOf && p.dataAsOf > rawAsOf) retained.push(`${id} (${p.dataAsOf} > ${rawAsOf})`);
+        dataAsOf = maxDataAsOf(dataAsOf, asOf);
+        await publishIndicator(tx, { indicatorId: id, snapshotId: sid, dataAsOf: asOf, validationReport: { ...result.validation, carried_forward_rows: carried } });
+        ids.push(id);
+      }
+      await tx.query(`update snapshots set status = 'ok', notes = $2 where id = $1`, [sid, `conector ${connector.id}; urls: ${urlCount}; publicada`]);
+      return { carried, dataAsOf, retained, ids };
+    });
+    result.publishedIndicators.push(...published.ids);
+    if (published.carried) {
+      result.rowsOut += published.carried;
+      log(`[${connector.id}] carry-forward: ${published.carried} observação(ões) de períodos fora da cobertura mantidas da publicação anterior`);
     }
-    if (carried) {
-      result.rowsOut += carried;
-      log(`[${connector.id}] carry-forward: ${carried} observação(ões) de períodos fora da cobertura mantidas da publicação anterior`);
-    }
+    if (published.retained.length) log(`[${connector.id}] data_as_of da publicação mantido no máximo vigente (carga retroativa): ${published.retained.join(', ')}`);
+    result.dataAsOf = published.dataAsOf ?? rawAsOf;
     result.status = 'ok';
-    log(`[${connector.id}] publicado: ${result.publishedIndicators.length} indicador(es), data_as_of ${raw.data_as_of ?? '?'}`);
+    log(`[${connector.id}] publicado: ${result.publishedIndicators.length} indicador(es), data_as_of ${result.dataAsOf ?? '?'}`);
     await finishRun('ok', null);
     return result;
   } catch (e) {
@@ -260,7 +341,8 @@ export async function runConnector(connector: Connector, options: ConnectorOptio
     if (result.snapshotId && !dryRun) {
       await db.query(`update snapshots set status = 'failed', notes = $2 where id = $1`, [result.snapshotId, msg.slice(0, 2000)]).catch(() => {});
     }
-    if (raw && !result.snapshotId) await rm(raw.path, { force: true }).catch(() => {});
+    await discardRaw().catch(() => {});
+    if (raw && !result.snapshotId && !result.rawFileDeleted) await rm(raw.path, { force: true }).catch(() => {});
     await finishRun('failed', msg.slice(0, 2000));
     return result;
   }

@@ -31,14 +31,20 @@ export function sliceInterval(obs: SeriesObservation[], interval: IntervalKey): 
   return obs.slice(-n);
 }
 
+/** Valor publicável de uma célula: null quando suprimida (nunca exibir o valor de célula suppressed) ou não publicada. */
+export function publishedValue(o: SeriesObservation): number | null {
+  return o.suppressed ? null : o.value;
+}
+
+/** Última observação com valor publicável (ignora células suprimidas e sem valor). */
 export function lastPublished(obs: SeriesObservation[]): SeriesObservation | null {
   for (let i = obs.length - 1; i >= 0; i--) {
     const o = obs[i];
-    if (o && o.value !== null) return o;
+    if (o && publishedValue(o) !== null) return o;
   }
   return null;
 }
 
 export function allSuppressed(obs: SeriesObservation[]): boolean {
-  return obs.length > 0 && obs.every((o) => o.value === null && o.suppressed);
+  return obs.length > 0 && obs.every((o) => o.suppressed);
 }

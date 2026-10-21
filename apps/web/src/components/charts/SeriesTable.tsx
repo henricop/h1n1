@@ -1,5 +1,6 @@
 import type { SeriesObservation } from '@/lib/api';
 import { formatDateBR, formatNumberBR, formatPeriod } from '@/lib/format';
+import { publishedValue } from '@/lib/series';
 
 interface Props {
   id: string;
@@ -39,7 +40,7 @@ export function SeriesTable({ id, caption, obs, unit, periodType, suppressionThr
               </th>
               {!compact && <td>{formatDateBR(o.period_start)}</td>}
               {!compact && <td>{formatDateBR(o.period_end)}</td>}
-              <td className="num">{o.suppressed ? `<${t}` : formatNumberBR(o.value, unit)}</td>
+              <td className="num">{o.suppressed ? `<${t}` : formatNumberBR(publishedValue(o), unit)}</td>
               <td>{o.update_status === 'provisional' ? 'provisória' : 'consolidada'}</td>
             </tr>
           ))}

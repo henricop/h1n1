@@ -1,12 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getSources, type SourceRow } from '@/lib/api';
+import { slugify } from '@/lib/format';
 import { SITE, absoluteUrl } from '@/lib/site';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { JsonLd } from '@/components/JsonLd';
 import { DataUnavailable } from '@/components/Notices';
 import { SourceCard } from '@/components/SourceCard';
 
+/**
+ * Dinâmica por exigência dos searchParams (prioridade, acesso). O cache de fetch da API continua com
+ * API_REVALIDATE_SECONDS (1 h) em src/lib/api.ts.
+ */
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -121,8 +126,8 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
             {res.data.data.length} fonte{res.data.data.length === 1 ? '' : 's'} {prioridade || acesso ? 'com os filtros aplicados' : 'catalogadas'}.
           </p>
           {regions.map((region) => (
-            <section key={region} aria-labelledby={`r-${region}`} className="mt-8">
-              <h2 id={`r-${region}`} className="text-xl font-semibold text-navy-900">
+            <section key={region} aria-labelledby={`regiao-${slugify(region)}`} className="mt-8">
+              <h2 id={`regiao-${slugify(region)}`} className="text-xl font-semibold text-navy-900">
                 {region} <span className="text-sm font-normal text-muted">({groups.get(region)!.length})</span>
               </h2>
               <ul className="mt-3 grid gap-3 md:grid-cols-2">

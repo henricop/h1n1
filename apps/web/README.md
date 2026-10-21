@@ -26,7 +26,7 @@ Variáveis de ambiente:
 | Variável | Default | Uso |
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | Base da API (`/v1/*`) |
-| `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` (domínio final a definir) | Canonical, sitemap e JSON-LD |
+| `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` só em dev/test (domínio final a definir) | Canonical, sitemap e JSON-LD. **Obrigatória em produção**: `NODE_ENV=production` sem ela lança erro claro na inicialização ("defina NEXT_PUBLIC_SITE_URL; domínio final a definir"). Durante `next build` (`NEXT_PHASE=phase-production-build`) só avisa e usa o placeholder, para o build passar sem a variável; `next start` sem ela falha |
 | `H1N1_API_MOCK` | (vazio) | `1` = responder com as fixtures em vez de chamar a API |
 | `H1N1_FIXTURES_DIR` | `test/fixtures/api` | Diretório das fixtures da API (modo mock) |
 | `H1N1_CONTENT_DIR` | `content/` | Diretório do conteúdo MDX (usado nos testes para apontar a `test/fixtures/content`) |
@@ -35,7 +35,20 @@ Para regenerar as fixtures da API (determinísticas, derivadas de `data/sources.
 
 ## Comportamento com a API fora do ar
 
-Todas as chamadas em `src/lib/api.ts` têm timeout de 8 s, `next: { revalidate: 3600 }` e nunca lançam: devolvem `{ ok: false, status: 'unavailable', attemptedAt }`. As páginas renderizam "Dados indisponíveis no momento (última tentativa: …)" e nunca exibem número antigo como atual. Páginas que dependem da API (`/`, `/dados/brasil/`, `/dados/fontes/*`) são `force-dynamic`; páginas MDX são estáticas com revalidação de 1 h (um `<Indicador>` cujo fetch falhou no build mostra "dado indisponível" até a próxima revalidação).
+Todas as chamadas em `src/lib/api.ts` têm timeout de 8 s, `next: { revalidate: 3600 }` e nunca lançam: devolvem `{ ok: false, status: 'unavailable', attemptedAt }`. As páginas renderizam "Dados indisponíveis no momento (última tentativa: …)" com o **nome legível do indicador** (rótulo de `OBSERVATORY_INDICATORS`, senão o nome da ontologia do core) e nunca exibem número antigo como atual.
+
+- **Contrato validado (zod)**: toda resposta da API (e toda fixture do modo mock) passa por um schema mínimo (`sources`, `indicators`, `series`, `freshness`, `geo`). Corpo que não é JSON ou JSON fora do contrato (ex.: série sem `meta`) vira `status: 'unavailable'` com o motivo em `console.error`; nunca lança.
+- **Células suprimidas**: a camada de API normaliza `value = suppressed ? null : value` em toda observação. `lastPublished`, sparkline, gráfico de linhas, cards e `<Indicador>` usam `publishedValue()` e nunca exibem o valor de uma célula `suppressed` (a tabela mostra `<5`).
+- **Frescor**: `freshnessState()` distingue "verificado" de "não verificado". Se `/v1/freshness` falhar, cards, `<Indicador>` e observatório mostram a nota "frescor não verificado" ao lado do valor em vez de esconder o selo em silêncio; "Dado defasado" aparece quando `age_days > 14` (14 dias não é defasado; 15 é).
+
+### Política de cache
+
+| Rota | Política | Motivo |
+|---|---|---|
+| `/`, `/dados/fontes/[idOrSlug]/`, `/dados/metodologia/`, `/[...slug]/`, `sitemap.xml` | `export const revalidate = 3600` (ISR) | Mesmo valor de `API_REVALIDATE_SECONDS` em `src/lib/api.ts`; o Next exige literal, e `test/cache-policy.test.ts` garante que não divergem |
+| `/dados/brasil/`, `/dados/fontes/` | `force-dynamic` | Leem `searchParams` (indicador/uf/intervalo; prioridade/acesso); o cache de fetch da API continua em 1 h |
+
+O build passa com ou sem API: páginas ISR renderizadas sem API ficam com "Dados indisponíveis" até a próxima revalidação (um `<Indicador>` cujo fetch falhou no build mostra "dado indisponível" até lá).
 
 ## Estrutura
 
@@ -45,21 +58,21 @@ apps/web/
 │   ├── layout.tsx            # lang=pt-BR, skip link, header/rodapé derivados do conteúdo
 │   ├── page.tsx              # homepage (seção 6.2 do plano) + JSON-LD Organization/WebSite
 │   ├── [...slug]/page.tsx    # catch-all das páginas MDX (generateStaticParams + generateMetadata)
-│   ├── dados/brasil/         # observatório (seletores por searchParams, SVG + tabela, Dataset JSON-LD)
-│   ├── dados/fontes/         # catálogo (DataCatalog JSON-LD) e /dados/fontes/[idOrSlug]/
+│   ├── dados/brasil/         # observatório (seletores por searchParams, SVG + tabela, único Dataset JSON-LD: série derivada)
+│   ├── dados/fontes/         # catálogo (DataCatalog JSON-LD, seções por região com id slugificado) e /dados/fontes/[idOrSlug]/ (sem JSON-LD)
 │   ├── dados/metodologia/    # MDX opcional + tabela de INDICATORS + 10 regras de integridade
-│   ├── sitemap.ts, robots.ts, not-found.tsx, error.tsx, globals.css
+│   ├── sitemap.ts, robots.ts, not-found.tsx, error.tsx, global-error.tsx, globals.css
 ├── src/lib/
-│   ├── api.ts                # cliente tipado da API + modo mock
+│   ├── api.ts                # cliente tipado da API (zod, normalização de supressão, frescor) + modo mock
 │   ├── content.ts            # schema zod do frontmatter, carregamento, política de indexação, navegação, facts
-│   ├── glossary.ts, series.ts, format.ts, metadata.ts, nav.ts, observatory.ts, integrity-rules.ts, site.ts
+│   ├── glossary.ts, series.ts, format.ts, metadata.ts, nav.ts, observatory.ts (lista, rótulos, parsing dos searchParams), integrity-rules.ts, site.ts
 ├── src/components/
-│   ├── Header, Footer, Breadcrumb, Notices (banner de revisão, aviso clínico, indisponível, defasado)
+│   ├── Header, Footer, Breadcrumb, Notices (banner de revisão, aviso clínico, indisponível, defasado, frescor não verificado)
 │   ├── MdxArticle.tsx        # template único de página editorial
 │   ├── IndicatorCard.tsx, SourceCard.tsx, JsonLd.tsx, SkipLink.tsx
 │   ├── charts/               # Sparkline, LineChart, SeriesTable (SVG puro + tabela acessível)
 │   └── mdx/                  # componentes expostos ao MDX
-├── test/                     # vitest (content, api, integridade de cópia, sitemap)
+├── test/                     # vitest (content, api, series, components, cache-policy, integridade de cópia, sitemap)
 │   └── fixtures/             # api/*.json (gerados), content/ (MDX + facts.json de exemplo)
 └── content/                  # conteúdo editorial: de outro agente; este pacote só lê
 ```
@@ -109,7 +122,7 @@ Construída a partir das páginas elegíveis: Sintomas e cuidados (`/sintomas/`,
 | `<Alerta tipo="emergencia" \| "atencao" \| "info" titulo?>` | aviso; `emergencia` usa `role="alert"` |
 | `<Limites titulo?>` | lista "o que isto não permite concluir" |
 | `<Fato id="…" />` | claim de `facts.json` com fonte, citação opcional, verificador e data; id inexistente quebra o build |
-| `<Indicador id="…" geo="BRA" periodo="ultimas-12-semanas" />` | último valor, período, data da base, universo e link para `/dados/brasil/`; "dado indisponível" se a API falhar |
+| `<Indicador id="…" geo="BRA" periodo="ultimas-12-semanas" />` | último valor publicável (nunca de célula suprimida), período, data da base, selo de defasagem ou "frescor não verificado", universo e link para `/dados/brasil/`; "dado indisponível" (com o nome do indicador) se a API falhar |
 | `<Glossario termo="…">texto?</Glossario>` | definição acessível (hover/foco) dos termos de `src/lib/glossary.ts` (A(H1N1)pdm09, H1N1, influenza A, SRAG, síndrome gripal, SIVEP-Gripe, FluNet, semana epidemiológica, subtipo, RT-PCR, gripe sazonal, pandemia, grupo de risco); termo desconhecido é renderizado sem tooltip |
 | `<Comparativo titulo colunas={[…]} linhas={[{ rotulo, valores }]} nota? />` | tabela responsiva |
 | `<LinhaDoTempo eventos={[{ data, titulo, fato_id?, descricao? }]} />` | eventos datados com fato verificado |
@@ -120,10 +133,12 @@ Construída a partir das páginas elegíveis: Sintomas e cuidados (`/sintomas/`,
 ## Páginas de aplicação
 
 - `/`: título, 4 perguntas (apontam para a página elegível; cada uma some se não houver nenhuma), bloco "H1N1 no Brasil | última base disponível" com `sivep_srag_ah1n1pdm09_confirmed` (8 semanas, sparkline + tabela) e `flunet_ah1n1pdm09_detections` (BRA), "Entenda em poucos minutos", links institucionais.
-- `/dados/brasil/?indicador=&uf=&intervalo=`: lista fixa em `src/lib/observatory.ts`; UF é ignorada (com aviso) para FluNet; recorte com tudo suprimido é explicitado; células `<5`; selo "Dado defasado" quando `age_days > 14` em `/v1/freshness`; botão CSV para `/v1/series.csv`.
-- `/dados/fontes/?prioridade=&acesso=` e `/dados/fontes/[idOrSlug]/`.
+- `/dados/brasil/?indicador=&uf=&intervalo=`: lista fixa em `src/lib/observatory.ts`; searchParams inválidos caem no padrão (`resolveObservatoryQuery`); UF é ignorada (com aviso) para FluNet; recorte com tudo suprimido é explicitado; células `<5`; selo "Dado defasado" quando `age_days > 14` em `/v1/freshness` ou "frescor não verificado" se esse endpoint falhar; botão CSV para `/v1/series.csv`; único lugar com JSON-LD `Dataset` (série derivada).
+- `/dados/fontes/?prioridade=&acesso=` (JSON-LD `DataCatalog`; ids de seção `regiao-<slug>` sem acentos/espaços) e `/dados/fontes/[idOrSlug]/` (sem JSON-LD: a fonte é catalogada, não um dataset derivado).
+- `sitemap.xml`: rotas de aplicação, páginas MDX elegíveis e `/dados/fontes/[slug]/` de cada fonte do catálogo (via API; se indisponível, as fontes são omitidas sem quebrar).
+- `error.tsx` (erro de rota, mantém layout) e `global-error.tsx` (falha do layout raiz; renderiza `<html>/<body>` próprios, sem Tailwind).
 - `/dados/metodologia/`.
 
 ## Testes
 
-`pnpm --filter @h1n1/web test` (vitest, sem browser): frontmatter inválido falha; `reviewed` sem revisor falha; política noindex; navegação exclui páginas não elegíveis; `<Fato>` inexistente quebra o build; modo mock lê fixtures; falha de rede devolve `unavailable` sem lançar; integridade de cópia ("tempo real" fora de contexto negado e "casos de H1N1 na sua cidade" são proibidos em `src/` e `content/`); sitemap só com páginas elegíveis.
+`pnpm --filter @h1n1/web test` (vitest, sem browser; componentes via `react-dom/server`): frontmatter inválido falha; `reviewed` sem revisor falha; política noindex (inclusive metadados `robots` de uma página clínica real do fixture, `/sintomas/`); navegação exclui páginas não elegíveis; `<Fato>` inexistente quebra o build; modo mock lê fixtures; falha de rede devolve `unavailable` sem lançar; contrato inválido (payload sem `meta`, corpo não JSON) vira `unavailable` com motivo logado; célula `suppressed` é normalizada para `value: null` e nunca aparece em card, sparkline, gráfico ou tabela; `isStale` nos limites 14/15 dias; "frescor não verificado" quando `/v1/freshness` falha; estado de falha mostra o nome legível do indicador; searchParams inválidos do observatório caem no padrão; `slugify` dos ids de seção; `NEXT_PUBLIC_SITE_URL` obrigatória em produção; política de cache (`revalidate` literal = `API_REVALIDATE_SECONDS`, `force-dynamic` só com searchParams documentado); `global-error.tsx` presente; integridade de cópia ("tempo real"/"em tempo real", "ao vivo", "agora mesmo", "surto perto" fora de contexto negado e "casos de H1N1 na sua cidade" são proibidos em `src/` e `content/`); sitemap só com páginas elegíveis e fontes do catálogo (omitidas se a API falhar).

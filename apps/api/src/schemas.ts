@@ -11,32 +11,56 @@ export function parseOr400<T>(schema: z.ZodType<T>, input: unknown): T {
   throw badRequest(msg);
 }
 
+/** Tamanho máximo de qualquer parâmetro textual (query ou path). */
+export const TEXT_MAX = 200;
+/** Caracteres de controle C0 (inclui \u0000), DEL e C1 são rejeitados em todo parâmetro de texto. */
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS = /[\u0000-\u001F\u007F-\u009F]/;
+
+/**
+ * Texto seguro: sem caracteres de controle e com no máximo 200 caracteres.
+ * Use como base de todo parâmetro textual; `max` refina o teto por campo.
+ */
+export const safeText = (max: number = TEXT_MAX) =>
+  z
+    .string()
+    .max(Math.min(max, TEXT_MAX), `máximo de ${Math.min(max, TEXT_MAX)} caracteres`)
+    .refine((v) => !CONTROL_CHARS.test(v), 'não pode conter caracteres de controle');
+
 const bool = z
   .enum(['true', 'false'])
   .transform((v) => v === 'true');
 
-const period = z
-  .string()
-  .regex(/^\d{4}(-(W|M)\d{2})?$/, 'período deve ter o formato AAAA, AAAA-Www ou AAAA-Mmm (ex. 2025-W01)');
+export const PERIOD_RE = /^\d{4}(-(W\d{2}|M\d{2}))?$/;
+export const period = safeText(8).refine(
+  (v) => PERIOD_RE.test(v),
+  'período deve ter o formato AAAA, AAAA-Www ou AAAA-Mnn (ex. 2025-W01)',
+);
 
-const uuid = z.string().uuid('deve ser um UUID de snapshot');
+const uuid = safeText(36).refine((v) => z.string().uuid().safeParse(v).success, 'deve ser um UUID de snapshot');
 
 export const geoLevelEnum = z.enum(['world', 'country', 'region', 'state']);
 
+const nonEmpty = (max: number) => safeText(max).refine((v) => v.length > 0, 'não pode ser vazio');
+
 export const sourcesQuery = z.object({
   priority: z.enum(['P0', 'P1', 'P2']).optional(),
-  country: z.string().min(1).max(8).optional(),
+  country: nonEmpty(8).optional(),
   access_type: z.enum(['api', 'open_data', 'portal']).optional(),
 });
 
 export const indicatorsQuery = z.object({
-  source_id: z.string().min(1).max(32).optional(),
+  source_id: nonEmpty(32).optional(),
 });
 
+const indicatorId = z
+  .string({ error: 'parâmetro obrigatório' })
+  .pipe(nonEmpty(64));
+
 export const seriesQueryBase = z.object({
-  indicator: z.string({ error: 'parâmetro obrigatório' }).min(1, 'parâmetro obrigatório'),
+  indicator: indicatorId,
   geo_level: geoLevelEnum.optional(),
-  geo_code: z.string().min(1).max(16).optional(),
+  geo_code: nonEmpty(16).optional(),
   from: period.optional(),
   to: period.optional(),
   include_strata: bool.optional(),
@@ -55,6 +79,9 @@ export interface SeriesParams {
 }
 
 const STRATUM_DIM = /^[a-z][a-z0-9_]{0,31}$/;
+const STRATUM_VALUE = safeText(64)
+  .refine((v) => v.length > 0, 'não pode ser vazio')
+  .refine((v) => !v.includes(';') && !v.includes('='), "não pode conter ';' nem '='");
 
 /** Lê a query de /v1/series, incluindo stratum.<dim>=<valor>. */
 export function parseSeriesQuery(raw: Record<string, unknown>): SeriesParams {
@@ -64,8 +91,10 @@ export function parseSeriesQuery(raw: Record<string, unknown>): SeriesParams {
     if (!k.startsWith('stratum.')) continue;
     const dim = k.slice('stratum.'.length);
     if (!STRATUM_DIM.test(dim)) throw badRequest(`${k}: dimensão de estrato inválida`);
-    if (typeof v !== 'string' || !v.length || v.length > 64) throw badRequest(`${k}: valor de estrato inválido`);
-    stratum[dim] = v;
+    if (typeof v !== 'string') throw badRequest(`${k}: valor de estrato inválido`);
+    const parsed = STRATUM_VALUE.safeParse(v);
+    if (!parsed.success) throw badRequest(`${k}: ${parsed.error.issues.map((i) => i.message).join('; ')}`);
+    stratum[dim] = parsed.data;
   }
   const out: SeriesParams = { indicator: base.indicator };
   if (base.geo_level) out.geoLevel = base.geo_level;
@@ -78,13 +107,48 @@ export function parseSeriesQuery(raw: Record<string, unknown>): SeriesParams {
   return out;
 }
 
+export type PeriodType = 'epiweek' | 'isoweek' | 'month' | 'year';
+
+/**
+ * Normaliza um limite de período `AAAA` para o primeiro (`from`) ou último (`to`) período do ano,
+ * conforme o `period_type` do indicador: AAAA-W01/AAAA-W53, AAAA-M01/AAAA-M12 ou AAAA.
+ * Valores já no formato AAAA-Www / AAAA-Mnn são devolvidos como estão.
+ */
+export function normalizePeriodBound(value: string, periodType: PeriodType, bound: 'from' | 'to'): string {
+  if (!/^\d{4}$/.test(value)) return value;
+  switch (periodType) {
+    case 'epiweek':
+    case 'isoweek':
+      return bound === 'from' ? `${value}-W01` : `${value}-W53`;
+    case 'month':
+      return bound === 'from' ? `${value}-M01` : `${value}-M12`;
+    default:
+      return value;
+  }
+}
+
+/** Normaliza from/to e rejeita intervalo invertido (from > to) com 400. */
+export function normalizePeriodRange(
+  from: string | undefined,
+  to: string | undefined,
+  periodType: PeriodType,
+): { from?: string; to?: string } {
+  const out: { from?: string; to?: string } = {};
+  if (from) out.from = normalizePeriodBound(from, periodType, 'from');
+  if (to) out.to = normalizePeriodBound(to, periodType, 'to');
+  if (out.from && out.to && out.from > out.to) {
+    throw badRequest(`from: não pode ser posterior a to (${out.from} > ${out.to})`);
+  }
+  return out;
+}
+
 export const snapshotsQuery = z.object({
-  source_id: z.string().min(1).max(32).optional(),
+  source_id: nonEmpty(32).optional(),
   limit: z.coerce.number().int().min(1).max(1000).optional(),
 });
 
 export const diffQuery = z.object({
-  indicator: z.string({ error: 'parâmetro obrigatório' }).min(1, 'parâmetro obrigatório'),
+  indicator: indicatorId,
   a: uuid,
   b: uuid,
   limit: z.coerce.number().int().min(1).max(100000).optional(),
@@ -93,5 +157,8 @@ export const diffQuery = z.object({
 export const geoQuery = z.object({
   level: geoLevelEnum.optional(),
 });
+
+/** Parâmetro de caminho textual (ids e slugs): sem caracteres de controle, 1–200 caracteres. */
+export const pathId = nonEmpty(TEXT_MAX);
 
 export const isUuid = (s: string) => uuid.safeParse(s).success;

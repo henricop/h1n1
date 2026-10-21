@@ -1,17 +1,21 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BR_STATES, stateGeoCode } from '@h1n1/core';
-import { freshnessFor, getFreshness, getSeries, isStale, seriesCsvUrl, type FreshnessRow, type SeriesParams, type SeriesResult } from '@/lib/api';
-import { OBSERVATORY_INDICATORS } from '@/lib/observatory';
+import { freshnessState, getFreshness, getSeries, seriesCsvUrl, type FreshnessState, type SeriesParams, type SeriesResult } from '@/lib/api';
+import { OBSERVATORY_INDICATORS, resolveObservatoryQuery, type SearchParamsLike } from '@/lib/observatory';
 import { formatDateBR, formatDateTimeBR, formatNumberBR, formatPeriod, UNIT_LABEL } from '@/lib/format';
-import { INTERVALS, allSuppressed, isIntervalKey, lastPublished, sliceInterval, totalSeries, type IntervalKey } from '@/lib/series';
+import { INTERVALS, allSuppressed, lastPublished, publishedValue, sliceInterval, totalSeries, type IntervalKey } from '@/lib/series';
 import { SITE, absoluteUrl } from '@/lib/site';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { JsonLd } from '@/components/JsonLd';
-import { DataUnavailable, StaleBadge } from '@/components/Notices';
+import { DataUnavailable, FreshnessNote } from '@/components/Notices';
 import { LineChart } from '@/components/charts/LineChart';
 import { SeriesTable } from '@/components/charts/SeriesTable';
 
+/**
+ * Dinâmica por exigência dos searchParams (indicador, uf, intervalo): cada combinação é renderizada a pedido.
+ * O cache de fetch da API continua com API_REVALIDATE_SECONDS (1 h) em src/lib/api.ts.
+ */
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -21,24 +25,15 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-type Search = Record<string, string | string[] | undefined>;
-const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? '';
-
-export default async function ObservatorioPage({ searchParams }: { searchParams: Promise<Search> }) {
+export default async function ObservatorioPage({ searchParams }: { searchParams: Promise<SearchParamsLike> }) {
   const sp = await searchParams;
-  const indicadorParam = one(sp.indicador);
-  const indicador = OBSERVATORY_INDICATORS.find((i) => i.id === indicadorParam) ?? OBSERVATORY_INDICATORS[0]!;
-  const ufParam = one(sp.uf).toUpperCase();
-  const state = indicador.byState ? BR_STATES.find((s) => s.uf === ufParam) ?? null : null;
-  const ufIgnored = !indicador.byState && ufParam !== '';
-  const intervaloParam = one(sp.intervalo);
-  const intervalo: IntervalKey = isIntervalKey(intervaloParam) && intervaloParam !== 'ultimas-8-semanas' ? intervaloParam : 'ultimas-12-semanas';
+  const { indicador, state, ufIgnored, intervalo } = resolveObservatoryQuery(sp);
 
   const params: SeriesParams = state
     ? { indicator: indicador.id, geo_level: 'state', geo_code: stateGeoCode(state.uf) }
     : { indicator: indicador.id, geo_level: 'country', geo_code: 'BRA' };
   const [series, fresh] = await Promise.all([getSeries(params), getFreshness()]);
-  const freshRow = freshnessFor(fresh, indicador.id);
+  const freshness = freshnessState(fresh, indicador.id);
   const geoLabel = state ? `${state.name} (${state.uf})` : 'Brasil';
   const tableId = 'tabela-serie';
 
@@ -116,11 +111,17 @@ export default async function ObservatorioPage({ searchParams }: { searchParams:
       )}
 
       {!series.ok ? (
-        <div className="mt-6">
-          <DataUnavailable attemptedAt={series.attemptedAt} detail={series.error} />
-        </div>
+        <section aria-labelledby="h-serie" className="mt-6">
+          <h2 id="h-serie" className="text-xl font-semibold text-navy-900">
+            {indicador.label}
+          </h2>
+          <p className="mt-1 text-sm text-muted">{geoLabel}</p>
+          <div className="mt-3">
+            <DataUnavailable attemptedAt={series.attemptedAt} detail={series.error} />
+          </div>
+        </section>
       ) : (
-        <ObservatoryBody series={series.data} freshRow={freshRow} intervalo={intervalo} geoLabel={geoLabel} tableId={tableId} params={params} stale={isStale(freshRow)} />
+        <ObservatoryBody series={series.data} freshness={freshness} intervalo={intervalo} geoLabel={geoLabel} tableId={tableId} params={params} />
       )}
     </>
   );
@@ -128,20 +129,18 @@ export default async function ObservatorioPage({ searchParams }: { searchParams:
 
 function ObservatoryBody({
   series: r,
-  freshRow,
+  freshness,
   intervalo,
   geoLabel,
   tableId,
   params,
-  stale,
 }: {
   series: SeriesResult;
-  freshRow: FreshnessRow | null;
+  freshness: FreshnessState;
   intervalo: IntervalKey;
   geoLabel: string;
   tableId: string;
   params: SeriesParams;
-  stale: boolean;
 }) {
   const full = totalSeries(r);
   const obs = sliceInterval(full, intervalo);
@@ -180,7 +179,7 @@ function ObservatoryBody({
           <h2 id="h-serie" className="text-xl font-semibold text-navy-900">
             {r.indicator.name}
           </h2>
-          {stale && <StaleBadge ageDays={freshRow?.age_days ?? null} />}
+          <FreshnessNote state={freshness} />
         </div>
         <p className="mt-1 text-sm text-muted">
           {geoLabel} · {intervalLabel} · base de {formatDateBR(r.meta.data_as_of)}
@@ -198,7 +197,7 @@ function ObservatoryBody({
           <>
             {last && (
               <p className="mt-4">
-                <span className="text-3xl font-bold tabular-nums text-navy-900">{formatNumberBR(last.value, unit)}</span>{' '}
+                <span className="text-3xl font-bold tabular-nums text-navy-900">{formatNumberBR(publishedValue(last), unit)}</span>{' '}
                 <span className="text-sm text-muted">
                   {UNIT_LABEL[unit] ?? unit} em {formatPeriod(last.period, r.indicator.period_type)}
                   {last.update_status === 'provisional' ? ' (provisório)' : ''}

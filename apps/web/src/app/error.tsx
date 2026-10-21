@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function RouteError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <section className="mx-auto max-w-2xl py-16">
       <h1 className="text-3xl font-bold text-navy-900">Algo deu errado</h1>

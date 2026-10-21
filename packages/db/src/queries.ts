@@ -1,6 +1,7 @@
 import {
   applySuppression,
   getIndicator,
+  stratumKey,
   type GeoLevel,
   type Observation,
   type PublishedObservation,
@@ -43,6 +44,15 @@ export interface SeriesQuery {
   limit?: number;
 }
 
+/** Teto público de observações por resposta. */
+export const SERIES_MAX_LIMIT = 100000;
+export const SERIES_DEFAULT_LIMIT = 20000;
+/**
+ * Teto de linhas lidas do banco quando a supressão precisa do grupo completo (total + todos os estratos).
+ * Acima disso o último grupo (geo/período) lido é descartado por poder estar incompleto.
+ */
+const GROUP_SCAN_CAP = 500000;
+
 export interface SeriesResult {
   indicator: IndicatorRow;
   source: SourceRow;
@@ -58,6 +68,8 @@ export interface SeriesResult {
     suppression_threshold: number;
     caveats: string[];
     count: number;
+    /** true quando o número de observações atingiu `limit` (resultado possivelmente cortado; refine a consulta) */
+    truncated: boolean;
   };
 }
 
@@ -120,6 +132,11 @@ export async function listSnapshots(db: Db, filter: { sourceId?: string; limit?:
 /**
  * Série publicada: só a snapshot vigente do indicador, com supressão aplicada na saída.
  * Nunca devolve valores brutos de células suprimidas.
+ *
+ * Supressão complementar: quando a consulta pede um estrato específico ou `includeStrata`, TODAS as células do
+ * grupo (total + todos os estratos) das geos/períodos selecionados são lidas, a supressão é aplicada sobre o
+ * conjunto completo e só depois o resultado é filtrado para o que foi pedido. Assim, consultar um único estrato
+ * não contorna a supressão complementar calculada sobre o grupo.
  */
 export async function getSeries(db: Db, q: SeriesQuery): Promise<SeriesResult | null> {
   const indicator = await getIndicatorRow(db, q.indicator);
@@ -129,28 +146,37 @@ export async function getSeries(db: Db, q: SeriesQuery): Promise<SeriesResult | 
   const publication = await getCurrentPublication(db, q.indicator);
   const def = getIndicator(q.indicator);
   const snapshot = publication ? await getSnapshot(db, publication.snapshot_id) : null;
+  const limit = Math.min(Math.max(1, q.limit ?? SERIES_DEFAULT_LIMIT), SERIES_MAX_LIMIT);
 
   let observations: PublishedObservation[] = [];
+  let truncated = false;
   if (publication) {
+    const stratumFilter = q.stratum && Object.keys(q.stratum).length ? q.stratum : undefined;
+    const requestedKey = stratumFilter ? stratumKey(stratumFilter) : null;
+    // grupo completo (total + estratos) é necessário sempre que algum estrato pode sair na resposta
+    const needGroup = requestedKey !== null || q.includeStrata === true;
+
     const params: unknown[] = [q.indicator, publication.snapshot_id];
     const where = ['indicator_id = $1', 'snapshot_id = $2'];
     if (q.geoLevel) { params.push(q.geoLevel); where.push(`geo_level = $${params.length}`); }
     if (q.geoCode) { params.push(q.geoCode); where.push(`geo_code = $${params.length}`); }
     if (q.from) { params.push(q.from); where.push(`period >= $${params.length}`); }
     if (q.to) { params.push(q.to); where.push(`period <= $${params.length}`); }
-    if (q.stratum && Object.keys(q.stratum).length) {
-      const key = Object.keys(q.stratum).sort().map((k) => `${k}=${q.stratum![k]}`).join(';');
-      params.push(key); where.push(`stratum_key = $${params.length}`);
-    } else if (!q.includeStrata) {
-      where.push(`stratum_key = ''`);
-    }
-    params.push(Math.min(q.limit ?? 20000, 100000));
+    if (!needGroup) where.push(`stratum_key = ''`);
+    params.push(needGroup ? GROUP_SCAN_CAP : limit);
     const sql = `select indicator_id, snapshot_id::text as snapshot_id, geo_level, geo_code, period_type, period,
         period_start::text as period_start, period_end::text as period_end, value, denominator, stratum, stratum_key,
         update_status, quality_flags
       from observations where ${where.join(' and ')}
       order by geo_code, period, stratum_key limit $${params.length}`;
-    const rows = (await db.query<Record<string, unknown>>(sql, params)).rows;
+    let rows = (await db.query<Record<string, unknown>>(sql, params)).rows;
+    if (needGroup && rows.length >= GROUP_SCAN_CAP) {
+      // o último grupo lido pode estar incompleto: descarta-o para não aplicar supressão parcial
+      const last = rows[rows.length - 1]!;
+      const lastGroup = `${last.geo_level}|${last.geo_code}|${last.period_type}|${last.period}`;
+      rows = rows.filter((r) => `${r.geo_level}|${r.geo_code}|${r.period_type}|${r.period}` !== lastGroup);
+      truncated = true;
+    }
     const obs: Observation[] = rows.map((r) => ({
       indicator_id: String(r.indicator_id),
       snapshot_id: String(r.snapshot_id),
@@ -170,7 +196,11 @@ export async function getSeries(db: Db, q: SeriesQuery): Promise<SeriesResult | 
     if (def.min_denominator) {
       for (const o of obs) if (o.denominator !== null && o.denominator < def.min_denominator) { o.value = null; o.quality_flags = [...o.quality_flags, 'denominator_below_minimum']; }
     }
-    observations = applySuppression(obs, { threshold: def.suppression_threshold });
+    let published = applySuppression(obs, { threshold: def.suppression_threshold });
+    if (requestedKey !== null) published = published.filter((o) => stratumKey(o.stratum) === requestedKey);
+    if (published.length > limit) { published = published.slice(0, limit); }
+    if (published.length >= limit) truncated = true;
+    observations = published;
   }
 
   return {
@@ -188,6 +218,7 @@ export async function getSeries(db: Db, q: SeriesQuery): Promise<SeriesResult | 
       suppression_threshold: indicator.suppression_threshold,
       caveats: indicator.caveats,
       count: observations.length,
+      truncated,
     },
   };
 }
@@ -253,8 +284,9 @@ export async function rejectPublication(db: Db, indicatorId: string, snapshotId:
 
 /**
  * Compara a mesma célula entre duas snapshots (pesquisa R07: revisões retrospectivas).
- * Aplica a mesma supressão de célula pequena da publicação: recortes subnacionais ou estratificados
- * com valor abaixo do limiar do indicador saem como null com suppressed = true, em ambas as versões.
+ * Nesta versão o diff é restrito a geo_level = 'country' sem estrato (stratum_key = ''): células subnacionais
+ * ou estratificadas nunca saem daqui, para que o diff não sirva de canal de reconstrução de células suprimidas.
+ * A máscara de supressão é mantida como defesa em profundidade (threshold do indicador).
  */
 export async function diffSnapshots(db: Db, indicatorId: string, snapshotA: string, snapshotB: string, limit = 5000) {
   const indicator = await getIndicatorRow(db, indicatorId);
@@ -263,8 +295,8 @@ export async function diffSnapshots(db: Db, indicatorId: string, snapshotA: stri
     select coalesce(a.geo_level, b.geo_level) as geo_level, coalesce(a.geo_code, b.geo_code) as geo_code,
       coalesce(a.period, b.period) as period, coalesce(a.stratum_key, b.stratum_key) as stratum_key,
       a.value as value_a, b.value as value_b
-    from (select * from observations where indicator_id = $1 and snapshot_id = $2) a
-    full outer join (select * from observations where indicator_id = $1 and snapshot_id = $3) b
+    from (select * from observations where indicator_id = $1 and snapshot_id = $2 and geo_level = 'country' and stratum_key = '') a
+    full outer join (select * from observations where indicator_id = $1 and snapshot_id = $3 and geo_level = 'country' and stratum_key = '') b
       on a.geo_level = b.geo_level and a.geo_code = b.geo_code and a.period = b.period and a.stratum_key = b.stratum_key
     where a.value is distinct from b.value
     order by 3, 2, 4 limit $4`;

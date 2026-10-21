@@ -1,5 +1,6 @@
 import type { SeriesObservation } from '@/lib/api';
 import { formatNumberBR, formatPeriod, shortPeriod } from '@/lib/format';
+import { publishedValue } from '@/lib/series';
 
 interface Props {
   obs: SeriesObservation[];
@@ -18,7 +19,7 @@ export function LineChart({ obs, title, unit, tableId }: Props) {
   const m = { top: 16, right: 16, bottom: 56, left: 64 };
   const iw = W - m.left - m.right;
   const ih = H - m.top - m.bottom;
-  const values = obs.map((o) => o.value).filter((v): v is number => v !== null);
+  const values = obs.map(publishedValue).filter((v): v is number => v !== null);
   if (values.length === 0) return null;
   const rawMax = Math.max(...values);
   const niceMax = niceCeil(rawMax);
@@ -31,12 +32,13 @@ export function LineChart({ obs, title, unit, tableId }: Props) {
   let cur: string[] = [];
   let curProv = false;
   obs.forEach((o, i) => {
-    if (o.value === null) {
+    const v = publishedValue(o);
+    if (v === null) {
       if (cur.length > 1) segments.push({ pts: cur.join(' '), provisional: curProv });
       cur = [];
       return;
     }
-    const pt = `${x(i).toFixed(1)},${y(o.value).toFixed(1)}`;
+    const pt = `${x(i).toFixed(1)},${y(v).toFixed(1)}`;
     const prov = o.update_status === 'provisional';
     if (cur.length && prov !== curProv) {
       cur.push(pt);
@@ -48,7 +50,7 @@ export function LineChart({ obs, title, unit, tableId }: Props) {
   if (cur.length > 1) segments.push({ pts: cur.join(' '), provisional: curProv });
 
   const firstProv = obs.findIndex((o) => o.update_status === 'provisional');
-  const hasGaps = obs.some((o) => o.value === null);
+  const hasGaps = obs.some((o) => publishedValue(o) === null);
   const step = obs.length > 1 ? x(1) - x(0) : 0;
   const bandX = firstProv > 0 ? x(firstProv) - step / 2 : m.left;
 
@@ -85,11 +87,12 @@ export function LineChart({ obs, title, unit, tableId }: Props) {
         {segments.map((s, i) => (
           <polyline key={i} points={s.pts} fill="none" stroke="var(--color-navy-700)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.provisional ? '6 4' : undefined} />
         ))}
-        {obs.map((o, i) =>
-          o.value !== null ? (
-            <circle key={o.period} cx={x(i)} cy={y(o.value)} r={2.5} fill={o.update_status === 'provisional' ? 'var(--color-paper)' : 'var(--color-navy-700)'} stroke="var(--color-navy-700)" strokeWidth={1.5} />
-          ) : null,
-        )}
+        {obs.map((o, i) => {
+          const v = publishedValue(o);
+          return v !== null ? (
+            <circle key={o.period} cx={x(i)} cy={y(v)} r={2.5} fill={o.update_status === 'provisional' ? 'var(--color-paper)' : 'var(--color-navy-700)'} stroke="var(--color-navy-700)" strokeWidth={1.5} />
+          ) : null;
+        })}
       </svg>
       <figcaption className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
         <span className="inline-flex items-center gap-2">

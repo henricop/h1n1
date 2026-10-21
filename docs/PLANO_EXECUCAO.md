@@ -4,7 +4,7 @@
 
 ## 0. Leitura da base
 
-- `h1n1_catalogo_oficial.md`: 65 fontes (14 BR, 19 US, 6 global, 4 UE, 4 CA, 3 UK, 2 AU, 2 AR, 1 MX/ES/JP/CN/KR/NZ/CL/CO/DE/WOAH/OPAS). 17 marcadas P0.
+- `h1n1_catalogo_oficial.md`: 65 fontes (14 BR, 19 US, 6 globais + 1 OPAS + 1 WOAH, 4 UE/ECDC/ENA, 4 CA, 3 UK, 2 AU, 2 AR, 1 MX/ES/JP/CN/KR/NZ/CL/CO/DE). 19 marcadas P0.
 - `h1n1_plano_estrategico_site.md`: portal público de referência + observatório, Brasil/pt-BR, 12 páginas P0, observatório `/dados/brasil/`, comparador, histórico, metodologia; stack Next.js + PostgreSQL + API própria + ETL com snapshots imutáveis; 10 regras de integridade (seção 10.4).
 
 ### Verificação ao vivo (2026-10-20)
@@ -44,8 +44,8 @@ h1n1/
 ├── docs/                        # PRD, contratos, dicionário, políticas, pesquisa de demanda
 ├── packages/core                # tipos, ontologia de indicadores, epiweek, catálogo
 ├── packages/db                  # migrações SQL + adaptador PGlite/pg
-├── packages/connectors          # flunet, sivep, ibge, worldbank, ukhsa, cdc-nwss, gho, clinicaltrials, pubmed, ena
-├── apps/api                     # Fastify: /v1/sources, /v1/indicators, /v1/series, /v1/snapshots, /v1/freshness, /v1/exports
+├── packages/connectors          # implementados: flunet, sivep, ibge, worldbank, ukhsa · planejados: cdc-nwss, gho, clinicaltrials, pubmed, ena
+├── apps/api                     # Fastify: /v1/sources, /v1/indicators, /v1/series(.csv), /v1/snapshots, /v1/diff, /v1/freshness, /v1/geo
 └── apps/web                     # Next.js: 12 páginas P0, /dados/brasil, /comparar, /historia, /dados/fontes, /dados/metodologia, /sobre/*
 ```
 
@@ -65,6 +65,19 @@ h1n1/
 - `pnpm install && pnpm build && pnpm test` verdes.
 - `pnpm ingest flunet` grava snapshot com hash e carrega série `flunet_ah1n1pdm09_detections` para BRA.
 - `pnpm ingest sivep --year 2026` agrega SRAG por UF/semana com separação explícita: SRAG total, influenza confirmada, A(H1N1)pdm09 confirmado, óbitos.
-- API responde `/v1/series?indicator=...&geo=BR` com metadados obrigatórios (fonte, definição de caso, `data_as_of`, universo, licença).
+- API responde `/v1/series?indicator=...&geo_code=BRA` com metadados obrigatórios (fonte, definição de caso, `data_as_of`, universo, licença).
 - Web renderiza homepage, 12 páginas P0 (status de revisão visível), `/dados/brasil` com dado real e texto de universo obrigatório, `/dados/fontes` com as 65 fontes.
 - Nenhuma página afirma "tempo real"; nenhuma soma canais espelhados; células pequenas (<5) suprimidas em recortes por UF e faixa etária.
+
+## 5. Estado em 2026-10-21 (após implementação, revisão e correções)
+
+| Frente | Entregue | Observações |
+|---|---|---|
+| core/db | sim | 18 + 2 testes; regra da SE brasileira verificada em 4 anos de SIVEP; diff com supressão |
+| api | sim | 12 rotas, OpenAPI, cache/ETag/rate limit por rota; diff restrito a país sem estrato e a snapshots `ok` |
+| connectors | sim | flunet, sivep, ibge, worldbank, ukhsa; ingestão real de SIVEP 2025 e 2026 integrais; microdados brutos apagados após agregação; carry-forward entre anos |
+| web | sim | 22 rotas; páginas clínicas `noindex` até revisão; exceção explícita `index_policy: index` para sinais de alerta (com banner) |
+| conteúdo | em revisão | 17 páginas + fatos citados; tudo `pending_*`; sem revisor clínico |
+| docs | sim | PRD, contrato, dicionário, mapeamento P0, políticas, LGPD, pesquisa de demanda (150 consultas, sem volume), backlog, 6 ADRs |
+
+Validações de abordagem (Sonnet) antes de implementar: arquitetura/modelo de dados, ontologia epidemiológica (dicionário SIVEP + metadados FluNet), IA do site/SEO/governança. Revisões (Haiku) após implementar: API, conectores, web, docs; conteúdo clínico revisado com Sonnet. Achados graves corrigidos; pendências humanas: domínio, revisor clínico, DPO, Search Console.

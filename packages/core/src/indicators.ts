@@ -299,7 +299,7 @@ export const INDICATORS: readonly IndicatorDefinition[] = [
     geo_levels: ['country'],
     period_type: 'isoweek',
     event_date_basis: 'specimen_processing',
-    stratum_schema: { age: ['all', '0-4', '5-14', '15-44', '45-64', '65+'] },
+    stratum_schema: { age: ['all', '0-4', '5-14', '15-44', '45-64', '65-79', '80+'] },
     mirror_group: null,
     suppression_threshold: 0,
     denominator_indicator_id: null,

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { listSources, getSource, listIndicators, type Db } from '@h1n1/db';
-import { parseOr400, sourcesQuery } from '../schemas.js';
+import { parseOr400, sourcesQuery, pathId } from '../schemas.js';
 import { notFound } from '../errors.js';
 import { ANY_OBJECT, SOURCES_QUERY, errorResponses } from '../openapi.js';
 
@@ -8,6 +8,7 @@ export async function sourcesRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
 
   app.get('/v1/sources', {
+    config: { cache: 'catalog' },
     schema: {
       tags: ['fontes'],
       summary: 'Lista o catálogo de fontes oficiais (65)',
@@ -28,18 +29,20 @@ export async function sourcesRoutes(app: FastifyInstance, opts: { db: Db }) {
   });
 
   app.get<{ Params: { idOrSlug: string } }>('/v1/sources/:idOrSlug', {
+    config: { cache: 'catalog' },
     schema: {
       tags: ['fontes'],
       summary: 'Uma fonte por id (BR-03) ou slug (br_sivep_gripe), com seus indicadores',
       params: { type: 'object', properties: { idOrSlug: { type: 'string' } }, required: ['idOrSlug'] },
       response: {
         200: { type: 'object', properties: { data: ANY_OBJECT, indicators: { type: 'array', items: ANY_OBJECT } } },
-        ...errorResponses(404),
+        ...errorResponses(400, 404),
       },
     },
   }, async (req) => {
-    const source = await getSource(db, req.params.idOrSlug);
-    if (!source) throw notFound(`Fonte não encontrada: ${req.params.idOrSlug}`);
+    const idOrSlug = parseOr400(pathId, req.params.idOrSlug);
+    const source = await getSource(db, idOrSlug);
+    if (!source) throw notFound(`Fonte não encontrada: ${idOrSlug}`);
     const indicators = await listIndicators(db, { sourceId: source.id });
     return { data: source, indicators };
   });

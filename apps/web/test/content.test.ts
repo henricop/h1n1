@@ -113,6 +113,23 @@ describe('carregamento das fixtures', () => {
   });
 });
 
+describe('metadados de página clínica do fixture', () => {
+  it('/sintomas/ (clínica, em revisão) sai com robots noindex,follow; /sintomas/sinais-de-alerta/ (revisada) é indexável', async () => {
+    const { pageMetadata } = await import('@/lib/metadata');
+    const sintomas = getPage('/sintomas/');
+    expect(sintomas?.frontmatter.clinical).toBe(true);
+    expect(sintomas?.noindex).toBe(true);
+    const md = pageMetadata(sintomas!);
+    expect(md.robots).toEqual({ index: false, follow: true });
+    expect(md.alternates?.canonical).toBe('/sintomas/');
+    expect(md.title).toBe('Sintomas de H1N1');
+
+    const alerta = pageMetadata(getPage('/sintomas/sinais-de-alerta/')!);
+    expect(alerta.robots).toMatchObject({ index: true, follow: true });
+    expect(alerta.openGraph).toMatchObject({ type: 'article', locale: 'pt_BR', url: '/sintomas/sinais-de-alerta/' });
+  });
+});
+
 describe('facts', () => {
   it('build falha quando <Fato id> não existe em facts.json', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'h1n1-content-'));

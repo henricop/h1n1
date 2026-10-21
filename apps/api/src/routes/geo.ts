@@ -9,6 +9,7 @@ export interface GeoRow {
 
 export async function geoRoutes(app: FastifyInstance, opts: { db: Db }) {
   app.get('/v1/geo', {
+    config: { cache: 'catalog' },
     schema: {
       tags: ['geo'],
       summary: 'Unidades geográficas (mundo, países, regiões e UFs do Brasil)',

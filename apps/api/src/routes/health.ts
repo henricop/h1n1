@@ -8,9 +8,10 @@ const HEALTH_SCHEMA = {
 
 export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
   app.get('/health', {
+    config: { cache: 'none' },
     schema: {
       tags: ['infra'],
-      summary: 'Estado do serviço e do banco',
+      summary: 'Estado do serviço e do banco (Cache-Control: no-store)',
       response: {
         200: HEALTH_SCHEMA,
         503: HEALTH_SCHEMA,
