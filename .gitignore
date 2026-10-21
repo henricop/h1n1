@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+data/snapshots/
+data/pglite/
+.DS_Store
+*.tsbuildinfo
+.turbo/
