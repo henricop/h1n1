@@ -1,7 +1,7 @@
 'use client';
 /**
  * Contágio (capítulo 4), em coordenadas de MUNDO: duas silhuetas frente a frente e a nuvem que sai da boca da
- * esquerda (MOUTH_LEFT) rumo à da direita (MOUTH_RIGHT).
+ * esquerda (CARRY_LEFT, diante da boca) rumo à da direita (CARRY_RIGHT).
  *  - gotículas (maiores): arco curto que cai antes de chegar à outra pessoa;
  *  - aerossóis (menores, azul mais claro): demoram mais, vão mais longe e ficam suspensos, ondulando;
  *  - gotícula portadora: uma bolha translúcida que envolve o vírion e refaz o MESMO arco dele (keyframes
@@ -16,7 +16,7 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { CARRY_LEFT as MOUTH_LEFT, CARRY_RIGHT as MOUTH_RIGHT } from '@/lib/virus/choreography';
+import { CARRY_LEFT, CARRY_RIGHT, MOUTH_RIGHT } from '@/lib/virus/choreography';
 import { clamp01, seededRandom, smoothstep } from '@/lib/virus/geometry';
 import { PART_COLORS } from '@/lib/virus/parts';
 import type { SceneState } from '@/lib/virus/scenestate';
@@ -30,7 +30,7 @@ import { COUNTS, MOUTH_Y, PERSON_X, smooth, type AmbientRef, type StateRef } fro
 export const CARRIER_PEAK = 0.7;
 /** Raio da gotícula portadora em unidades do grupo micro (envolve o vírion com espinhos, com folga). */
 export const CARRIER_RADIUS = 1.6;
-const SPAN = MOUTH_RIGHT.x - MOUTH_LEFT.x;
+const SPAN = CARRY_RIGHT.x - CARRY_LEFT.x;
 
 /** Inversa de smoothstep(0, 1, ·) em [0, 1]. */
 export function invSmooth(y: number): number {
@@ -40,24 +40,24 @@ export function invSmooth(y: number): number {
 
 /**
  * Posição (mundo) do vírion/gotícula portadora no arco do capítulo 4, dado o trajeto `travel` (= `droplets`).
- * Reproduz as batidas: virusX vai de MOUTH_LEFT.x a MOUTH_RIGHT.x com a MESMA janela suave de `droplets`; virusY
- * sobe até MOUTH_LEFT.y + CARRIER_PEAK no meio do tempo e desce até MOUTH_RIGHT.y (dois trechos suaves).
+ * Reproduz as batidas: virusX vai de CARRY_LEFT.x a CARRY_RIGHT.x com a MESMA janela suave de `droplets`; virusY
+ * sobe até CARRY_LEFT.y + CARRIER_PEAK no meio do tempo e desce até CARRY_RIGHT.y (dois trechos suaves).
  */
 export function carrierPosition(travel: number, out: { x: number; y: number }): { x: number; y: number } {
   const d = clamp01(travel);
   const u = invSmooth(d);
-  const top = MOUTH_LEFT.y + CARRIER_PEAK;
-  out.x = MOUTH_LEFT.x + SPAN * d;
-  out.y = u <= 0.5 ? MOUTH_LEFT.y + CARRIER_PEAK * smooth(u * 2) : top + (MOUTH_RIGHT.y - top) * smooth(u * 2 - 1);
+  const top = CARRY_LEFT.y + CARRIER_PEAK;
+  out.x = CARRY_LEFT.x + SPAN * d;
+  out.y = u <= 0.5 ? CARRY_LEFT.y + CARRIER_PEAK * smooth(u * 2) : top + (CARRY_RIGHT.y - top) * smooth(u * 2 - 1);
   return out;
 }
 
 /**
- * Trajeto 0..1 da nuvem: `droplets` no capítulo 4; no capítulo 5 o vírion já chegou (virusX = MOUTH_RIGHT.x) e o
+ * Trajeto 0..1 da nuvem: `droplets` no capítulo 4; no capítulo 5 o vírion já chegou (virusX = CARRY_RIGHT.x) e o
  * trajeto fica em 1 enquanto `droplets` cai (nada volta para a boca da esquerda).
  */
 export function dropletTravel(s: Pick<SceneState, 'droplets' | 'virusX'>): number {
-  const tau = clamp01((s.virusX - MOUTH_LEFT.x) / SPAN);
+  const tau = clamp01((s.virusX - CARRY_LEFT.x) / SPAN);
   return Math.max(clamp01(s.droplets), tau);
 }
 
@@ -138,8 +138,8 @@ export interface DropletPose {
 export function dropletPose(it: DropletSpec, travel: number, wobble: number, breath: number, out: DropletPose): DropletPose {
   const raw = (travel - it.delay) / it.dur;
   if (!(raw > 0)) {
-    out.x = MOUTH_LEFT.x;
-    out.y = MOUTH_LEFT.y;
+    out.x = CARRY_LEFT.x;
+    out.y = CARRY_LEFT.y;
     out.z = 0;
     out.s = 0;
     return out;
@@ -151,15 +151,15 @@ export function dropletPose(it: DropletSpec, travel: number, wobble: number, bre
     // arco curto com arrasto em x e queda parabólica ("droop"): cai antes de chegar à outra pessoa
     const k = 1 - s;
     const a = 0.015 * s;
-    out.x = MOUTH_LEFT.x + 0.04 + it.reach * SPAN * (1 - k * k) + a * wobble * c;
-    out.y = MOUTH_LEFT.y + it.y0 + 4 * it.lift * s * k - it.droop * s * s + a * breath * sn;
+    out.x = CARRY_LEFT.x + 0.04 + it.reach * SPAN * (1 - k * k) + a * wobble * c;
+    out.y = CARRY_LEFT.y + it.y0 + 4 * it.lift * s * k - it.droop * s * s + a * breath * sn;
     out.z = it.z0 + it.zs * s;
     out.s = it.size * (1 - 0.4 * s) * smooth(s / 0.05) * (1 - smoothstep(0.78, 1, s));
   } else {
     // pluma lenta: vai mais longe, abre em y/z e fica suspensa, ondulando com o ambiente
     const a = 0.06 * s;
-    out.x = MOUTH_LEFT.x + 0.04 + it.reach * SPAN * (1 - Math.pow(1 - s, 1.6)) + a * 0.6 * wobble * c;
-    out.y = MOUTH_LEFT.y + it.y0 + it.lift * s + 0.1 * Math.sin(Math.PI * 1.3 * s + it.phase) * s + a * (breath * sn + 0.5 * wobble * c);
+    out.x = CARRY_LEFT.x + 0.04 + it.reach * SPAN * (1 - Math.pow(1 - s, 1.6)) + a * 0.6 * wobble * c;
+    out.y = CARRY_LEFT.y + it.y0 + it.lift * s + 0.1 * Math.sin(Math.PI * 1.3 * s + it.phase) * s + a * (breath * sn + 0.5 * wobble * c);
     out.z = it.z0 + it.zs * s + a * 0.5 * breath * c;
     out.s = it.size * (1 - 0.3 * s) * smooth(s / 0.08);
   }
@@ -250,7 +250,8 @@ export function personGeometry(p: PersonShape, mouthDX: number): THREE.BufferGeo
 /** Duas silhuetas foscas em ±PERSON_X, de frente uma para a outra, boca em MOUTH_Y; opacidade = `people`. */
 export function People({ stateRef }: { stateRef: StateRef }) {
   const group = useRef<THREE.Group>(null);
-  // distância do eixo do tronco à boca (PERSON_X − |MOUTH_RIGHT.x| = 0,45): a boca cai exatamente em MOUTH_LEFT/RIGHT
+  // distância do eixo do tronco à boca (PERSON_X − |MOUTH_RIGHT.x| = 0,45): a boca cai exatamente em MOUTH_LEFT/RIGHT;
+  // o vírion estaciona em CARRY_*, 0,45 à frente do rosto
   const mouthDX = PERSON_X - MOUTH_RIGHT.x;
   const geoms = useMemo(() => [personGeometry(PERSON_SHAPES[0], mouthDX), personGeometry(PERSON_SHAPES[1], mouthDX)] as const, [mouthDX]);
   const material = useMemo(

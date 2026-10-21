@@ -46,6 +46,8 @@ export interface VirusCanvasProps {
   onReady?: () => void;
   /** PerformanceMonitor desistiu (3 oscilações): o explainer deve baixar `quality` para 'low' */
   onQualityFallback?: () => void;
+  /** contexto WebGL perdido: o explainer volta ao pôster/versão em texto */
+  onContextLost?: () => void;
 }
 
 /** Driver: escreve o estado da cena e posiciona câmera e grupo micro; roda antes de todos (prioridade -10). */
@@ -187,7 +189,27 @@ function Scene(props: VirusCanvasProps & { mode: FrameloopMode }) {
       // um quadro imediato, mesmo em 'never' (seção ainda fora da tela): o pôster some sobre uma cena pronta
       advance(performance.now() / 1000);
     };
-    gl.compileAsync(scene, camera).then(done, done);
+    // objetos ocultos (célula, pessoas, gotículas, anticorpos) ficam de fora do compileAsync: revela-os só para compilar
+    const hidden: THREE.Object3D[] = [];
+    scene.traverse((o) => {
+      if (!o.visible) {
+        hidden.push(o);
+        o.visible = true;
+      }
+    });
+    const restore = () => {
+      for (const o of hidden) o.visible = false;
+    };
+    gl.compileAsync(scene, camera).then(
+      () => {
+        restore();
+        done();
+      },
+      () => {
+        restore();
+        done();
+      },
+    );
     return () => {
       alive = false;
     };
@@ -237,6 +259,10 @@ export default function VirusCanvas(props: VirusCanvasProps) {
         // limpa já: antes do 1.º quadro um canvas opaco apareceria preto
         gl.clear();
         gl.transmissionResolutionScale = transmissionScale(props.quality);
+        gl.domElement.addEventListener('webglcontextlost', (e) => {
+          e.preventDefault();
+          props.onContextLost?.();
+        });
       }}
       onPointerMissed={() => props.onHover(null)}
       style={{ position: 'absolute', inset: 0 }}

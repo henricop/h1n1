@@ -93,7 +93,7 @@ Após duas rodadas de feedback do usuário (v1 sóbria rejeitada; v2 escura/HUD 
 | ~~Terminal e assistente~~ | **Removido em 2026-10-21 (ver 6.1).** Histórico: /terminal/ com 11 comandos e paleta ⌘K (cmdk); assistente com Claude (ai + @ai-sdk/anthropic) e 9 ferramentas sobre a API, desativado sem chave |
 | API | 7 rotas de visualização/análise; índice de matriz (consulta 2,8 s → 58 ms) e cache LRU; nowcast restrito à população da CDF; sanitização de logs |
 | Conectores | FluNet global particionado por ano; CDF de atraso de notificação; provisório relativo à data da base; microdados apagados após agregação |
-| Testes | core 18 · db 9 · analytics 8 · api 46 · connectors 87 · web 121 |
+| Testes | core 18 · db 9 · analytics 8 · api 46 · connectors 87 · web 121 (v3; ver §7 para o estado atual) |
 
 Pendências humanas inalteradas: revisor clínico, domínio, DPO, validação quantitativa de demanda. (A "chave da Anthropic para o assistente" deixou de ser pendência: o assistente foi removido, ver 6.1.)
 
@@ -107,3 +107,27 @@ Pendências humanas inalteradas: revisor clínico, domínio, DPO, validação qu
 - **CSP**: `connect-src 'self' <NEXT_PUBLIC_API_URL>` (+ `ws: wss:` só em dev), `frame-src 'none'`, `img-src 'self' data: blob:`, nenhum domínio externo. Um teste em `apps/web/test/sala.test.ts` varre `src/` contra iframe, URL absoluta em `fetch`/`src`/`url()` e SDK de IA.
 
 O navegador do visitante só fala com o próprio site e com a API própria. Links `<a href>` para as fontes oficiais (licenças, catálogo de fontes) continuam: são referência, não conexão.
+
+## 7. Estado em 2026-10-21, explicador 3D v2 ("mais realista, mais fluido, mais coerente")
+
+Pedido do usuário após aprovar a v3: refinar a seção 3D com pesquisa profunda e sub-agentes. Contrato em
+`docs/explicador-3d-v2.md`; pesquisas em `docs/pesquisa/` (proporções do vírion por crio-ET, ciclo celular e
+transmissão, técnicas de render em r3f). Validador (Sonnet) de arquitetura e pesquisador de coreografia
+concordaram: manter rolagem nativa → função pura → quadro; suavizar um único escalar de progresso; poses + batidas
+por passo de texto; sem pós-processamento.
+
+| Frente | Entregue |
+|---|---|
+| Núcleo | `scenestate.ts` (29 chaves), `choreography.ts` (poses assentadas por capítulo, batidas por janela/keyframes, `sceneAt` contínuo por construção, `progressFromSteps`), `damping.ts` (SmoothDamp com limite de 2 capítulos/s) |
+| Vírion | envelope pleomórfico (ruído CPU, duas metades com a mesma costura, transmissão em `high`), M1 opaca com lacunas, 140 HA (trímero) + 20 NA (tetrâmero, haste longa, em ilhas) + 8 M2, 8 RNPs em contas (7+1, polimerase na ponta), desmontagem escalonada, uncoat/release/deriva; ≈70 mil triângulos em `high`, ≈25 mil em `low` |
+| Célula | parede de membrana (esfera R=6) com receptores, encaixe, endocitose por recorte de shader (covinha → vesícula), acidificação, núcleo sugerido, brotamento com flash da NA |
+| Contágio e vacina | bustos, gotículas e aerossóis instanciados, vírion viajando dentro de uma gotícula até a 2.ª pessoa; anticorpos em Y com cobertura uniforme, bloqueio do encaixe, deriva antigênica (35% das cabeças, regra `seededRandom(29)`), nova leva |
+| Driver, luz, rótulos | driver único (prioridade −10), frameloop `always`/`never`/`demand` por visibilidade, fundo opaco, `Environment` procedural com 4 `Lightformer` (offline), `transmissionResolutionScale`, pré-compilação de shaders, `AdaptiveDpr`/`PerformanceMonitor`; rótulos como cartões DOM projetados por quadro, limitados ao palco e sem sobreposição (o `Html` do drei perdia cartões com React 19 em modo estrito) |
+| Texto e fatos | 22 passos de texto (3·5·5·4·5) sincronizados com as batidas, cada um nomeando a ação da cena; 24 fatos novos com citação literal (Harris 2006, Noda 2012, Dou 2018, Krammer 2018, PDB-101, CDC, OMS, MS); peças reescritas |
+| QA | capturas por capítulo em 1440×900 (desktop) e checagem móvel; 60 fps parado e rolando no Chrome; sem erros de console |
+| Testes | core 18 · db 9 · analytics 8 · api 46 · connectors 87 · web 143 (16 arquivos, incluindo virus, virus-pose, virus-cell, virus-spread, virus-explainer) |
+
+Revisões (Haiku) após integrar: conteúdo/CSP (achados médios corrigidos: contagem HA/NA fiel à citação, texto da
+membrana no cap. 5, frases mais fortes que a fonte suavizadas) e código da cena. Fora do escopo desta rodada:
+produção com `next build` não foi executada nesta sessão porque o servidor de desenvolvimento do usuário usa o
+mesmo diretório `.next`.

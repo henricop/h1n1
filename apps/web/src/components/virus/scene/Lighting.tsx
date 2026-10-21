@@ -1,11 +1,10 @@
 'use client';
 /**
  * Luz de estúdio 100% offline: ambiente procedural (Environment + Lightformer, gerado uma vez), uma key
- * direcional, hemisférica fraca e sombra de contato sob o grupo micro (ContactShadows em 'high'; em 'low',
- * um blob estático barato). Sem pós-processamento (DESIGN.md: fundo claro, sem neon).
+ * direcional, hemisférica fraca e sombra estática (blob) sob o grupo micro, nas duas qualidades. Sem pós-processamento (DESIGN.md: fundo claro, sem neon).
  */
 import { useFrame } from '@react-three/fiber';
-import { ContactShadows, Environment, Lightformer } from '@react-three/drei';
+import { Environment, Lightformer } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { PART_COLORS } from '@/lib/virus/parts';
@@ -41,7 +40,8 @@ function blobTexture(size = 64): THREE.DataTexture {
 /** Sombra que segue o grupo micro (virusX/virusY) e escala com virusScale. Só lê stateRef. */
 function Shadow({ stateRef, quality }: { stateRef: StateRef; quality: Quality }) {
   const group = useRef<THREE.Group>(null);
-  const tex = useMemo(() => (quality === 'low' ? blobTexture() : null), [quality]);
+  // blob estático nas duas qualidades: ContactShadows re-renderizaria a cena inteira a cada quadro
+  const tex = useMemo(() => blobTexture(), []);
   useEffect(() => () => tex?.dispose(), [tex]);
   useFrame(() => {
     const g = group.current;
@@ -54,14 +54,10 @@ function Shadow({ stateRef, quality }: { stateRef: StateRef; quality: Quality })
   });
   return (
     <group ref={group}>
-      {quality === 'high' ? (
-        <ContactShadows resolution={256} opacity={0.2} blur={2.4} scale={4.6} far={2.8} color={PART_COLORS.ink} frames={Infinity} />
-      ) : (
-        <mesh rotation-x={-Math.PI / 2}>
-          <circleGeometry args={[1.7, 32]} />
-          <meshBasicMaterial color={PART_COLORS.ink} alphaMap={tex ?? undefined} transparent opacity={0.16} depthWrite={false} toneMapped={false} />
-        </mesh>
-      )}
+      <mesh rotation-x={-Math.PI / 2}>
+        <circleGeometry args={[1.7, 32]} />
+        <meshBasicMaterial color={PART_COLORS.ink} alphaMap={tex} transparent opacity={quality === 'high' ? 0.18 : 0.16} depthWrite={false} toneMapped={false} />
+      </mesh>
     </group>
   );
 }

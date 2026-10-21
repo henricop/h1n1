@@ -196,7 +196,10 @@ export function VirusExplainer({ facts, panelFacts, textFacts }: Props) {
     };
     const ro = new ResizeObserver(remeasure);
     if (container.current) ro.observe(container.current);
+    // o que muda de altura ACIMA da seção (fontes, avisos) também desloca os passos
+    ro.observe(document.body);
     window.addEventListener('resize', remeasure);
+    if (typeof document !== 'undefined' && 'fonts' in document) document.fonts.ready.then(remeasure, () => undefined);
     return () => {
       ro.disconnect();
       window.removeEventListener('resize', remeasure);
@@ -255,6 +258,10 @@ export function VirusExplainer({ facts, panelFacts, textFacts }: Props) {
                     onSelect={select}
                     labelCards={labelCards}
                     onReady={() => setReady(true)}
+                    onContextLost={() => {
+                      setReady(false);
+                      setMode('failed');
+                    }}
                     onQualityFallback={onQualityFallback}
                   />
                 </CanvasBoundary>
@@ -362,7 +369,7 @@ export function VirusExplainer({ facts, panelFacts, textFacts }: Props) {
             const copy = CHAPTER_COPY[i]!;
             return (
               <li key={ch.id} id={ch.id} className="scroll-mt-[calc(var(--stage-top)_+_44svh_+_0.5rem)] lg:scroll-mt-[calc(var(--stage-top)_+_1rem)]">
-                <article aria-current={current === i ? 'step' : undefined} className={`transition-opacity duration-300 ${override === null && current !== i ? 'lg:opacity-60' : 'opacity-100'}`}>
+                <article aria-current={current === i ? 'step' : undefined} className="transition-colors duration-300">
                   {copy.steps.map((st, k) => {
                     const g = stepIndex++;
                     return (

@@ -183,5 +183,12 @@ describe('rótulos DOM: limite dentro do palco', () => {
     const apart = [{ x: 100, y: 200 }, { x: 600, y: 200 }];
     spreadLabels(apart, 800, 600);
     expect(apart[1]!.y).toBe(200);
+    // palco baixo (celular): sem espaço vertical, resolve na horizontal
+    const low = [{ x: 150, y: 112 }, { x: 160, y: 115 }];
+    spreadLabels(low, 466, 341);
+    expect(Math.abs(low[0]!.x - low[1]!.x) >= LABEL_CARD.w || Math.abs(low[0]!.y - low[1]!.y) >= LABEL_CARD.h).toBe(true);
+    const { compactStage } = await import('@/lib/virus/explainer');
+    expect(compactStage(466, 341)).toBe(true);
+    expect(compactStage(625, 689)).toBe(false);
   });
 });

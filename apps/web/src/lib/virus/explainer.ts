@@ -158,23 +158,31 @@ export function labelDotClass(id: PartId): string {
 export function spreadLabels(pts: Array<{ x: number; y: number }>, width: number, height: number, card: { w: number; h: number } = LABEL_CARD, pad: { top: number; bottom: number; side: number } = LABEL_PAD, gap = 6): void {
   const minY = pad.top + card.h / 2;
   const maxY = Math.max(minY, height - pad.bottom - card.h / 2);
+  const minX = pad.side + card.w / 2;
+  const maxX = Math.max(minX, width - pad.side - card.w / 2);
+  const overlaps = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < card.w + gap && Math.abs(a.y - b.y) < card.h + gap;
   for (let i = 1; i < pts.length; i++) {
     const p = pts[i]!;
-    for (let pass = 0; pass < 4; pass++) {
-      let moved = false;
-      for (let j = 0; j < i; j++) {
-        const q = pts[j]!;
-        const dx = Math.abs(p.x - q.x);
-        const dy = Math.abs(p.y - q.y);
-        if (dx < card.w + gap && dy < card.h + gap) {
-          const down = q.y + card.h + gap;
-          const up = q.y - card.h - gap;
-          p.y = down <= maxY ? down : Math.max(minY, up);
-          moved = true;
-        }
-      }
-      if (!moved) break;
+    for (let pass = 0; pass < 6; pass++) {
+      const q = pts.slice(0, i).find((o) => overlaps(p, o));
+      if (!q) break;
+      // tenta, nesta ordem: abaixo, acima, à direita, à esquerda do cartão já colocado
+      const cands = [
+        { x: p.x, y: q.y + card.h + gap },
+        { x: p.x, y: q.y - card.h - gap },
+        { x: q.x + card.w + gap, y: p.y },
+        { x: q.x - card.w - gap, y: p.y },
+      ].filter((c) => c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY);
+      const free = cands.find((c) => !pts.slice(0, i).some((o) => overlaps(c, o)));
+      const pick = free ?? cands[0];
+      if (!pick) break;
+      p.x = pick.x;
+      p.y = pick.y;
     }
-    p.x = Math.min(Math.max(p.x, pad.side + card.w / 2), Math.max(pad.side + card.w / 2, width - pad.side - card.w / 2));
   }
+}
+
+/** Palco pequeno (celular): só o rótulo da peça em foco, para não cobrir o vírion. */
+export function compactStage(width: number, height: number): boolean {
+  return width < 560 || height < 460;
 }

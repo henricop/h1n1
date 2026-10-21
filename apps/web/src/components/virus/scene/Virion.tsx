@@ -283,10 +283,10 @@ function Spikes({
     }),
     [baseHex, kind],
   );
-  const applied = useRef({ openSpikes: -1, openEnv: -1, pulse: -1, drift: -1, active: false, colored: false });
+  const applied = useRef({ openSpikes: -1, openEnv: -1, pulse: -1, drift: -1, dock: -1, active: false, colored: false });
   // caches `applied` resetados quando layout/qualidade mudam (a malha é remontada pela `key`)
   useEffect(() => {
-    applied.current = { openSpikes: -1, openEnv: -1, pulse: -1, drift: -1, active: false, colored: false };
+    applied.current = { openSpikes: -1, openEnv: -1, pulse: -1, drift: -1, dock: -1, active: false, colored: false };
   }, [dirs, geom]);
 
   useFrame(() => {
@@ -312,20 +312,29 @@ function Spikes({
         m.setMatrixAt(i, dummy.matrix);
       }
       m.instanceMatrix.needsUpdate = true;
+      // a esfera de colisão do InstancedMesh é calculada uma vez no raycast: invalida ao mover os espinhos
+      m.boundingSphere = null;
     }
 
     const hl = kind === 'ha' ? s.hlHa : s.hlNa;
     const pulse = hl > 0.001 ? hl * (0.72 + 0.28 * Math.sin(a.t * 7 + (kind === 'ha' ? 0 : 1.1))) : 0;
     const driftK = kind === 'ha' ? s.drift : 0;
-    if (!ap.colored || Math.abs(pulse - ap.pulse) > EPS || Math.abs(driftK - ap.drift) > EPS || active !== ap.active) {
+    // encaixe (capítulo 3): as HAs voltadas para a membrana (+x no quadro micro; yaw já assentado) acendem
+    const dockK = kind === 'ha' ? s.dock * (1 - s.engulf) : 0;
+    if (!ap.colored || Math.abs(pulse - ap.pulse) > EPS || Math.abs(driftK - ap.drift) > EPS || Math.abs(dockK - ap.dock) > EPS || active !== ap.active) {
       ap.pulse = pulse;
       ap.drift = driftK;
+      ap.dock = dockK;
       ap.active = active;
       ap.colored = true;
       for (let i = 0; i < dirs.length; i++) {
         c.copy(baseC);
         if (drift && drift[i]) c.lerp(driftC, driftK);
         if (pulse > 0) c.lerp(hiC, pulse);
+        if (dockK > 0) {
+          const facing = (dirs[i]!.x - 0.78) / 0.22;
+          if (facing > 0) c.lerp(hiC, Math.min(1, facing) * dockK * 0.9);
+        }
         if (active) c.lerp(WHITE, 0.14);
         m.setColorAt(i, c);
       }
@@ -405,6 +414,7 @@ function Channels({
         m.setMatrixAt(i, dummy.matrix);
       }
       m.instanceMatrix.needsUpdate = true;
+      m.boundingSphere = null;
     }
     const blink = s.uncoat * a.blink;
     material.color.copy(baseC).lerp(hiC, blink * 0.85);
@@ -572,6 +582,7 @@ function Rnps({ stateRef, quality, active, pointer }: { stateRef: StateRef; qual
       m.setColorAt(i, c);
     }
     m.instanceMatrix.needsUpdate = true;
+    m.boundingSphere = null;
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
     material.emissiveIntensity = active ? 0.2 : 0;
   });

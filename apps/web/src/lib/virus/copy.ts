@@ -48,7 +48,7 @@ const STEPS_POR_DENTRO: Step[] = [
     factIds: ['krammer-2018-envelope-lipidico-derivado-da-celula-e-canal-m2'],
   },
   {
-    text: 'Os espinhos se soltam: a hemaglutinina sobe e, logo depois, a neuraminidase desce. Repare nas formas: a HA tem a cabeça sobre uma haste curta; a NA, uma cabeça quadrada no alto de uma haste longa e fina.',
+    text: 'Os espinhos se soltam: a hemaglutinina sobe e, logo depois, a neuraminidase sobe mais alto. Repare nas formas: a HA tem a cabeça sobre uma haste curta; a NA, uma cabeça quadrada no alto de uma haste longa e fina.',
     factIds: ['harris-2006-altura-ha-na-haste', 'pdb101-na-tetramero-haste-longa'],
   },
   {

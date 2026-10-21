@@ -10,7 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
 import { expDamp } from '@/lib/virus/damping';
-import { LABEL_IDS, LABEL_POINTER_THRESHOLD, clampToStage, labelPosition, labelTarget, spreadLabels } from '@/lib/virus/explainer';
+import { LABEL_IDS, LABEL_POINTER_THRESHOLD, clampToStage, compactStage, labelPosition, labelTarget, spreadLabels } from '@/lib/virus/explainer';
 import type { PartId } from '@/lib/virus/parts';
 import { partAnchor, type SpikeLayout } from '@/lib/virus/pose';
 import type { StateRef } from './shared';
@@ -85,8 +85,9 @@ export function Labels({ stateRef, layout, hovered, selected, cards }: { stateRe
     const s = stateRef.current;
     const { hovered: h, selected: sel } = hot.current;
     visible.length = 0;
+    const compact = compactStage(size.width, size.height);
     for (const id of LABEL_IDS) {
-      const target = labelTarget(id, s.labels, h, sel);
+      const target = labelTarget(id, compact ? 0 : s.labels, h, sel);
       const op = expDamp(opacity.current[id], target, dt, 0.12);
       opacity.current[id] = op;
       const sc = screen[id];
