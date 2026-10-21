@@ -1,0 +1,25 @@
+{
+  "name": "h1n1",
+  "private": true,
+  "version": "0.1.0",
+  "description": "H1N1: central pública de referência e observatório de influenza A(H1N1)",
+  "packageManager": "pnpm@12.6.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "pnpm -r --filter './packages/**' build && pnpm -r --filter './apps/**' build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @h1n1/db migrate",
+    "db:seed": "pnpm --filter @h1n1/db seed",
+    "ingest": "pnpm --filter @h1n1/connectors ingest",
+    "api": "pnpm --filter @h1n1/api dev",
+    "web": "pnpm --filter @h1n1/web dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0",
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  }
+}

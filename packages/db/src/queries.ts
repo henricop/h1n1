@@ -1,0 +1,267 @@
+import {
+  applySuppression,
+  getIndicator,
+  type GeoLevel,
+  type Observation,
+  type PublishedObservation,
+  type IndicatorDefinition,
+  type Snapshot,
+} from '@h1n1/core';
+import type { Db } from './client.js';
+
+function num(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+export interface SourceRow {
+  id: string; slug: string; name: string; agency: string; country: string; region: string; category: string;
+  access: string; access_type: string; h1n1_scope: string; update_cadence: string; priority: string; url: string;
+  notes: string; license: string; mirror_group: string | null; api_tested_at: string | null;
+}
+
+export interface IndicatorRow extends Omit<IndicatorDefinition, 'geo_levels' | 'caveats'> {
+  geo_levels: string[];
+  caveats: string[];
+}
+
+export interface PublicationRow {
+  indicator_id: string; snapshot_id: string; published_at: string; data_as_of: string | null; status: string;
+  validation_report: Record<string, unknown>;
+}
+
+export interface SeriesQuery {
+  indicator: string;
+  geoLevel?: GeoLevel;
+  geoCode?: string;
+  from?: string; // período inicial (inclusive), ex. 2025-W01
+  to?: string;
+  stratum?: Record<string, string>;
+  /** inclui estratos além do total; default: só total ('' stratum_key) quando stratum não informado */
+  includeStrata?: boolean;
+  limit?: number;
+}
+
+export interface SeriesResult {
+  indicator: IndicatorRow;
+  source: SourceRow;
+  publication: PublicationRow | null;
+  snapshot: Snapshot | null;
+  observations: PublishedObservation[];
+  meta: {
+    data_as_of: string | null;
+    fetched_at: string | null;
+    universe_note: string;
+    case_definition: string;
+    license: string | null;
+    suppression_threshold: number;
+    caveats: string[];
+    count: number;
+  };
+}
+
+export async function listSources(db: Db, filter: { priority?: string; country?: string; accessType?: string } = {}) {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (filter.priority) { params.push(filter.priority); where.push(`priority = $${params.length}`); }
+  if (filter.country) { params.push(filter.country); where.push(`country = $${params.length}`); }
+  if (filter.accessType) { params.push(filter.accessType); where.push(`access_type = $${params.length}`); }
+  const sql = `select * from sources ${where.length ? 'where ' + where.join(' and ') : ''} order by priority, id`;
+  return (await db.query<SourceRow>(sql, params)).rows;
+}
+
+export async function getSource(db: Db, idOrSlug: string): Promise<SourceRow | null> {
+  const r = await db.query<SourceRow>('select * from sources where id = $1 or slug = $1 limit 1', [idOrSlug]);
+  return r.rows[0] ?? null;
+}
+
+export async function listIndicators(db: Db, filter: { sourceId?: string } = {}): Promise<IndicatorRow[]> {
+  const params: unknown[] = [];
+  let sql = 'select * from indicators';
+  if (filter.sourceId) { params.push(filter.sourceId); sql += ` where source_id = $1`; }
+  sql += ' order by id';
+  return (await db.query<IndicatorRow>(sql, params)).rows;
+}
+
+export async function getIndicatorRow(db: Db, id: string): Promise<IndicatorRow | null> {
+  const r = await db.query<IndicatorRow>('select * from indicators where id = $1', [id]);
+  return r.rows[0] ?? null;
+}
+
+export async function getCurrentPublication(db: Db, indicatorId: string): Promise<PublicationRow | null> {
+  const r = await db.query<PublicationRow>(
+    `select indicator_id, snapshot_id::text as snapshot_id, published_at::text as published_at,
+            data_as_of::text as data_as_of, status, validation_report
+       from indicator_publications where indicator_id = $1 and status = 'current' limit 1`,
+    [indicatorId],
+  );
+  return r.rows[0] ?? null;
+}
+
+const SNAPSHOT_COLS = `id::text as id, source_id, url, fetched_at::text as fetched_at, sha256, bytes, content_type,
+  license, storage_path, data_as_of::text as data_as_of, status, notes`;
+
+export async function getSnapshot(db: Db, id: string): Promise<Snapshot | null> {
+  const r = await db.query<Snapshot>(`select ${SNAPSHOT_COLS} from snapshots where id = $1`, [id]);
+  const row = r.rows[0];
+  return row ? { ...row, bytes: num(row.bytes) } : null;
+}
+
+export async function listSnapshots(db: Db, filter: { sourceId?: string; limit?: number } = {}): Promise<Snapshot[]> {
+  const params: unknown[] = [];
+  let sql = `select ${SNAPSHOT_COLS} from snapshots`;
+  if (filter.sourceId) { params.push(filter.sourceId); sql += ` where source_id = $1`; }
+  params.push(filter.limit ?? 100);
+  sql += ` order by fetched_at desc limit $${params.length}`;
+  return (await db.query<Snapshot>(sql, params)).rows.map((r) => ({ ...r, bytes: num(r.bytes) }));
+}
+
+/**
+ * Série publicada: só a snapshot vigente do indicador, com supressão aplicada na saída.
+ * Nunca devolve valores brutos de células suprimidas.
+ */
+export async function getSeries(db: Db, q: SeriesQuery): Promise<SeriesResult | null> {
+  const indicator = await getIndicatorRow(db, q.indicator);
+  if (!indicator) return null;
+  const source = await getSource(db, indicator.source_id);
+  if (!source) return null;
+  const publication = await getCurrentPublication(db, q.indicator);
+  const def = getIndicator(q.indicator);
+  const snapshot = publication ? await getSnapshot(db, publication.snapshot_id) : null;
+
+  let observations: PublishedObservation[] = [];
+  if (publication) {
+    const params: unknown[] = [q.indicator, publication.snapshot_id];
+    const where = ['indicator_id = $1', 'snapshot_id = $2'];
+    if (q.geoLevel) { params.push(q.geoLevel); where.push(`geo_level = $${params.length}`); }
+    if (q.geoCode) { params.push(q.geoCode); where.push(`geo_code = $${params.length}`); }
+    if (q.from) { params.push(q.from); where.push(`period >= $${params.length}`); }
+    if (q.to) { params.push(q.to); where.push(`period <= $${params.length}`); }
+    if (q.stratum && Object.keys(q.stratum).length) {
+      const key = Object.keys(q.stratum).sort().map((k) => `${k}=${q.stratum![k]}`).join(';');
+      params.push(key); where.push(`stratum_key = $${params.length}`);
+    } else if (!q.includeStrata) {
+      where.push(`stratum_key = ''`);
+    }
+    params.push(Math.min(q.limit ?? 20000, 100000));
+    const sql = `select indicator_id, snapshot_id::text as snapshot_id, geo_level, geo_code, period_type, period,
+        period_start::text as period_start, period_end::text as period_end, value, denominator, stratum, stratum_key,
+        update_status, quality_flags
+      from observations where ${where.join(' and ')}
+      order by geo_code, period, stratum_key limit $${params.length}`;
+    const rows = (await db.query<Record<string, unknown>>(sql, params)).rows;
+    const obs: Observation[] = rows.map((r) => ({
+      indicator_id: String(r.indicator_id),
+      snapshot_id: String(r.snapshot_id),
+      geo_level: r.geo_level as GeoLevel,
+      geo_code: String(r.geo_code),
+      period_type: r.period_type as Observation['period_type'],
+      period: String(r.period),
+      period_start: String(r.period_start).slice(0, 10),
+      period_end: String(r.period_end).slice(0, 10),
+      value: num(r.value),
+      denominator: num(r.denominator),
+      stratum: (typeof r.stratum === 'string' ? JSON.parse(r.stratum) : r.stratum ?? {}) as Record<string, string>,
+      update_status: r.update_status as Observation['update_status'],
+      quality_flags: (r.quality_flags as string[]) ?? [],
+    }));
+    // Razões com denominador pequeno não são publicadas (min_denominator)
+    if (def.min_denominator) {
+      for (const o of obs) if (o.denominator !== null && o.denominator < def.min_denominator) { o.value = null; o.quality_flags = [...o.quality_flags, 'denominator_below_minimum']; }
+    }
+    observations = applySuppression(obs, { threshold: def.suppression_threshold });
+  }
+
+  return {
+    indicator,
+    source,
+    publication,
+    snapshot,
+    observations,
+    meta: {
+      data_as_of: publication?.data_as_of ?? snapshot?.data_as_of ?? null,
+      fetched_at: snapshot?.fetched_at ?? null,
+      universe_note: indicator.universe_note,
+      case_definition: indicator.case_definition,
+      license: snapshot?.license ?? source.license ?? null,
+      suppression_threshold: indicator.suppression_threshold,
+      caveats: indicator.caveats,
+      count: observations.length,
+    },
+  };
+}
+
+export interface FreshnessRow {
+  indicator_id: string;
+  source_id: string;
+  snapshot_id: string | null;
+  data_as_of: string | null;
+  fetched_at: string | null;
+  published_at: string | null;
+  age_days: number | null;
+  last_run_status: string | null;
+  last_run_finished_at: string | null;
+}
+
+export async function getFreshness(db: Db): Promise<FreshnessRow[]> {
+  const sql = `
+    select i.id as indicator_id, i.source_id, p.snapshot_id::text as snapshot_id,
+      coalesce(p.data_as_of, s.data_as_of)::text as data_as_of, s.fetched_at::text as fetched_at,
+      p.published_at::text as published_at,
+      case when s.fetched_at is null then null else floor(extract(epoch from (now() - s.fetched_at)) / 86400) end as age_days,
+      r.status as last_run_status, r.finished_at::text as last_run_finished_at
+    from indicators i
+    left join indicator_publications p on p.indicator_id = i.id and p.status = 'current'
+    left join snapshots s on s.id = p.snapshot_id
+    left join lateral (
+      select status, finished_at from ingestion_runs ir where ir.source_id = i.source_id order by started_at desc limit 1
+    ) r on true
+    order by i.id`;
+  return (await db.query<FreshnessRow>(sql)).rows.map((r) => ({ ...r, age_days: num(r.age_days) }));
+}
+
+export interface PublishInput {
+  indicatorId: string;
+  snapshotId: string;
+  dataAsOf: string | null;
+  validationReport?: Record<string, unknown>;
+}
+
+/** Publica uma snapshot como vigente para o indicador, superseding a anterior (regra 10: atômico). */
+export async function publishIndicator(db: Db, input: PublishInput): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.query(
+      `update indicator_publications set status = 'superseded', superseded_at = now()
+         where indicator_id = $1 and status = 'current'`,
+      [input.indicatorId],
+    );
+    await tx.query(
+      `insert into indicator_publications (indicator_id, snapshot_id, status, data_as_of, validation_report)
+         values ($1, $2, 'current', $3, $4)`,
+      [input.indicatorId, input.snapshotId, input.dataAsOf, JSON.stringify(input.validationReport ?? {})],
+    );
+  });
+}
+
+export async function rejectPublication(db: Db, indicatorId: string, snapshotId: string, report: Record<string, unknown>): Promise<void> {
+  await db.query(
+    `insert into indicator_publications (indicator_id, snapshot_id, status, validation_report) values ($1, $2, 'rejected', $3)`,
+    [indicatorId, snapshotId, JSON.stringify(report)],
+  );
+}
+
+/** Compara a mesma célula entre duas snapshots (pesquisa R07: revisões retrospectivas). */
+export async function diffSnapshots(db: Db, indicatorId: string, snapshotA: string, snapshotB: string, limit = 5000) {
+  const sql = `
+    select coalesce(a.geo_level, b.geo_level) as geo_level, coalesce(a.geo_code, b.geo_code) as geo_code,
+      coalesce(a.period, b.period) as period, coalesce(a.stratum_key, b.stratum_key) as stratum_key,
+      a.value as value_a, b.value as value_b
+    from (select * from observations where indicator_id = $1 and snapshot_id = $2) a
+    full outer join (select * from observations where indicator_id = $1 and snapshot_id = $3) b
+      on a.geo_level = b.geo_level and a.geo_code = b.geo_code and a.period = b.period and a.stratum_key = b.stratum_key
+    where a.value is distinct from b.value
+    order by 3, 2, 4 limit $4`;
+  return (await db.query<{ geo_level: string; geo_code: string; period: string; stratum_key: string; value_a: unknown; value_b: unknown }>(sql, [indicatorId, snapshotA, snapshotB, limit])).rows
+    .map((r) => ({ ...r, value_a: num(r.value_a), value_b: num(r.value_b) }));
+}
