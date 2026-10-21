@@ -1,32 +1,49 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans: 'Inter', 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Paleta sóbria: azul-escuro + neutros + uma cor de atenção (âmbar) e uma de emergência usada com parcimônia */
-  --color-navy-950: #0b1f33;
-  --color-navy-900: #11304d;
-  --color-navy-800: #173f66;
-  --color-navy-700: #1f5283;
-  --color-navy-600: #2a66a3;
-  --color-navy-100: #e3edf7;
-  --color-navy-50: #f2f6fb;
-  --color-ink: #1a1f26;
-  --color-muted: #4b5563;
-  --color-line: #d6dce4;
-  --color-paper: #ffffff;
-  --color-canvas: #f7f8fa;
-  --color-attention-700: #8a5a00;
-  --color-attention-100: #fff4d6;
-  --color-urgent-700: #8f1d1d;
-  --color-urgent-50: #fcecec;
-  --color-ok-700: #1f5f3b;
-  --color-ok-100: #e3f3ea;
+  /* ====== SALA DE SITUAÇÃO · tema escuro de comando ======
+     Fundo quase preto azulado, "fósforo" ciano como cor de dado, âmbar para provisório/atenção,
+     magenta para H1N1 em destaque, vermelho só para emergência. Contraste AA garantido nos pares
+     text-* sobre bg-*. Use tabular-nums em qualquer número. */
+  --color-bg-950: #05080f;      /* fundo da página */
+  --color-bg-900: #0a0f1a;      /* painéis */
+  --color-bg-800: #111827;      /* painéis elevados */
+  --color-bg-700: #1a2334;      /* bordas suaves / hover */
+  --color-line: #233047;        /* linhas de grade e bordas */
+  --color-line-strong: #34507a;
+  --color-ink: #e6edf7;         /* texto principal (AA sobre bg-950) */
+  --color-muted: #9fb0c7;       /* texto secundário (AA sobre bg-900) */
+  --color-faint: #6b7a93;       /* rótulos de eixo, legendas */
+  --color-signal: #35e0ff;      /* ciano fósforo: dado, foco, links */
+  --color-signal-dim: #1aa7c2;
+  --color-h1n1: #ff4fd8;        /* magenta: série A(H1N1)pdm09 */
+  --color-h3: #8b7cff;          /* violeta: A(H3) */
+  --color-infb: #4fd1a5;        /* verde-água: influenza B */
+  --color-srag: #ffd166;        /* âmbar: SRAG total / provisório */
+  --color-attention-700: #ffc24d;
+  --color-attention-100: #3a2a06;
+  --color-urgent-700: #ff5c5c;
+  --color-urgent-50: #3a0d0d;
+  --color-ok-700: #4fe3a3;
+  --color-ok-100: #0c2a1e;
+  /* compatibilidade com componentes anteriores */
+  --color-navy-950: #05080f;
+  --color-navy-900: #0a0f1a;
+  --color-navy-800: #111827;
+  --color-navy-700: #35e0ff;
+  --color-navy-600: #1aa7c2;
+  --color-navy-100: #233047;
+  --color-navy-50: #111827;
+  --color-paper: #0a0f1a;
+  --color-canvas: #05080f;
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html {
@@ -46,7 +63,38 @@ body {
 }
 
 a {
-  @apply text-navy-700 underline underline-offset-2 decoration-navy-100 hover:decoration-navy-600;
+  @apply text-signal underline underline-offset-2 decoration-line-strong hover:decoration-signal;
+}
+
+/* ====== utilitários da sala de situação ====== */
+.hud-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.hud-panel {
+  @apply rounded-md border border-line bg-bg-900/80 backdrop-blur-sm;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-signal) 8%, transparent), 0 20px 60px -30px rgba(0,0,0,.8);
+}
+.hud-label {
+  @apply font-mono text-[11px] uppercase tracking-[0.18em] text-faint;
+}
+.hud-value {
+  @apply font-display text-3xl font-semibold tabular-nums text-ink md:text-4xl;
+}
+.glow-signal { text-shadow: 0 0 18px color-mix(in srgb, var(--color-signal) 55%, transparent); }
+.glow-h1n1 { text-shadow: 0 0 18px color-mix(in srgb, var(--color-h1n1) 55%, transparent); }
+.scanlines::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 3px, rgba(0,0,0,.08) 3px 4px);
+}
+@keyframes pulse-ring { 0% { transform: scale(.6); opacity: .9 } 100% { transform: scale(1.8); opacity: 0 } }
+.pulse-ring { animation: pulse-ring 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring { animation: none; }
+  html { scroll-behavior: auto; }
 }
 
 .skip-link {
@@ -61,11 +109,11 @@ a {
   max-width: 68ch;
 }
 .prose h2 {
-  @apply mt-10 mb-3 text-2xl font-semibold text-navy-900;
+  @apply mt-10 mb-3 font-display text-2xl font-semibold text-ink;
   scroll-margin-top: 5rem;
 }
 .prose h3 {
-  @apply mt-8 mb-2 text-xl font-semibold text-navy-900;
+  @apply mt-8 mb-2 font-display text-xl font-semibold text-ink;
 }
 .prose p {
   @apply my-4;

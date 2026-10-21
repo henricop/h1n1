@@ -242,6 +242,28 @@ export const INDICATORS: readonly IndicatorDefinition[] = [
     caveats: ['Indicador de qualidade de dado; semanas com menos de 20 casos de influenza A por RT-PCR são suprimidas.'],
   },
 
+  {
+    ...SIVEP_BASE,
+    id: 'sivep_reporting_delay_cdf',
+    name: 'Atraso de notificação: proporção acumulada de registros digitados até d semanas após os primeiros sintomas (SIVEP-Gripe)',
+    description:
+      'Para SRAG por influenza (CLASSI_FIN = 1) com primeiros sintomas há pelo menos 13 semanas antes da data da base, nas 52 semanas anteriores: percentual de registros cuja DT_DIGITA (ou DT_NOTIFIC quando ausente) ocorreu até d semanas após DT_SIN_PRI, para d = 0..12. Base do nowcast.',
+    case_definition:
+      '100 × registros(CLASSI_FIN = 1, atraso_semanas <= d) / registros(CLASSI_FIN = 1) na janela de referência; atraso_semanas = floor((DT_DIGITA ?? DT_NOTIFIC) - DT_SIN_PRI) / 7).',
+    measurement: 'percent',
+    unit: 'percent',
+    period_type: 'year',
+    event_date_basis: 'symptom_onset',
+    stratum_schema: { delay_weeks: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
+    suppression_threshold: 0,
+    min_denominator: 100,
+    caveats: [
+      'Distribuição empírica de atraso; muda entre temporadas e entre UFs.',
+      'Usada apenas para estimar (nowcast) quantas notificações das últimas semanas ainda não foram digitadas; a estimativa não é contagem.',
+      'Período = ano epidemiológico da data da base; a janela de cálculo é móvel (52 semanas).',
+    ],
+  },
+
   // ---------- Denominadores ----------
   {
     id: 'ibge_population_estimate',
