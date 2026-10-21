@@ -140,3 +140,255 @@ export const SERIES_RESPONSE = {
     },
   },
 };
+
+// ---------------------------------------------------------------------------------------------------------
+// Visualização e análise (CONTRATO_API.md §3.13)
+// ---------------------------------------------------------------------------------------------------------
+
+const PERIOD_PATTERN = { pattern: '^\\d{4}(-(W\\d{2}|M\\d{2}))?$' } as const;
+const INDICATOR_PARAM = str('Id do indicador (obrigatório)', { ...TEXT, maxLength: 64 });
+const GEO_CODE_PARAM = str('Código geográfico (BRA, BR-SP...)', { ...TEXT, maxLength: 16 });
+
+/** meta compacta das rotas de visualização/análise */
+export const VIZ_META = {
+  type: 'object',
+  description: 'Metadados obrigatórios: exiba universe_note e data_as_of junto a qualquer número.',
+  properties: {
+    data_as_of: { type: 'string', nullable: true },
+    universe_note: { type: 'string' },
+    license: { type: 'string', nullable: true },
+    source_id: { type: 'string' },
+    case_definition: { type: 'string' },
+    caveats: { type: 'array', items: { type: 'string' } },
+  },
+} as const;
+
+const INDICATOR_REF = { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } } as const;
+const NULLABLE_NUMBERS = { type: 'array', items: { type: 'number', nullable: true } } as const;
+const BOOLEANS = { type: 'array', items: { type: 'boolean' } } as const;
+
+export const GLOBE_QUERY = {
+  type: 'object',
+  required: ['indicator'],
+  properties: {
+    indicator: str('Id de um indicador flunet_* (400 caso contrário), ex. flunet_ah1n1pdm09_detections', { ...TEXT, maxLength: 64 }),
+    from: str(`Período inicial, inclusive. ${PERIOD_DOC}`, PERIOD_PATTERN),
+    to: str(`Período final, inclusive. ${PERIOD_DOC}`, PERIOD_PATTERN),
+    origin: str('Estrato origin_source do FluNet; all = total (padrão)', { enum: ['all', 'SENTINEL', 'NONSENTINEL', 'NOTDEFINED'] }),
+  },
+};
+
+export const GLOBE_RESPONSE = {
+  type: 'object',
+  description: 'Matriz país × semana para o globo. Só países com centroide conhecido e com ao menos um valor.',
+  properties: {
+    indicator: INDICATOR_REF,
+    meta: VIZ_META,
+    weeks: { type: 'array', items: { type: 'string' } },
+    countries: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          iso3: { type: 'string' }, name: { type: 'string' }, lat: { type: 'number' }, lon: { type: 'number' },
+          who_region: { type: 'string', nullable: true }, values: NULLABLE_NUMBERS,
+        },
+      },
+    },
+  },
+};
+
+export const MAP_BRAZIL_QUERY = {
+  type: 'object',
+  required: ['indicator'],
+  properties: {
+    indicator: str('Id de um indicador com geo_levels contendo state (400 caso contrário)', { ...TEXT, maxLength: 64 }),
+    from: str(`Período inicial, inclusive. ${PERIOD_DOC}`, PERIOD_PATTERN),
+    to: str(`Período final, inclusive. ${PERIOD_DOC}`, PERIOD_PATTERN),
+  },
+};
+
+export const MAP_BRAZIL_RESPONSE = {
+  type: 'object',
+  description: 'Matriz UF × semana com supressão aplicada (value null + suppressed true) e total nacional.',
+  properties: {
+    indicator: INDICATOR_REF,
+    meta: VIZ_META,
+    weeks: { type: 'array', items: { type: 'string' } },
+    states: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          code: { type: 'string' }, uf: { type: 'string' }, name: { type: 'string' }, ibge: { type: 'string' },
+          values: NULLABLE_NUMBERS, suppressed: BOOLEANS,
+        },
+      },
+    },
+    national: { type: 'object', properties: { values: NULLABLE_NUMBERS, provisional: BOOLEANS } },
+  },
+};
+
+export const EARS_QUERY = {
+  type: 'object',
+  required: ['indicator'],
+  properties: {
+    indicator: INDICATOR_PARAM,
+    geo_level: str('state (todas as UFs quando geo_code ausente) ou country; padrão inferido de geo_code, senão country', { enum: ['state', 'country'] }),
+    geo_code: GEO_CODE_PARAM,
+    weeks: { type: 'integer', minimum: 1, maximum: 52, default: 12, description: 'Semanas mais recentes avaliadas por geo' },
+    baseline: { type: 'integer', minimum: 2, maximum: 52, default: 8, description: 'Semanas da baseline' },
+    guard: { type: 'integer', minimum: 0, maximum: 8, default: 2, description: 'Semanas de guarda (C2/C3)' },
+  },
+};
+
+export const EARS_RESPONSE = {
+  type: 'object',
+  description: 'Sinal estatístico (CDC EARS C1/C2/C3), não surto confirmado. Células suprimidas entram como null.',
+  properties: {
+    indicator: INDICATOR_REF,
+    meta: VIZ_META,
+    method: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' }, baseline: { type: 'integer' }, guard: { type: 'integer' },
+        thresholds: { type: 'object', properties: { c1: { type: 'number' }, c2: { type: 'number' }, c3: { type: 'number' } } },
+        note: { type: 'string' },
+      },
+    },
+    results: {
+      type: 'array',
+      description: 'Ordenado por c2 desc (null por último)',
+      items: {
+        type: 'object',
+        properties: {
+          geo_code: { type: 'string' }, name: { type: 'string' }, period: { type: 'string' },
+          value: { type: 'number', nullable: true }, provisional: { type: 'boolean' },
+          c1: { type: 'number', nullable: true }, c2: { type: 'number', nullable: true }, c3: { type: 'number', nullable: true },
+          flags: { type: 'array', items: { type: 'string', enum: ['C1', 'C2', 'C3'] } },
+        },
+      },
+    },
+  },
+};
+
+export const NOWCAST_QUERY = {
+  type: 'object',
+  required: ['indicator'],
+  properties: {
+    indicator: str('Id de um indicador sivep_* de contagem (400 caso contrário)', { ...TEXT, maxLength: 64 }),
+    geo_code: str('BRA (padrão) ou BR-UF', { ...TEXT, maxLength: 16 }),
+    weeks: { type: 'integer', minimum: 1, maximum: 13, default: 8, description: 'Semanas mais recentes estimadas' },
+  },
+};
+
+export const NOWCAST_RESPONSE = {
+  type: 'object',
+  description: 'Estimativa (não contagem) do total final das últimas semanas a partir da CDF empírica de atraso.',
+  properties: {
+    indicator: INDICATOR_REF,
+    meta: VIZ_META,
+    delay: {
+      type: 'object',
+      properties: {
+        period: { type: 'string' }, n: { type: 'integer', nullable: true },
+        cdf: { type: 'array', items: { type: 'number' }, minItems: 13, maxItems: 13 },
+        source_indicator: { type: 'string' },
+      },
+    },
+    results: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          period: { type: 'string' }, weeks_ago: { type: 'integer' }, observed: { type: 'number', nullable: true },
+          reported_share: { type: 'number', nullable: true }, estimated: { type: 'number', nullable: true },
+          lower: { type: 'number', nullable: true }, upper: { type: 'number', nullable: true },
+        },
+      },
+    },
+    note: { type: 'string' },
+  },
+};
+
+export const SEASONS_QUERY = {
+  type: 'object',
+  required: ['indicator'],
+  properties: {
+    indicator: INDICATOR_PARAM,
+    geo_code: str('Código geográfico (padrão BRA)', { ...TEXT, maxLength: 16 }),
+    from_year: { type: 'integer', minimum: 1990, maximum: 2100, description: 'Primeiro ano incluído' },
+  },
+};
+
+export const SEASONS_RESPONSE = {
+  type: 'object',
+  properties: {
+    indicator: INDICATOR_REF,
+    meta: VIZ_META,
+    geo_code: { type: 'string' },
+    weeks: { type: 'array', items: { type: 'integer' } },
+    seasons: {
+      type: 'array',
+      items: { type: 'object', properties: { year: { type: 'integer' }, values: NULLABLE_NUMBERS } },
+    },
+  },
+};
+
+export const RUNS_QUERY = {
+  type: 'object',
+  properties: {
+    limit: { type: 'integer', minimum: 1, maximum: 500, default: 50 },
+    source_id: str('Filtra execuções de uma fonte (ex. BR-03)', { ...TEXT, maxLength: 32 }),
+  },
+};
+
+export const RUNS_RESPONSE = {
+  type: 'object',
+  properties: {
+    data: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }, connector: { type: 'string' }, source_id: { type: 'string' },
+          started_at: { type: 'string' }, finished_at: { type: 'string', nullable: true },
+          status: { type: 'string', enum: ['running', 'ok', 'failed', 'quarantined'] },
+          rows_in: { type: 'integer' }, rows_out: { type: 'integer' },
+          error: { type: 'string', nullable: true, maxLength: 200, description: 'Truncado a 200 caracteres, sem caminhos de disco' },
+        },
+      },
+    },
+  },
+};
+
+export const LATEST_QUERY = {
+  type: 'object',
+  properties: { geo_code: str('Código geográfico (padrão BRA)', { ...TEXT, maxLength: 16 }) },
+};
+
+export const LATEST_RESPONSE = {
+  type: 'object',
+  description: 'Último período publicado com valor (não suprimido) e variação vs as 4 semanas anteriores.',
+  properties: {
+    indicator: INDICATOR_REF,
+    meta: VIZ_META,
+    geo_code: { type: 'string' },
+    latest: {
+      type: 'object', nullable: true,
+      properties: {
+        period: { type: 'string' }, period_start: { type: 'string' }, period_end: { type: 'string' },
+        value: { type: 'number' }, provisional: { type: 'boolean' }, update_status: { type: 'string' },
+      },
+    },
+    trend: {
+      type: 'object',
+      properties: {
+        k: { type: 'integer' },
+        change_pct: { type: 'number', nullable: true, description: 'Variação % entre a média das últimas k semanas e das k anteriores' },
+        recent_mean: { type: 'number', nullable: true },
+        previous_mean: { type: 'number', nullable: true },
+      },
+    },
+  },
+};

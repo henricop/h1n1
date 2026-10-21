@@ -408,3 +408,187 @@ export function freshnessState(fresh: ApiResult<{ data: FreshnessRow[] }>, indic
   const row = freshnessFor(fresh, indicatorId);
   return { verified: true, row, stale: isStale(row) };
 }
+
+// =====================================================================================================
+// Sala de situação: endpoints novos (/v1/globe, /v1/map/brazil, /v1/analytics/*, /v1/runs, /latest)
+// Mesmas regras: zod mínimo, timeout, nunca lança, 'unavailable' honesto; mock lê fixtures por nome.
+// =====================================================================================================
+
+export interface PanelMeta {
+  data_as_of: string | null;
+  universe_note: string;
+  license: string | null;
+  source_id: string;
+  case_definition: string;
+}
+export interface IndicatorRef { id: string; name: string }
+
+export interface GlobeCountry { iso3: string; name: string; lat: number; lon: number; who_region: string | null; values: (number | null)[] }
+export interface GlobeResult { indicator: IndicatorRef; meta: PanelMeta; weeks: string[]; countries: GlobeCountry[] }
+
+export interface MapState { code: string; uf: string; name: string; ibge: string; values: (number | null)[]; suppressed: boolean[] }
+export interface BrazilMapResult { indicator: IndicatorRef; meta: PanelMeta; weeks: string[]; states: MapState[]; national: { values: (number | null)[]; provisional: boolean[] } }
+
+export interface EarsRow { geo_code: string; name: string; period: string; value: number | null; provisional: boolean; c1: number | null; c2: number | null; c3: number | null; flags: string[] }
+export interface EarsResult { indicator: IndicatorRef; meta: PanelMeta; method: { name: string; baseline: string; guard: string; thresholds: string; note: string }; results: EarsRow[] }
+
+export interface NowcastRow { period: string; weeks_ago: number; observed: number | null; reported_share: number; estimated: number; lower: number; upper: number }
+export interface NowcastResult { indicator: IndicatorRef; meta: PanelMeta; delay: { period: string; n: number; cdf: number[] }; results: NowcastRow[]; note: string }
+
+export interface SeasonsResult { indicator: IndicatorRef; meta: PanelMeta; weeks: number[]; seasons: Array<{ year: number; values: (number | null)[] }> }
+
+export interface RunRow { id: string; connector: string; source_id: string; started_at: string; finished_at: string | null; status: string; rows_in: number | null; rows_out: number | null; error: string | null }
+export interface RunsResult { data: RunRow[] }
+
+export interface LatestResult { indicator: IndicatorRef; geo_code: string; period: string; period_end: string; value: number | null; suppressed: boolean; provisional: boolean; trend_pct_vs_4w: number | null; data_as_of: string | null }
+
+const IndicatorRefSchema = z.object({ id: z.string().min(1), name: z.string() }).passthrough();
+const PanelMetaSchema = z
+  .object({ data_as_of: nullableString, universe_note: z.string(), license: nullableString, source_id: z.string(), case_definition: z.string() })
+  .passthrough();
+const NullableNumbers = z.array(z.number().nullable());
+
+const GlobeSchema = z
+  .object({
+    indicator: IndicatorRefSchema,
+    meta: PanelMetaSchema,
+    weeks: z.array(z.string().regex(/^\d{4}-W\d{2}$/)),
+    countries: z.array(z.object({ iso3: z.string().length(3), name: z.string(), lat: z.number(), lon: z.number(), who_region: nullableString, values: NullableNumbers }).passthrough()),
+  })
+  .passthrough();
+
+const BrazilMapSchema = z
+  .object({
+    indicator: IndicatorRefSchema,
+    meta: PanelMetaSchema,
+    weeks: z.array(z.string()),
+    states: z.array(z.object({ code: z.string(), uf: z.string().length(2), name: z.string(), ibge: z.string(), values: NullableNumbers, suppressed: z.array(z.boolean()) }).passthrough()),
+    national: z.object({ values: NullableNumbers, provisional: z.array(z.boolean()) }).passthrough(),
+  })
+  .passthrough();
+
+const EarsSchema = z
+  .object({
+    indicator: IndicatorRefSchema,
+    meta: PanelMetaSchema,
+    method: z.object({ name: z.string(), baseline: z.string(), guard: z.string(), thresholds: z.string(), note: z.string() }).passthrough(),
+    results: z.array(
+      z
+        .object({ geo_code: z.string(), name: z.string(), period: z.string(), value: z.number().nullable(), provisional: z.boolean(), c1: z.number().nullable(), c2: z.number().nullable(), c3: z.number().nullable(), flags: z.array(z.string()).default([]) })
+        .passthrough(),
+    ),
+  })
+  .passthrough();
+
+const NowcastSchema = z
+  .object({
+    indicator: IndicatorRefSchema,
+    meta: PanelMetaSchema,
+    delay: z.object({ period: z.string(), n: z.number(), cdf: z.array(z.number()) }).passthrough(),
+    results: z.array(z.object({ period: z.string(), weeks_ago: z.number(), observed: z.number().nullable(), reported_share: z.number(), estimated: z.number(), lower: z.number(), upper: z.number() }).passthrough()),
+    note: z.string(),
+  })
+  .passthrough();
+
+const SeasonsSchema = z
+  .object({ indicator: IndicatorRefSchema, meta: PanelMetaSchema, weeks: z.array(z.number()), seasons: z.array(z.object({ year: z.number(), values: NullableNumbers }).passthrough()) })
+  .passthrough();
+
+const RunsSchema = z
+  .object({
+    data: z.array(
+      z
+        .object({ id: z.string(), connector: z.string(), source_id: z.string(), started_at: z.string(), finished_at: nullableString, status: z.string(), rows_in: z.number().nullable(), rows_out: z.number().nullable(), error: nullableString })
+        .passthrough(),
+    ),
+  })
+  .passthrough();
+
+const LatestSchema = z
+  .object({ indicator: IndicatorRefSchema, geo_code: z.string(), period: z.string(), period_end: z.string(), value: z.number().nullable(), suppressed: z.boolean(), provisional: z.boolean(), trend_pct_vs_4w: z.number().nullable(), data_as_of: nullableString })
+  .passthrough();
+
+const SAFE_ID = /^[a-z0-9_]+$/;
+const SAFE_GEO = /^[A-Z]{2,3}(-[A-Z]{2})?$/;
+
+/** Célula suprimida do mapa nunca carrega valor, independentemente do que a API devolveu. */
+export function normalizeMapState(s: MapState): MapState {
+  return { ...s, values: s.values.map((v, i) => (s.suppressed[i] ? null : v)) };
+}
+
+/** Detecções por país e semana ISO para o globo (FluNet). `from` = primeira semana (ex.: 2009-W01). */
+export async function getGlobe(p: { indicator: string; from?: string }): Promise<ApiResult<GlobeResult>> {
+  if (!SAFE_ID.test(p.indicator)) return unavailable('Identificador de indicador inválido', 'not_found');
+  if (isMockMode()) {
+    return mock<GlobeResult>(`globe.${p.indicator}`, GlobeSchema, (d) => {
+      const start = p.from ? d.weeks.findIndex((w) => w >= p.from!) : 0;
+      if (start <= 0) return d;
+      return { ...d, weeks: d.weeks.slice(start), countries: d.countries.map((c) => ({ ...c, values: c.values.slice(start) })) };
+    });
+  }
+  return request<GlobeResult>(`/v1/globe${buildQuery({ indicator: p.indicator, from: p.from })}`, GlobeSchema);
+}
+
+/** Valores por UF e semana para o mapa do Brasil (SIVEP). Células suprimidas são normalizadas para null. */
+export async function getBrazilMap(p: { indicator: string; from?: string; to?: string }): Promise<ApiResult<BrazilMapResult>> {
+  if (!SAFE_ID.test(p.indicator)) return unavailable('Identificador de indicador inválido', 'not_found');
+  const norm = (d: BrazilMapResult): BrazilMapResult => ({ ...d, states: d.states.map(normalizeMapState) });
+  if (isMockMode()) {
+    return mock<BrazilMapResult>(`map.brazil.${p.indicator}`, BrazilMapSchema, (d) => {
+      const idx = d.weeks.map((w, i) => i).filter((i) => (!p.from || d.weeks[i]! >= p.from) && (!p.to || d.weeks[i]! <= p.to));
+      const pick = <T,>(a: T[]) => idx.map((i) => a[i]!);
+      return norm({
+        ...d,
+        weeks: pick(d.weeks),
+        states: d.states.map((s) => ({ ...s, values: pick(s.values), suppressed: pick(s.suppressed) })),
+        national: { values: pick(d.national.values), provisional: pick(d.national.provisional) },
+      });
+    });
+  }
+  const r = await request<BrazilMapResult>(`/v1/map/brazil${buildQuery({ indicator: p.indicator, from: p.from, to: p.to })}`, BrazilMapSchema);
+  return r.ok ? { ...r, data: norm(r.data) } : r;
+}
+
+/** Sinais EARS (C1/C2/C3) por geografia: sinal estatístico, não surto confirmado. */
+export async function getEars(p: { indicator: string; geo_level?: 'state' | 'country'; weeks?: number }): Promise<ApiResult<EarsResult>> {
+  if (!SAFE_ID.test(p.indicator)) return unavailable('Identificador de indicador inválido', 'not_found');
+  const level = p.geo_level ?? 'state';
+  if (isMockMode()) return mock<EarsResult>(`ears.${p.indicator}.${level}`, EarsSchema);
+  return request<EarsResult>(`/v1/analytics/ears${buildQuery({ indicator: p.indicator, geo_level: level, weeks: p.weeks ?? 12 })}`, EarsSchema);
+}
+
+/** Nowcast (estimativa de notificações ainda não digitadas). 404 nowcast_unavailable → status 'not_found'. */
+export async function getNowcast(p: { indicator: string; geo_code?: string; weeks?: number }): Promise<ApiResult<NowcastResult>> {
+  if (!SAFE_ID.test(p.indicator)) return unavailable('Identificador de indicador inválido', 'not_found');
+  const geo = p.geo_code ?? 'BRA';
+  if (!SAFE_GEO.test(geo)) return unavailable('Código geográfico inválido', 'not_found');
+  if (isMockMode()) return mock<NowcastResult>(`nowcast.${p.indicator}.${geo}`, NowcastSchema);
+  return request<NowcastResult>(`/v1/analytics/nowcast${buildQuery({ indicator: p.indicator, geo_code: geo, weeks: p.weeks ?? 8 })}`, NowcastSchema);
+}
+
+/** Sobreposição de temporadas (uma série por ano, semanas 1..53). */
+export async function getSeasons(p: { indicator: string; geo_code?: string; from_year?: number }): Promise<ApiResult<SeasonsResult>> {
+  if (!SAFE_ID.test(p.indicator)) return unavailable('Identificador de indicador inválido', 'not_found');
+  const geo = p.geo_code ?? 'BRA';
+  if (!SAFE_GEO.test(geo)) return unavailable('Código geográfico inválido', 'not_found');
+  if (isMockMode()) {
+    return mock<SeasonsResult>(`seasons.${p.indicator}.${geo}`, SeasonsSchema, (d) => ({ ...d, seasons: d.seasons.filter((s) => !p.from_year || s.year >= p.from_year) }));
+  }
+  return request<SeasonsResult>(`/v1/analytics/seasons${buildQuery({ indicator: p.indicator, geo_code: geo, from_year: p.from_year })}`, SeasonsSchema);
+}
+
+/** Últimas execuções dos conectores (console de ingestão): "última execução", nunca um estado corrente. */
+export async function getRuns(limit = 30): Promise<ApiResult<RunsResult>> {
+  if (isMockMode()) return mock<RunsResult>('runs', RunsSchema, (d) => ({ data: d.data.slice(0, limit) }));
+  return request<RunsResult>(`/v1/runs${buildQuery({ limit })}`, RunsSchema);
+}
+
+/** Último valor publicável de um indicador para uma geografia. Célula suprimida nunca carrega valor. */
+export async function getLatest(indicator: string, geo_code = 'BRA'): Promise<ApiResult<LatestResult>> {
+  if (!SAFE_ID.test(indicator)) return unavailable('Identificador de indicador inválido', 'not_found');
+  if (!SAFE_GEO.test(geo_code)) return unavailable('Código geográfico inválido', 'not_found');
+  const norm = (d: LatestResult): LatestResult => (d.suppressed ? { ...d, value: null } : d);
+  if (isMockMode()) return mock<LatestResult>(`latest.${indicator}.${geo_code}`, LatestSchema, norm);
+  const r = await request<LatestResult>(`/v1/indicators/${encodeURIComponent(indicator)}/latest${buildQuery({ geo_code })}`, LatestSchema);
+  return r.ok ? { ...r, data: norm(r.data) } : r;
+}

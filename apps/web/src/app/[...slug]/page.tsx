@@ -5,7 +5,7 @@ import { pageMetadata } from '@/lib/metadata';
 import { MdxArticle } from '@/components/MdxArticle';
 
 /** Slugs atendidos por rotas de aplicação (não passam pelo catch-all). */
-const APP_SLUGS = new Set(['/dados/brasil/', '/dados/fontes/', '/dados/metodologia/']);
+const APP_SLUGS = new Set(['/dados/brasil/', '/dados/mundo/', '/dados/fontes/', '/dados/metodologia/', '/terminal/']);
 
 export const revalidate = 3600;
 export const dynamicParams = true;

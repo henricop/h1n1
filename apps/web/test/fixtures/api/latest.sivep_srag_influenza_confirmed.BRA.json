@@ -1,0 +1,14 @@
+{
+ "indicator": {
+  "id": "sivep_srag_influenza_confirmed",
+  "name": "SRAG por influenza (SIVEP-Gripe)"
+ },
+ "geo_code": "BRA",
+ "period": "2026-W41",
+ "period_end": "2026-10-10",
+ "value": 56,
+ "suppressed": false,
+ "provisional": true,
+ "trend_pct_vs_4w": -48.5,
+ "data_as_of": "2026-10-13"
+}

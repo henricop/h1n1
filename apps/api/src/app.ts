@@ -14,6 +14,9 @@ import { seriesRoutes } from './routes/series.js';
 import { freshnessRoutes } from './routes/freshness.js';
 import { snapshotsRoutes } from './routes/snapshots.js';
 import { geoRoutes } from './routes/geo.js';
+import { vizRoutes } from './routes/viz.js';
+import { analyticsRoutes } from './routes/analytics.js';
+import { runsRoutes } from './routes/runs.js';
 
 export const API_VERSION = '0.1.0';
 
@@ -158,7 +161,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
         { name: 'fontes', description: 'Catálogo de fontes oficiais' },
         { name: 'snapshots', description: 'Snapshots imutáveis e diffs' },
         { name: 'geo', description: 'Unidades geográficas' },
-        { name: 'infra', description: 'Saúde e frescor' },
+        { name: 'infra', description: 'Saúde, frescor e execuções de ingestão' },
+        { name: 'visualização', description: 'Matrizes prontas para globo e mapa (CONTRATO_API.md §3.13)' },
+        { name: 'análise', description: 'EARS, nowcast e temporadas — sinais estatísticos e estimativas, não contagens (§3.13)' },
       ],
     },
   });
@@ -218,6 +223,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(freshnessRoutes, { db });
   await app.register(snapshotsRoutes, { db });
   await app.register(geoRoutes, { db });
+  await app.register(vizRoutes, { db });
+  await app.register(analyticsRoutes, { db });
+  await app.register(runsRoutes, { db });
 
   return app;
 }

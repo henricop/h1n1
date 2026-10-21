@@ -1,0 +1,14 @@
+{
+ "indicator": {
+  "id": "flunet_ah1n1pdm09_detections",
+  "name": "Detecções de A(H1N1)pdm09 (FluNet)"
+ },
+ "geo_code": "BRA",
+ "period": "2026-W41",
+ "period_end": "2026-10-11",
+ "value": 17,
+ "suppressed": false,
+ "provisional": true,
+ "trend_pct_vs_4w": -46,
+ "data_as_of": "2026-10-12"
+}

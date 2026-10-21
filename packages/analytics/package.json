@@ -1,0 +1,17 @@
+{
+  "name": "@h1n1/analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Funções puras de análise de séries semanais (EARS, nowcast por atraso de notificação, sobreposição de temporadas, tendência)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": { "@h1n1/core": "workspace:*" },
+  "devDependencies": { "typescript": "^5.6.0", "vitest": "^3.0.0", "@types/node": "^22.0.0" }
+}

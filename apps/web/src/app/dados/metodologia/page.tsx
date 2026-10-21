@@ -29,7 +29,7 @@ export default async function MetodologiaPage() {
   return (
     <article className="mx-auto max-w-5xl">
       <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Dados', href: null }, { label: 'Metodologia', href: '/dados/metodologia/' }]} />
-      <h1 className="mt-2 text-3xl font-bold text-navy-900">Metodologia</h1>
+      <h1 className="mt-2 text-3xl font-bold text-ink">Metodologia</h1>
       <p className="mt-3 max-w-3xl text-muted">
         Cada número publicado no H1N1 vem de uma consulta determinística a uma base oficial versionada (snapshot com hash, URL, data de coleta e licença). Abaixo, a definição exata de cada indicador e as regras de integridade aplicadas.
       </p>
@@ -42,7 +42,7 @@ function MethodologyTables() {
   return (
     <>
       <section aria-labelledby="h-indicadores" className="mt-10">
-        <h2 id="h-indicadores" className="text-2xl font-semibold text-navy-900">
+        <h2 id="h-indicadores" className="text-2xl font-semibold text-ink">
           Indicadores
         </h2>
         <p className="mt-2 text-sm text-muted">
@@ -99,7 +99,7 @@ function MethodologyTables() {
       </section>
 
       <section aria-labelledby="h-regras" className="mt-10">
-        <h2 id="h-regras" className="text-2xl font-semibold text-navy-900">
+        <h2 id="h-regras" className="text-2xl font-semibold text-ink">
           Regras obrigatórias de integridade
         </h2>
         <p className="mt-2 text-sm text-muted">Seção 10.4 do plano estratégico. Valem para todo indicador, gráfico e texto do site.</p>

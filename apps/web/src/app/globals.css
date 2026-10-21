@@ -101,7 +101,7 @@ a {
   @apply sr-only;
 }
 .skip-link:focus {
-  @apply not-sr-only fixed top-2 left-2 z-50 rounded bg-navy-900 px-4 py-3 text-white no-underline;
+  @apply not-sr-only fixed top-2 left-2 z-50 rounded border border-signal bg-signal/15 px-4 py-3 text-signal no-underline;
 }
 
 /* Tipografia do corpo editorial (MDX) */
@@ -159,7 +159,7 @@ a {
   @apply border-b border-line px-2 py-2 text-left;
 }
 .data-table th {
-  @apply bg-navy-50 font-semibold text-navy-900;
+  @apply bg-navy-50 font-semibold text-ink;
 }
 .data-table td.num {
   @apply text-right tabular-nums;
@@ -201,3 +201,148 @@ a {
   min-height: 44px;
   min-width: 44px;
 }
+
+/* ====== Sala de situação: extensões (fontes via next/font, HUD, scrubber, mapa, console) ====== */
+:root {
+  /* next/font injeta --font-inter / --font-space-grotesk / --font-jetbrains no <html>; os tokens acima mantêm fallback */
+  --font-sans: var(--font-inter, 'Inter'), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: var(--font-space-grotesk, 'Space Grotesk'), var(--font-inter, 'Inter'), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains, 'JetBrains Mono'), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.hud-grid-fade {
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.35) 60%, rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.35) 60%, rgba(0, 0, 0, 0) 100%);
+}
+.hud-kicker {
+  @apply font-mono text-[11px] uppercase tracking-[0.22em] text-signal;
+}
+.hud-meta {
+  @apply mt-3 border-t border-line pt-2 font-mono text-[11px] leading-relaxed text-faint;
+}
+.hud-corner {
+  position: relative;
+}
+.hud-corner::before,
+.hud-corner::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: color-mix(in srgb, var(--color-signal) 55%, transparent);
+  border-style: solid;
+  pointer-events: none;
+}
+.hud-corner::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.hud-corner::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+/* Botões do HUD */
+.hud-btn {
+  min-height: 44px; min-width: 44px;
+  @apply inline-flex items-center justify-center gap-2 rounded border border-line-strong bg-bg-800 px-3 py-2 font-mono text-xs uppercase tracking-wider text-ink no-underline transition-colors hover:border-signal hover:text-signal;
+}
+.hud-btn[aria-pressed='true'],
+.hud-btn-primary {
+  @apply border-signal bg-signal/10 text-signal;
+}
+.hud-btn-h1n1 {
+  @apply border-h1n1/60 text-h1n1 hover:border-h1n1 hover:text-h1n1;
+}
+.hud-select {
+  min-height: 44px;
+  @apply rounded border border-line-strong bg-bg-800 px-2 py-2 font-mono text-xs text-ink;
+}
+
+/* Scrubber temporal */
+.scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+.scrubber::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--color-signal-dim) var(--progress, 0%), var(--color-line) var(--progress, 0%));
+}
+.scrubber::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-line);
+}
+.scrubber::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-signal-dim);
+}
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--color-signal);
+  border: 2px solid var(--color-bg-950);
+  box-shadow: 0 0 0 2px var(--color-signal-dim), 0 0 16px color-mix(in srgb, var(--color-signal) 60%, transparent);
+}
+.scrubber::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-signal);
+  border: 2px solid var(--color-bg-950);
+  box-shadow: 0 0 0 2px var(--color-signal-dim), 0 0 16px color-mix(in srgb, var(--color-signal) 60%, transparent);
+}
+.scrubber:focus-visible {
+  outline: 3px solid var(--color-signal);
+  outline-offset: 4px;
+}
+
+/* Mapa de UFs */
+.uf-path {
+  stroke: var(--color-bg-950);
+  stroke-width: 0.6;
+  transition: fill 220ms linear;
+  cursor: default;
+}
+.uf-path:hover,
+.uf-path:focus-visible {
+  stroke: var(--color-signal);
+  stroke-width: 1.4;
+  outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .uf-path { transition: none; }
+}
+
+/* Console de ingestão */
+.console {
+  @apply rounded border border-line bg-bg-950 p-3 font-mono text-[12px] leading-relaxed text-muted;
+}
+.console .ok { color: var(--color-ok-700); }
+.console .failed { color: var(--color-urgent-700); }
+.console .skipped { color: var(--color-srag); }
+.cursor-blink::after {
+  content: '▍';
+  color: var(--color-signal);
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .cursor-blink::after { animation: none; }
+}
+
+/* Faixas de rolagem horizontal discretas */
+.hud-scroll { scrollbar-width: thin; scrollbar-color: var(--color-line-strong) transparent; }
+
+/* Links em painéis escuros (legibilidade AA) */
+.hud-panel a, .prose a { color: var(--color-signal); }
+.prose strong { color: var(--color-ink); }
+.prose p, .prose li { color: var(--color-ink); }
+
+/* Contraste AA dos banners sobre fundo escuro */
+.bg-attention-100 { color: var(--color-attention-700); }
+select option { background: var(--color-bg-800); color: var(--color-ink); }

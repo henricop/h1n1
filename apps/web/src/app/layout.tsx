@@ -1,10 +1,16 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { SkipLink } from '@/components/SkipLink';
+import { CommandPalette } from '@/components/terminal/CommandPalette';
 import { siteChrome } from '@/lib/nav';
 import { SITE } from '@/lib/site';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space-grotesk', display: 'swap', weight: ['500', '600', '700'] });
+const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap', weight: ['400', '500', '700'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -14,19 +20,20 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true, 'max-image-preview': 'large' },
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#11304d' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#05080f', colorScheme: 'dark' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const { nav, institutional } = siteChrome();
   return (
-    <html lang="pt-BR">
-      <body className="flex min-h-screen flex-col">
+    <html lang="pt-BR" className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrains.variable}`}>
+      <body className="flex min-h-screen flex-col bg-bg-950 text-ink">
         <SkipLink />
         <Header nav={nav} />
-        <main id="conteudo" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6" tabIndex={-1}>
+        <main id="conteudo" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6" tabIndex={-1}>
           {children}
         </main>
         <Footer nav={nav} institutional={institutional} />
+        <CommandPalette />
       </body>
     </html>
   );

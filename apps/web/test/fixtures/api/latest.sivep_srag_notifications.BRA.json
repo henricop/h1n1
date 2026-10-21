@@ -1,0 +1,14 @@
+{
+ "indicator": {
+  "id": "sivep_srag_notifications",
+  "name": "Notificações de SRAG hospitalizada (SIVEP-Gripe)"
+ },
+ "geo_code": "BRA",
+ "period": "2026-W41",
+ "period_end": "2026-10-10",
+ "value": 701,
+ "suppressed": false,
+ "provisional": true,
+ "trend_pct_vs_4w": -45.1,
+ "data_as_of": "2026-10-13"
+}

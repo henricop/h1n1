@@ -13,7 +13,7 @@ const read = (p: string) => readFileSync(path.join(APP, p), 'utf8');
  */
 describe('política de cache', () => {
   it('páginas ISR exportam revalidate igual a API_REVALIDATE_SECONDS', () => {
-    for (const f of ['page.tsx', 'dados/fontes/[idOrSlug]/page.tsx', 'dados/metodologia/page.tsx', '[...slug]/page.tsx', 'sitemap.ts']) {
+    for (const f of ['page.tsx', 'dados/mundo/page.tsx', 'dados/fontes/[idOrSlug]/page.tsx', 'dados/metodologia/page.tsx', '[...slug]/page.tsx', 'sitemap.ts']) {
       const src = read(f);
       const m = /export const revalidate = (\d+);/.exec(src);
       expect(m, `${f} deve exportar revalidate literal`).not.toBeNull();

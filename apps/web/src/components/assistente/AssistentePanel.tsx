@@ -1,11 +1,266 @@
 'use client';
-/** Stub: substituído pelo agente do assistente. Mantém a interface: componente sem props obrigatórias. */
-export function AssistentePanel({ compact = false }: { compact?: boolean }) {
+/**
+ * Painel "Pergunte ao observatório": chat com streaming (useChat), sugestões, chamadas de ferramenta como linhas
+ * de console, citações como links e aviso fixo. Sem persistência; sem dados pessoais. `compact` reduz a altura.
+ */
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport, getToolName, isToolUIPart, type UIMessage } from 'ai';
+
+const SUGGESTIONS = ['Como está o H1N1 no Brasil nas últimas semanas?', 'Qual a diferença entre SRAG e H1N1 confirmado?', 'Quais UFs têm sinal estatístico?'] as const;
+
+const DISABLED_TEXT = 'Assistente desativado nesta instalação (defina ANTHROPIC_API_KEY).';
+const MAX_CHARS = 2_000;
+
+interface Citation {
+  label: string;
+  url: string;
+}
+
+function isSafeUrl(url: string): boolean {
+  return /^\/(?!\/)/.test(url) || /^https?:\/\//i.test(url);
+}
+
+function citationsOf(message: UIMessage): Citation[] {
+  const out: Citation[] = [];
+  const seen = new Set<string>();
+  for (const part of message.parts) {
+    if (!isToolUIPart(part) || part.state !== 'output-available') continue;
+    const output = part.output as { citations?: unknown } | undefined;
+    const list = Array.isArray(output?.citations) ? (output!.citations as unknown[]) : [];
+    for (const c of list) {
+      if (typeof c !== 'object' || c === null) continue;
+      const { label, url } = c as { label?: unknown; url?: unknown };
+      if (typeof url !== 'string' || typeof label !== 'string' || !isSafeUrl(url) || seen.has(url)) continue;
+      seen.add(url);
+      out.push({ label, url });
+    }
+  }
+  return out;
+}
+
+/** Markdown mínimo: parágrafos, listas "- ", **negrito** e [rótulo](url) com URLs seguras. Nada de HTML cru. */
+function renderInline(text: string, keyPrefix: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const re = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    if (m[1] !== undefined && m[2] !== undefined) {
+      nodes.push(
+        isSafeUrl(m[2]) ? (
+          <a key={`${keyPrefix}-${i++}`} href={m[2]} target={m[2].startsWith('/') ? undefined : '_blank'} rel={m[2].startsWith('/') ? undefined : 'noopener noreferrer'}>
+            {m[1]}
+          </a>
+        ) : (
+          m[1]
+        ),
+      );
+    } else if (m[3] !== undefined) {
+      nodes.push(<strong key={`${keyPrefix}-${i++}`}>{m[3]}</strong>);
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
+function Markdown({ text }: { text: string }) {
+  const blocks = text.split(/\n{2,}/).filter((b) => b.trim());
   return (
-    <div className="hud-panel p-4" data-stub="assistente" data-compact={compact}>
-      <p className="hud-label">Pergunte ao observatório</p>
-      <p className="mt-2 text-sm text-muted">Assistente em construção.</p>
-    </div>
+    <>
+      {blocks.map((b, bi) => {
+        const lines = b.split('\n');
+        if (lines.every((l) => /^\s*[-*•]\s+/.test(l))) {
+          return (
+            <ul key={bi} className="my-1 list-disc pl-5">
+              {lines.map((l, li) => (
+                <li key={li}>{renderInline(l.replace(/^\s*[-*•]\s+/, ''), `${bi}-${li}`)}</li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={bi} className="my-1">
+            {lines.map((l, li) => (
+              <span key={li}>
+                {renderInline(l, `${bi}-${li}`)}
+                {li < lines.length - 1 ? <br /> : null}
+              </span>
+            ))}
+          </p>
+        );
+      })}
+    </>
   );
 }
+
+function toolLine(part: UIMessage['parts'][number]): string | null {
+  if (!isToolUIPart(part)) return null;
+  const name = getToolName(part);
+  const input = part.input && typeof part.input === 'object' ? Object.values(part.input as Record<string, unknown>).filter((v) => v !== undefined && v !== '').map(String) : [];
+  const status = part.state === 'output-error' ? ' ✗' : part.state === 'output-available' ? '' : ' …';
+  return `▸ ${name}${input.length ? ' ' + input.join(' ') : ''}${status}`;
+}
+
+export function AssistentePanel({ compact = false }: { compact?: boolean }) {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [input, setInput] = useState('');
+  const logRef = useRef<HTMLDivElement>(null);
+  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), []);
+  const { messages, sendMessage, status, error, stop, clearError } = useChat({
+    transport,
+    onError: (err) => {
+      if (/assistant_disabled|ANTHROPIC_API_KEY/.test(err.message)) setEnabled(false);
+    },
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/chat', { method: 'GET' })
+      .then((r) => !cancelled && setEnabled(r.ok))
+      .catch(() => !cancelled && setEnabled(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+  }, [messages, status]);
+
+  const busy = status === 'submitted' || status === 'streaming';
+
+  const ask = (text: string) => {
+    const t = text.trim();
+    if (!t || busy || enabled === false) return;
+    if (t.length > MAX_CHARS) return;
+    clearError();
+    setInput('');
+    void sendMessage({ text: t });
+  };
+
+  const errorText = error ? (/assistant_disabled|ANTHROPIC_API_KEY/.test(error.message) ? DISABLED_TEXT : /rate_limited|429/.test(error.message) ? 'Muitas perguntas em pouco tempo. Aguarde alguns minutos.' : 'Falha ao consultar o assistente. Tente novamente.') : null;
+
+  return (
+    <section className="hud-panel scanlines relative flex flex-col overflow-hidden" aria-label="Pergunte ao observatório" data-compact={compact}>
+      <header className="flex items-center justify-between border-b border-line px-4 py-2">
+        <p className="hud-label">Pergunte ao observatório</p>
+        <p className="hud-label" aria-live="polite">
+          {enabled === false ? 'desativado' : busy ? 'respondendo…' : 'IA · claude'}
+        </p>
+      </header>
+
+      <div ref={logRef} className={`${compact ? 'max-h-56' : 'max-h-[28rem]'} min-h-24 overflow-y-auto px-4 py-3 text-sm`} role="log" aria-live="polite" aria-relevant="additions">
+        {enabled === false && <p className="font-mono text-srag">{DISABLED_TEXT}</p>}
+        {enabled !== false && messages.length === 0 && (
+          <p className="text-muted">Perguntas sobre os dados oficiais de H1N1, SRAG e influenza no Brasil. Cada número vem com fonte, data da base e o que ele representa.</p>
+        )}
+        {messages.map((m) => {
+          const cites = m.role === 'assistant' ? citationsOf(m) : [];
+          return (
+            <div key={m.id} className="mb-3">
+              <p className="hud-label">{m.role === 'user' ? 'você' : 'observatório'}</p>
+              {m.parts.map((part, i) => {
+                if (part.type === 'text') {
+                  return m.role === 'user' ? (
+                    <p key={i} className="my-1 whitespace-pre-wrap text-ink">
+                      {part.text}
+                    </p>
+                  ) : (
+                    <div key={i} className="text-ink">
+                      <Markdown text={part.text} />
+                    </div>
+                  );
+                }
+                const line = toolLine(part);
+                if (line) {
+                  return (
+                    <pre key={i} className="my-0.5 whitespace-pre-wrap font-mono text-[12px] text-signal-dim">
+                      {line}
+                    </pre>
+                  );
+                }
+                return null;
+              })}
+              {cites.length > 0 && (
+                <p className="mt-1 font-mono text-[12px] text-muted">
+                  fontes:{' '}
+                  {cites.map((c, i) => (
+                    <span key={c.url}>
+                      <a href={c.url} target={c.url.startsWith('/') ? undefined : '_blank'} rel={c.url.startsWith('/') ? undefined : 'noopener noreferrer'}>
+                        {c.label}
+                      </a>
+                      {i < cites.length - 1 ? ' · ' : ''}
+                    </span>
+                  ))}
+                </p>
+              )}
+            </div>
+          );
+        })}
+        {busy && <p className="font-mono text-[12px] text-faint">▸ consultando…</p>}
+        {errorText && (
+          <p className="font-mono text-[12px] text-urgent-700" role="alert">
+            {errorText}
+          </p>
+        )}
+      </div>
+
+      {enabled !== false && messages.length === 0 && (
+        <div className="flex flex-wrap gap-2 px-4 pb-2">
+          {SUGGESTIONS.map((s) => (
+            <button key={s} type="button" onClick={() => ask(s)} disabled={busy} className="touch rounded border border-line bg-bg-800 px-3 py-1.5 text-left font-mono text-[12px] text-muted hover:border-line-strong hover:text-signal">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <form
+        className="flex items-end gap-2 border-t border-line px-4 py-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(input);
+        }}
+      >
+        <label htmlFor="assistente-input" className="sr-only">
+          Sua pergunta
+        </label>
+        <textarea
+          id="assistente-input"
+          value={input}
+          onChange={(e) => setInput(e.target.value.slice(0, MAX_CHARS))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              ask(input);
+            }
+          }}
+          rows={compact ? 1 : 2}
+          maxLength={MAX_CHARS}
+          disabled={enabled === false || busy}
+          placeholder={enabled === false ? 'assistente desativado' : 'pergunte sobre os dados (sem dados de saúde pessoais)'}
+          className="min-h-[44px] flex-1 resize-none rounded border border-line bg-bg-950 px-3 py-2 font-mono text-sm text-ink placeholder:text-faint"
+        />
+        {busy ? (
+          <button type="button" onClick={() => stop()} className="touch rounded border border-line px-3 font-mono text-[12px] text-muted hover:bg-bg-700">
+            parar
+          </button>
+        ) : (
+          <button type="submit" disabled={enabled === false || !input.trim()} className="touch rounded border border-signal/60 px-3 font-mono text-[12px] text-signal hover:bg-bg-700 disabled:opacity-50">
+            perguntar
+          </button>
+        )}
+      </form>
+      <footer className="border-t border-line px-4 py-2 text-[11px] leading-snug text-faint">
+        Conteúdo educativo gerado por IA a partir de dados oficiais; não substitui avaliação médica. Em sinais de alerta, procure um serviço de saúde (
+        <a href="/sintomas/sinais-de-alerta/">sinais de alerta</a>). Não envie dados de saúde pessoais. A conversa não é armazenada. {input.length > 0 && <span className="tabular-nums">{input.length}/{MAX_CHARS}</span>}
+      </footer>
+    </section>
+  );
+}
+
 export default AssistentePanel;

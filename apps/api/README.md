@@ -1,14 +1,17 @@
 # @h1n1/api
 
 API pública do H1N1 (Fastify 5 + OpenAPI). Serve fontes, indicadores, séries, snapshots e frescor
-a partir de `@h1n1/db`. Todos os números vêm de **snapshots versionados de fontes oficiais** e só
-saem depois de publicados como vigentes para o indicador; a API nunca calcula nem inventa valores.
+a partir de `@h1n1/db`, e matrizes/análises de visualização (globo, mapa, EARS, nowcast, temporadas)
+calculadas por `@h1n1/analytics` sobre essas mesmas séries. Todos os números vêm de **snapshots
+versionados de fontes oficiais** e só saem depois de publicados como vigentes para o indicador; a API
+nunca inventa valores — as rotas de análise derivam **sinais e estimativas** das séries publicadas e
+dizem isso explicitamente no corpo (`method.note`, `note`).
 
 ## Como rodar
 
 ```bash
 pnpm install
-pnpm --filter @h1n1/core build && pnpm --filter @h1n1/db build   # se dist/ não existir
+pnpm --filter @h1n1/core build && pnpm --filter @h1n1/db build && pnpm --filter @h1n1/analytics build   # se dist/ não existir
 pnpm --filter @h1n1/api dev        # tsx watch, porta 3001 (API_PORT), host 0.0.0.0
 pnpm --filter @h1n1/api test       # vitest (PGlite em memória)
 pnpm --filter @h1n1/api build && pnpm --filter @h1n1/api start
@@ -43,7 +46,16 @@ Na subida, o servidor aplica migrações e faz `seedAll` se a tabela `sources` e
 | `GET /v1/snapshots?source_id=&limit=` · `GET /v1/snapshots/:id` | snapshots imutáveis (sem `storage_path`) |
 | `GET /v1/diff?indicator=&a=&b=&limit=` | diferenças célula a célula entre duas snapshots — **só total nacional** (ver abaixo) |
 | `GET /v1/geo?level=` | mundo, países, regiões e UFs |
+| `GET /v1/globe?indicator=&from=&to=&origin=` | matriz país × semana (FluNet) com centroides, para o globo |
+| `GET /v1/map/brazil?indicator=&from=&to=` | matriz UF × semana com supressão aplicada + total nacional, para o mapa |
+| `GET /v1/analytics/ears?indicator=&geo_level=&geo_code=&weeks=&baseline=&guard=` | EARS C1/C2/C3 (CDC) — sinal estatístico |
+| `GET /v1/analytics/nowcast?indicator=&geo_code=&weeks=` | nowcast pela CDF de atraso (`sivep_reporting_delay_cdf`) — estimativa |
+| `GET /v1/analytics/seasons?indicator=&geo_code=&from_year=` | sobreposição de temporadas (1 linha/ano, 53 semanas) |
+| `GET /v1/runs?limit=&source_id=` | execuções de ingestão (`ingestion_runs`), erro truncado e sem caminhos de disco |
+| `GET /v1/indicators/:id/latest?geo_code=` | último período com valor + variação vs 4 semanas (contadores do HUD) |
 | `GET /openapi.json` · `GET /docs` | especificação OpenAPI 3 e Swagger UI |
+
+Detalhes, formas de resposta e restrições das rotas de visualização/análise: `docs/CONTRATO_API.md` §3.13.
 
 ### Validação de parâmetros
 
@@ -61,8 +73,9 @@ Na subida, o servidor aplica migrações e faz `seedAll` se a tabela `sources` e
 ### Erros
 
 Sempre `{ "error": { "code", "message" } }`, nunca stack trace nem eco da URL:
-`validation_error` 400/413/415, `not_found` 404, `rate_limited` 429, `client_error` para outros 4xx
-(o status original é mantido, ex. 414), `internal_error` 5xx.
+`validation_error` 400/413/415, `not_found` 404, `nowcast_unavailable` 404 (sem CDF de atraso publicada
+para a geo), `rate_limited` 429, `client_error` para outros 4xx (o status original é mantido, ex. 414),
+`internal_error` 5xx.
 
 ### Cache e ETag
 
@@ -72,6 +85,7 @@ Sempre `{ "error": { "code", "message" } }`, nunca stack trace nem eco da URL:
 | `/v1/sources*`, `/v1/indicators*`, `/v1/geo` | `public, max-age=3600, stale-while-revalidate=86400` |
 | `/v1/freshness` | `public, max-age=60` |
 | `/v1/series`, `/v1/series.csv` | `public, max-age=300, stale-while-revalidate=3600` + `ETag` (sha256 do corpo); `If-None-Match` → `304` |
+| `/v1/globe`, `/v1/map/brazil`, `/v1/analytics/*`, `/v1/runs`, `/v1/indicators/:id/latest` | idem às séries (300 s + `ETag`) |
 | `/v1/snapshots*`, `/v1/diff` | `public, max-age=300` |
 
 Respostas 4xx/5xx não levam `Cache-Control`. CORS liberado para `GET`/`HEAD`/`OPTIONS` (preflight responde `204`).
@@ -100,6 +114,15 @@ célula suprimida por diferença entre níveis geográficos. A API não tenta su
 o contrato (CONTRATO_API.md §0 e §7) proíbe a reconstrução por diferença, e `/v1/diff` é restrito ao
 total nacional justamente para não abrir mais um canal.
 
+### Supressão nas rotas de visualização e análise
+
+`/v1/map/brazil` reutiliza `getSeries` por UF, logo herda a supressão (célula `< 5` → `values[i] = null`,
+`suppressed[i] = true`). `/v1/analytics/ears`, `/v1/analytics/seasons` e `/v1/indicators/:id/latest` tratam
+células suprimidas como `null` (o EARS não calcula estatística para elas; `latest` pula a célula e devolve a
+anterior com valor). `/v1/globe` só serve indicadores FluNet (sem supressão) e usa `getMatrix`, que aplica a
+máscara simples do threshold como defesa em profundidade. `/v1/runs` nunca expõe `params` nem caminhos
+de disco (`error` passa por `sanitizeRunError`: caminhos → `[caminho]`, 200 caracteres).
+
 ### `/v1/diff` restrito ao total nacional
 
 Nesta versão, `/v1/diff` só aceita snapshots com `status = 'ok'` (`400` caso contrário; `404` se não
@@ -111,6 +134,11 @@ existirem) da mesma fonte do indicador, e só devolve células com `geo_level = 
 ```bash
 curl 'http://localhost:3001/v1/series?indicator=sivep_srag_ah1n1pdm09_confirmed&geo_level=state&geo_code=BR-SC&from=2026&to=2026-W20&include_strata=true'
 curl 'http://localhost:3001/v1/series.csv?indicator=flunet_ah1n1pdm09_detections&geo_code=BRA' -o flunet_bra.csv
+curl 'http://localhost:3001/v1/globe?indicator=flunet_ah1n1pdm09_detections&from=2025-W40'
+curl 'http://localhost:3001/v1/map/brazil?indicator=sivep_srag_ah1n1pdm09_confirmed&from=2026'
+curl 'http://localhost:3001/v1/analytics/ears?indicator=sivep_srag_ah1n1pdm09_confirmed&geo_level=state&weeks=4'
+curl 'http://localhost:3001/v1/analytics/nowcast?indicator=sivep_srag_ah1n1pdm09_confirmed&geo_code=BRA'
+curl 'http://localhost:3001/v1/indicators/sivep_srag_ah1n1pdm09_confirmed/latest?geo_code=BRA'
 ```
 
 Resposta de `/v1/series` (resumida):

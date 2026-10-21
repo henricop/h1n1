@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BR_STATE_BY_UF } from '@h1n1/core';
 import { badRequest } from './errors.js';
 
 /** Converte falha do zod em 400 { error: { code: 'validation_error' } } com mensagem legível. */
@@ -162,3 +163,64 @@ export const geoQuery = z.object({
 export const pathId = nonEmpty(TEXT_MAX);
 
 export const isUuid = (s: string) => uuid.safeParse(s).success;
+
+// ---------------------------------------------------------------------------------------------------------
+// Visualização e análise (CONTRATO_API.md §3.13)
+// ---------------------------------------------------------------------------------------------------------
+
+const geoCode = nonEmpty(16);
+
+export const globeQuery = z.object({
+  indicator: indicatorId,
+  from: period.optional(),
+  to: period.optional(),
+  origin: z.enum(['all', 'SENTINEL', 'NONSENTINEL', 'NOTDEFINED']).optional(),
+});
+
+export const mapBrazilQuery = z.object({
+  indicator: indicatorId,
+  from: period.optional(),
+  to: period.optional(),
+});
+
+export const earsQuery = z.object({
+  indicator: indicatorId,
+  geo_level: z.enum(['state', 'country']).optional(),
+  geo_code: geoCode.optional(),
+  weeks: z.coerce.number().int().min(1).max(52).optional(),
+  baseline: z.coerce.number().int().min(2).max(52).optional(),
+  guard: z.coerce.number().int().min(0).max(8).optional(),
+});
+
+export const nowcastQuery = z.object({
+  indicator: indicatorId,
+  geo_code: geoCode.optional(),
+  weeks: z.coerce.number().int().min(1).max(13).optional(),
+});
+
+export const seasonsQuery = z.object({
+  indicator: indicatorId,
+  geo_code: geoCode.optional(),
+  from_year: z.coerce.number().int().min(1990).max(2100).optional(),
+});
+
+export const runsQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+  source_id: nonEmpty(32).optional(),
+});
+
+export const latestQuery = z.object({
+  geo_code: geoCode.optional(),
+});
+
+/**
+ * Nível geográfico inferido do código: WLD → world; BR-<UF> → state; BR-N/NE/S/CO → region; demais → country.
+ * Regiões usam o prefixo BR-R- (BR-R-SE = Sudeste); BR-SE é a UF Sergipe.
+ */
+export function inferGeoLevel(code: string): z.infer<typeof geoLevelEnum> {
+  if (code === 'WLD') return 'world';
+  if (/^BR-R-(N|NE|SE|S|CO)$/.test(code)) return 'region';
+  const m = /^BR-([A-Z]{2})$/.exec(code);
+  if (m && BR_STATE_BY_UF.has(m[1]!)) return 'state';
+  return 'country';
+}

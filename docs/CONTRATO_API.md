@@ -1,6 +1,6 @@
 # H1N1 · Contrato da API pública `/v1`
 
-**Versão do contrato:** 1.1 · **Data:** 2026-10-20 · **Implementação:** `apps/api` (Fastify 5, OpenAPI gerado) sobre `packages/db` (consultas) e `packages/core` (ontologia, supressão). **Status por endpoint:** "implementado" = rota existe em `apps/api/src/routes`; "especificado" = contrato definido neste documento, implementação pendente.
+**Versão do contrato:** 1.2 · **Data:** 2026-10-20 · **Implementação:** `apps/api` (Fastify 5, OpenAPI gerado) sobre `packages/db` (consultas), `packages/core` (ontologia, supressão) e `packages/analytics` (EARS, nowcast, temporadas, tendência — funções puras). **Status por endpoint:** "implementado" = rota existe em `apps/api/src/routes`; "especificado" = contrato definido neste documento, implementação pendente.
 
 Base URL: **a definir** (ex.: `https://api.<dominio>/`). Todas as rotas são `GET`, públicas, somente leitura, sem autenticação no MVP.
 
@@ -47,6 +47,7 @@ Outras regras transversais:
 |---|---|---|---|
 | 400 | `validation_error` | Parâmetro inválido ou ausente (formato, tamanho > 200, caractere de controle, `from > to`, snapshot sem `status = ok` no diff...); mensagem lista `campo: motivo` separados por `; `. Também 413/415 | implementado |
 | 404 | `not_found` | Indicador, fonte, snapshot ou rota inexistente; a mensagem nunca ecoa a URL | implementado |
+| 404 | `nowcast_unavailable` | `/v1/analytics/nowcast` sem publicação vigente (ou sem os 13 estratos completos) de `sivep_reporting_delay_cdf` para a geo | implementado |
 | 414 e outros 4xx | `client_error` | Erros 4xx não mapeados mantêm o status original (ex.: `414` para parâmetro de caminho > 200 caracteres) | implementado |
 | 429 | `rate_limited` | Limite por IP excedido (seção 5) | implementado |
 | 500 | `internal_error` | Falha não prevista; detalhes só em log | implementado (handler global) |
@@ -365,7 +366,155 @@ Resposta `200`:
 ] }
 ```
 
-### 3.13. `GET /openapi.json` e `GET /docs` — implementado (gerado)
+### 3.13. Visualização e análise — implementado
+
+Rotas de apoio à interface (globo, mapa do Brasil, HUD e painéis de análise). Todas:
+
+- leem **apenas** a snapshot vigente (via `getSeries`/`getMatrix` de `packages/db`), com a mesma supressão de `/v1/series`; células suprimidas entram como `null` e nunca são reveladas;
+- devolvem `indicator: { id, name }` e `meta: { data_as_of, universe_note, license, source_id, case_definition, caveats }` — a regra da seção 0 vale: **exiba `universe_note` e `data_as_of` junto a qualquer número**;
+- `Cache-Control: public, max-age=300, stale-while-revalidate=3600` + `ETag` (`If-None-Match` → `304`), como as séries;
+- erros no formato padrão (`400 validation_error`, `404 not_found`, `404 nowcast_unavailable`);
+- `from`/`to` seguem a convenção de período da seção 1 (expansão de `AAAA` conforme o `period_type`; `from > to` → `400`).
+
+As rotas `analytics/*` produzem **sinais estatísticos e estimativas**, não contagens: o corpo diz isso em `method.note` / `note` e o cliente deve reproduzir o aviso. Implementação das fórmulas em `packages/analytics/src` (funções puras, com testes).
+
+#### 3.13.1. `GET /v1/globe`
+
+Matriz país × semana de um indicador FluNet, com centroides, para o globo.
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `indicator` | string | sim | Só `flunet_*` com nível `country` (`400` caso contrário) |
+| `from`, `to` | período | não | Intervalo inclusive |
+| `origin` | `all \| SENTINEL \| NONSENTINEL \| NOTDEFINED` | não | `all` (padrão) = total sem estrato; os demais selecionam o estrato `origin_source` |
+
+Regras: só países presentes em `COUNTRY_CENTROIDS` (`packages/core`); países sem **nenhum** valor no intervalo são omitidos; `values` alinhado a `weeks` (`null` = célula ausente na snapshot); `weeks` = períodos distintos presentes, ordenados. Uma consulta por indicador (`getMatrix`), agrupada em memória.
+
+```json
+{
+  "indicator": { "id": "flunet_ah1n1pdm09_detections", "name": "…" },
+  "meta": { "data_as_of": "2026-10-12", "universe_note": "…", "license": "…", "source_id": "INT-01", "case_definition": "…", "caveats": ["…"] },
+  "weeks": ["2026-W38", "2026-W39", "2026-W40"],
+  "countries": [
+    { "iso3": "BRA", "name": "Brazil", "lat": -10.655, "lon": -53.173, "who_region": "AMR", "values": [12, null, 20] }
+  ]
+}
+```
+
+#### 3.13.2. `GET /v1/map/brazil`
+
+Matriz UF × semana com supressão aplicada e total nacional, para o mapa.
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `indicator` | string | sim | Só indicadores com `geo_levels` contendo `state` (`400` caso contrário) |
+| `from`, `to` | período | não | Intervalo inclusive |
+
+Reutiliza `getSeries` com `geo_level = state` (todas as UFs) e `geo_level = country`, `geo_code = BRA`. `states` traz **as 27 UFs** na ordem do IBGE (`null` onde não há dado); `suppressed[i] = true` quando a célula foi suprimida (`values[i] = null`, valor bruto nunca exposto). `national.provisional[i]` marca `update_status = provisional`. `weeks` = união dos períodos das duas séries.
+
+```json
+{
+  "indicator": { "id": "sivep_srag_ah1n1pdm09_confirmed", "name": "…" },
+  "meta": { "...": "…" },
+  "weeks": ["2026-W38", "2026-W39"],
+  "states": [
+    { "code": "BR-RO", "uf": "RO", "name": "Rondônia", "ibge": "11", "values": [null, 7], "suppressed": [true, false] },
+    { "code": "BR-SP", "uf": "SP", "name": "São Paulo", "ibge": "35", "values": [37, 21], "suppressed": [false, false] }
+  ],
+  "national": { "values": [120, 95], "provisional": [false, true] }
+}
+```
+
+#### 3.13.3. `GET /v1/analytics/ears`
+
+Detecção de aberração EARS (CDC) C1/C2/C3 adaptada a semanas, sobre a série total (sem estrato).
+
+| Parâmetro | Tipo | Padrão | Descrição |
+|---|---|---|---|
+| `indicator` | string | — | obrigatório |
+| `geo_level` | `state \| country` | inferido de `geo_code`, senão `country` | `400` se o indicador não tem o nível |
+| `geo_code` | string | — | Sem `geo_code` e `geo_level=state`: **todas as UFs**; sem `geo_code` e `country`: todos os países publicados |
+| `weeks` | 1–52 | 12 | Semanas mais recentes avaliadas por geo |
+| `baseline` | 2–52 | 8 | Semanas da baseline |
+| `guard` | 0–8 | 2 | Semanas de guarda entre baseline e semana avaliada (C2/C3) |
+
+Método (`packages/analytics/src/ears.ts`): `C1 = (x_t − média(baseline)) / sd`, baseline = as `baseline` semanas imediatamente anteriores; `C2` idem com a baseline terminando `guard` semanas antes; `C3 = Σ_{i=0..2} max(0, C2(t−i) − 1)`. `sd` amostral; `sd = 0` → estatística `0` se `x_t ≤ média`, senão `100`. Sinal quando a estatística **excede** o limiar (`c1 > 3`, `c2 > 3`, `c3 > 2`). O eixo de semanas é a união dos períodos publicados na consulta; células ausentes ou suprimidas entram como `null` (puladas na baseline; estatística `null` na própria semana). Posições sem baseline completa → `null`.
+
+Resposta: `results` ordenado por `c2` desc (`null` por último), depois `period` desc.
+
+```json
+{
+  "indicator": { "id": "sivep_srag_ah1n1pdm09_confirmed", "name": "…" },
+  "meta": { "...": "…" },
+  "method": { "name": "EARS C1/C2/C3 (CDC), adaptado a semanas", "baseline": 8, "guard": 2, "thresholds": { "c1": 3, "c2": 3, "c3": 2 }, "note": "sinal estatístico, não surto confirmado; semanas provisórias subestimam" },
+  "results": [
+    { "geo_code": "BR-SP", "name": "São Paulo", "period": "2026-W40", "value": 61, "provisional": true, "c1": 4.21, "c2": 5.07, "c3": 6.9, "flags": ["C1", "C2", "C3"] },
+    { "geo_code": "BR-AC", "name": "Acre", "period": "2026-W40", "value": null, "provisional": true, "c1": null, "c2": null, "c3": null, "flags": [] }
+  ]
+}
+```
+
+#### 3.13.4. `GET /v1/analytics/nowcast`
+
+Estimativa do total final das últimas semanas a partir da CDF empírica de atraso de digitação.
+
+| Parâmetro | Tipo | Padrão | Descrição |
+|---|---|---|---|
+| `indicator` | string | — | Só `sivep_*` com `measurement = count` (`400` caso contrário) |
+| `geo_code` | string | `BRA` | `BRA` ou `BR-UF` |
+| `weeks` | 1–13 | 8 | Semanas mais recentes estimadas |
+
+Fonte do atraso: publicação vigente de `sivep_reporting_delay_cdf` para a mesma geo, último `period` (ano) com os **13 estratos** `delay_weeks = 0..12` presentes e não suprimidos; `n` = `denominator` dessas células. Sem isso → `404 { "error": { "code": "nowcast_unavailable" } }`.
+
+Cálculo (`packages/analytics/src/nowcast.ts`): `weeks_ago` = semanas epidemiológicas entre o período e `meta.data_as_of`; `reported_share = cdf[min(weeks_ago, 12)] / 100`; `estimated = observed / reported_share`; intervalo pelo erro padrão binomial da share, `se = sqrt(p(1−p)/n)`, `lower = observed / min(1, p + 1.96·se)`, `upper = observed / max(0.02, p − 1.96·se)`. Share `≥ 0.98` → semana completa (`estimated = observed`, sem intervalo); share `< 0.02` → sem estimativa. **É estimativa, não contagem** (`note`).
+
+```json
+{
+  "indicator": { "id": "sivep_srag_ah1n1pdm09_confirmed", "name": "…" },
+  "meta": { "data_as_of": "2026-10-19", "...": "…" },
+  "delay": { "period": "2026", "n": 4210, "cdf": [21.3, 48.9, 69.2, 83.0, 90.1, 94.0, 96.2, 97.5, 98.3, 98.9, 99.3, 99.6, 99.8], "source_indicator": "sivep_reporting_delay_cdf" },
+  "results": [
+    { "period": "2026-W41", "weeks_ago": 1, "observed": 44, "reported_share": 0.489, "estimated": 90, "lower": 87.3, "upper": 92.8 },
+    { "period": "2026-W34", "weeks_ago": 8, "observed": 71, "reported_share": 0.983, "estimated": 71, "lower": null, "upper": null }
+  ],
+  "note": "Estimativa, não contagem: …"
+}
+```
+
+#### 3.13.5. `GET /v1/analytics/seasons`
+
+Sobreposição de temporadas: uma linha por ano com 53 posições (semana 1..53).
+
+| Parâmetro | Tipo | Padrão | Descrição |
+|---|---|---|---|
+| `indicator` | string | — | Só indicadores semanais (`epiweek`/`isoweek`; `400` caso contrário) |
+| `geo_code` | string | `BRA` | nível inferido do código |
+| `from_year` | 1990–2100 | — | Primeiro ano incluído |
+
+Resposta: `{ indicator, meta, geo_code, weeks: [1..53], seasons: [{ year, values: (number|null)[53] }] }`, anos crescentes; semanas sem dado ou suprimidas → `null`.
+
+#### 3.13.6. `GET /v1/runs`
+
+Execuções de ingestão (`ingestion_runs`), mais recentes primeiro.
+
+| Parâmetro | Tipo | Padrão |
+|---|---|---|
+| `limit` | 1–500 | 50 |
+| `source_id` | string | — |
+
+Resposta: `{ "data": [{ id, connector, source_id, started_at, finished_at, status, rows_in, rows_out, error }] }`. `error` é truncado a **200 caracteres** e passa por `sanitizeRunError` (caminhos de disco POSIX/relativos/Windows → `[caminho]`); `params` e `snapshot_id` da execução não são expostos.
+
+#### 3.13.7. `GET /v1/indicators/:id/latest`
+
+Contadores do HUD: último período publicado com valor (não suprimido) da série total da geo.
+
+| Parâmetro | Tipo | Padrão |
+|---|---|---|
+| `geo_code` | string | `BRA` |
+
+Resposta: `{ indicator, meta, geo_code, latest: { period, period_start, period_end, value, provisional, update_status } | null, trend: { k: 4, change_pct, recent_mean, previous_mean } }`. `change_pct` = variação percentual entre a média das últimas 4 semanas (até `latest.period`) e a das 4 anteriores (`packages/analytics/src/trend.ts`; `null` se houver menos de 8 semanas ou média anterior zero; células suprimidas ignoradas na média). Sem publicação vigente ou sem valor → `latest: null`, nunca zero.
+
+### 3.14. `GET /openapi.json` e `GET /docs` — implementado (gerado)
 
 Especificação OpenAPI gerada pelo Fastify a partir dos esquemas de rota. Este documento prevalece em caso de divergência semântica; o OpenAPI prevalece para tipos de campo.
 
@@ -381,6 +530,8 @@ Especificação OpenAPI gerada pelo Fastify a partir dos esquemas de rota. Este 
 | `/v1/series`, `/v1/series.csv` | `public, max-age=300, stale-while-revalidate=3600` + `ETag` forte = sha256 do corpo serializado (32 hex); `If-None-Match` (lista, `W/`, `*`) → `304` sem corpo | Nova publicação do indicador (muda o corpo, logo a ETag) |
 | `/v1/freshness` | `public, max-age=60` | — |
 | `/v1/snapshots*`, `/v1/diff` | `public, max-age=300` | Nova snapshot |
+| `/v1/globe`, `/v1/map/brazil`, `/v1/analytics/*`, `/v1/indicators/:id/latest` | idem às séries: `public, max-age=300, stale-while-revalidate=3600` + `ETag` | Nova publicação do indicador (ou do indicador de atraso, no nowcast) |
+| `/v1/runs` | idem às séries (300 s + `ETag`) | Nova execução de ingestão |
 
 Só respostas `200` a `GET`/`HEAD` levam `Cache-Control` (exceto `/health`, sempre `no-store`); erros 4xx/5xx não levam. CORS: `GET`, `HEAD`, `OPTIONS` liberados para qualquer origem; preflight responde `204`.
 
@@ -421,3 +572,4 @@ Status: **implementado**.
 6. Nunca somar indicadores de fontes com o mesmo `mirror_group`.
 7. Nunca comparar `epiweek` e `isoweek` como se fossem a mesma semana sem conversão por `period_start`.
 8. Respeitar `license` da snapshot ao redistribuir.
+9. Tratar `/v1/analytics/ears` como **sinal estatístico** e `/v1/analytics/nowcast` como **estimativa** — nunca como surto confirmado nem como contagem; reproduzir `method.note` / `note` ao lado do gráfico.

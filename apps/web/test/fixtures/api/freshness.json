@@ -188,17 +188,6 @@
    "last_run_finished_at": null
   },
   {
-   "indicator_id": "flunet_influenza_positivity",
-   "source_id": "INT-01",
-   "snapshot_id": null,
-   "data_as_of": null,
-   "fetched_at": null,
-   "published_at": null,
-   "age_days": null,
-   "last_run_status": null,
-   "last_run_finished_at": null
-  },
-  {
    "indicator_id": "sivep_srag_influenza_subtype_completeness",
    "source_id": "BR-03",
    "snapshot_id": "old-snapshot-2026-09-01",
@@ -208,6 +197,17 @@
    "age_days": 49,
    "last_run_status": "failed",
    "last_run_finished_at": "2026-10-14T06:00:00.000Z"
+  },
+  {
+   "indicator_id": "sivep_reporting_delay_cdf",
+   "source_id": "BR-03",
+   "snapshot_id": null,
+   "data_as_of": null,
+   "fetched_at": null,
+   "published_at": null,
+   "age_days": null,
+   "last_run_status": null,
+   "last_run_finished_at": null
   },
   {
    "indicator_id": "ibge_population_estimate",
@@ -241,6 +241,17 @@
    "age_days": null,
    "last_run_status": null,
    "last_run_finished_at": null
+  },
+  {
+   "indicator_id": "flunet_influenza_positivity",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
   }
  ]
 }

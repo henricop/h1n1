@@ -18,7 +18,7 @@ export async function Indicador({ id, geo = 'BRA', periodo = 'ultimas-12-semanas
   if (!series.ok) {
     return (
       <div role="status" className="my-6 rounded-md border border-line bg-paper p-4 text-sm">
-        <p className="font-semibold text-navy-900">Dado indisponível</p>
+        <p className="font-semibold text-ink">Dado indisponível</p>
         <p className="text-muted">
           Não foi possível obter o indicador &ldquo;{indicatorLabel(id)}&rdquo; agora. Nenhum valor antigo é exibido como atual.
         </p>
@@ -33,10 +33,10 @@ export async function Indicador({ id, geo = 'BRA', periodo = 'ultimas-12-semanas
   const unit = series.data.indicator.unit;
   return (
     <div className="my-6 rounded-md border border-line bg-paper p-4">
-      <p className="text-sm font-semibold text-navy-900">{series.data.indicator.name}</p>
+      <p className="text-sm font-semibold text-ink">{series.data.indicator.name}</p>
       {last ? (
         <p className="mt-1">
-          <span className="text-3xl font-bold tabular-nums text-navy-900">{formatNumberBR(publishedValue(last), unit)}</span>{' '}
+          <span className="text-3xl font-bold tabular-nums text-ink">{formatNumberBR(publishedValue(last), unit)}</span>{' '}
           <span className="text-sm text-muted">
             {UNIT_LABEL[unit] ?? unit} em {formatPeriod(last.period, series.data.indicator.period_type)}
             {last.update_status === 'provisional' ? ' (provisório)' : ''} · {geo === 'BRA' ? 'Brasil' : geo}

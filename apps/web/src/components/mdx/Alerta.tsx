@@ -5,7 +5,7 @@ type Tipo = 'emergencia' | 'atencao' | 'info';
 const STYLES: Record<Tipo, { box: string; label: string; role: 'alert' | 'note' }> = {
   emergencia: { box: 'border-urgent-700 bg-urgent-50 text-urgent-700', label: 'Procure atendimento', role: 'alert' },
   atencao: { box: 'border-attention-700 bg-attention-100 text-attention-700', label: 'Atenção', role: 'note' },
-  info: { box: 'border-navy-600 bg-navy-50 text-navy-900', label: 'Informação', role: 'note' },
+  info: { box: 'border-navy-600 bg-navy-50 text-ink', label: 'Informação', role: 'note' },
 };
 
 export function Alerta({ tipo = 'info', titulo, children }: { tipo?: Tipo; titulo?: string; children: ReactNode }) {

@@ -312,6 +312,7 @@ export function breadcrumbsFor(slug: string, pages: ContentPage[] = loadAllPages
 export const APP_SEGMENT_LABELS: Record<string, string> = {
   '/dados/': 'Dados',
   '/dados/brasil/': 'H1N1 no Brasil',
+  '/dados/mundo/': 'H1N1 no mundo',
   '/dados/fontes/': 'Fontes oficiais',
   '/dados/metodologia/': 'Metodologia',
   '/sobre/': 'Sobre',

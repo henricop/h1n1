@@ -1,0 +1,27 @@
+import type { ReactNode } from 'react';
+
+interface Props {
+  id: string;
+  label: string;
+  title?: ReactNode;
+  /** Rodapé de metadados (fonte · licença · base · método). */
+  meta?: ReactNode;
+  className?: string;
+  children: ReactNode;
+  /** Altura mínima reservada (evita layout shift enquanto gráficos carregam). */
+  minHeight?: number;
+}
+
+/** Painel do HUD: rótulo mono no topo, título display, conteúdo e rodapé de metadados. */
+export function Panel({ id, label, title, meta, className = '', children, minHeight }: Props) {
+  return (
+    <section id={id} aria-labelledby={`${id}-label`} className={`hud-panel hud-corner relative p-4 ${className}`} style={minHeight ? { minHeight } : undefined}>
+      <p id={`${id}-label`} className="hud-label">
+        {label}
+      </p>
+      {title && <h2 className="mt-1 font-display text-lg font-semibold leading-snug text-ink md:text-xl">{title}</h2>}
+      <div className="mt-3">{children}</div>
+      {meta && <div className="hud-meta">{meta}</div>}
+    </section>
+  );
+}

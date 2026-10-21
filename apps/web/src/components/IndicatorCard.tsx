@@ -21,7 +21,7 @@ export function IndicatorCard({ id, series, freshness, weeks, geoLabel, withSpar
   if (!series.ok) {
     return (
       <section aria-labelledby={`${id}-t`} className="rounded-md border border-line bg-paper p-4">
-        <h3 id={`${id}-t`} className="text-base font-semibold text-navy-900">
+        <h3 id={`${id}-t`} className="text-base font-semibold text-ink">
           {indicatorLabel(id)}
         </h3>
         <div className="mt-2">
@@ -37,7 +37,7 @@ export function IndicatorCard({ id, series, freshness, weeks, geoLabel, withSpar
   const tableId = `${id}-tabela`;
   return (
     <section aria-labelledby={`${id}-t`} className="flex flex-col rounded-md border border-line bg-paper p-4">
-      <h3 id={`${id}-t`} className="text-base font-semibold text-navy-900">
+      <h3 id={`${id}-t`} className="text-base font-semibold text-ink">
         {r.indicator.name}
       </h3>
       <p className="mt-1 text-xs text-muted">
@@ -45,7 +45,7 @@ export function IndicatorCard({ id, series, freshness, weeks, geoLabel, withSpar
       </p>
       {last ? (
         <p className="mt-3">
-          <span className="text-3xl font-bold tabular-nums text-navy-900">{formatNumberBR(publishedValue(last), unit)}</span>{' '}
+          <span className="text-3xl font-bold tabular-nums text-ink">{formatNumberBR(publishedValue(last), unit)}</span>{' '}
           <span className="text-sm text-muted">
             {UNIT_LABEL[unit] ?? unit} em {formatPeriod(last.period, r.indicator.period_type)}
             {last.update_status === 'provisional' ? ' (provisório)' : ''}
@@ -61,7 +61,7 @@ export function IndicatorCard({ id, series, freshness, weeks, geoLabel, withSpar
       )}
       <p className="mt-3 text-sm">{r.meta.universe_note}</p>
       <details className="mt-3 text-sm">
-        <summary className="touch inline-flex cursor-pointer items-center text-navy-700">Ver tabela das últimas {obs.length} semanas</summary>
+        <summary className="touch inline-flex cursor-pointer items-center text-signal">Ver tabela das últimas {obs.length} semanas</summary>
         <div className="mt-2">
           <SeriesTable id={tableId} caption={`${r.indicator.name}, ${geoLabel}, por semana`} obs={obs} unit={unit} periodType={r.indicator.period_type} suppressionThreshold={r.meta.suppression_threshold} compact />
         </div>

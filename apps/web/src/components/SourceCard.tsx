@@ -15,24 +15,24 @@ export function ApiVerifiedBadge({ date }: { date: string }) {
 export function SourceCard({ source: s }: { source: SourceRow }) {
   return (
     <article className="flex h-full flex-col rounded-md border border-line bg-paper p-4 text-sm" aria-labelledby={`src-${s.id}`}>
-      <h3 id={`src-${s.id}`} className="text-base font-semibold text-navy-900">
+      <h3 id={`src-${s.id}`} className="text-base font-semibold text-ink">
         <Link href={`/dados/fontes/${s.slug}/`}>{s.name}</Link>
       </h3>
       <p className="mt-1 text-muted">
         {s.agency} · <span className="font-mono text-xs">{s.id}</span> · {s.priority}
       </p>
       <dl className="mt-3 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
-        <dt className="font-medium text-navy-900">Categoria</dt>
+        <dt className="font-medium text-ink">Categoria</dt>
         <dd>{s.category}</dd>
-        <dt className="font-medium text-navy-900">Recorte H1N1</dt>
+        <dt className="font-medium text-ink">Recorte H1N1</dt>
         <dd>{s.h1n1_scope}</dd>
-        <dt className="font-medium text-navy-900">Cadência</dt>
+        <dt className="font-medium text-ink">Cadência</dt>
         <dd>{s.update_cadence}</dd>
-        <dt className="font-medium text-navy-900">Acesso</dt>
+        <dt className="font-medium text-ink">Acesso</dt>
         <dd>
           {ACCESS_LABEL[s.access_type] ?? s.access_type}: {s.access}
         </dd>
-        <dt className="font-medium text-navy-900">Licença</dt>
+        <dt className="font-medium text-ink">Licença</dt>
         <dd>{s.license === 'verify_per_source' ? 'verificar nos termos da fonte' : s.license}</dd>
       </dl>
       <p className="mt-3 flex flex-wrap items-center gap-2">

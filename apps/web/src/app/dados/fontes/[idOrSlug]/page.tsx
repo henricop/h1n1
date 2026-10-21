@@ -49,12 +49,12 @@ export default async function FontePage({ params }: { params: Params }) {
       {/* Sem JSON-LD Dataset aqui: a fonte é catalogada (DataCatalog em /dados/fontes/); Dataset só no observatório (série derivada). */}
       <header className="mt-2">
         <p className="font-mono text-xs text-muted">{s.id}</p>
-        <h1 className="text-3xl font-bold text-navy-900">{s.name}</h1>
+        <h1 className="text-3xl font-bold text-ink">{s.name}</h1>
         <p className="mt-1 text-muted">
           {s.agency} · {s.region} · prioridade {s.priority}
         </p>
         <p className="mt-3 flex flex-wrap gap-2">
-          <a href={s.url} rel="noopener noreferrer" target="_blank" className="touch inline-flex items-center rounded-md border border-navy-700 px-4 py-2 font-medium text-navy-900 no-underline hover:bg-navy-50">
+          <a href={s.url} rel="noopener noreferrer" target="_blank" className="touch inline-flex items-center rounded-md border border-navy-700 px-4 py-2 font-medium text-ink no-underline hover:bg-navy-50">
             Acessar a fonte oficial
           </a>
           {s.api_tested_at && <ApiVerifiedBadge date={s.api_tested_at} />}
@@ -62,30 +62,30 @@ export default async function FontePage({ params }: { params: Params }) {
       </header>
 
       <dl className="mt-6 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
-        <dt className="font-medium text-navy-900">Categoria</dt>
+        <dt className="font-medium text-ink">Categoria</dt>
         <dd>{s.category}</dd>
-        <dt className="font-medium text-navy-900">Recorte H1N1</dt>
+        <dt className="font-medium text-ink">Recorte H1N1</dt>
         <dd>{s.h1n1_scope}</dd>
-        <dt className="font-medium text-navy-900">Cadência de atualização</dt>
+        <dt className="font-medium text-ink">Cadência de atualização</dt>
         <dd>{s.update_cadence}</dd>
-        <dt className="font-medium text-navy-900">Acesso</dt>
+        <dt className="font-medium text-ink">Acesso</dt>
         <dd>{s.access}</dd>
-        <dt className="font-medium text-navy-900">Licença</dt>
+        <dt className="font-medium text-ink">Licença</dt>
         <dd>{s.license === 'verify_per_source' ? 'verificar nos termos da fonte' : s.license}</dd>
         {s.mirror_group && (
           <>
-            <dt className="font-medium text-navy-900">Grupo espelhado</dt>
+            <dt className="font-medium text-ink">Grupo espelhado</dt>
             <dd>
               {s.mirror_group}: reapresenta registros de outras fontes do mesmo grupo; não somar entre si (regra 5 de integridade).
             </dd>
           </>
         )}
-        <dt className="font-medium text-navy-900">Observações</dt>
+        <dt className="font-medium text-ink">Observações</dt>
         <dd>{s.notes}</dd>
       </dl>
 
       <section aria-labelledby="h-ind" className="mt-8">
-        <h2 id="h-ind" className="text-xl font-semibold text-navy-900">
+        <h2 id="h-ind" className="text-xl font-semibold text-ink">
           Indicadores derivados desta fonte
         </h2>
         {!ind.ok ? (
@@ -100,7 +100,7 @@ export default async function FontePage({ params }: { params: Params }) {
               const inObservatory = OBSERVATORY_INDICATORS.some((o) => o.id === i.id);
               return (
                 <li key={i.id} className="rounded-md border border-line bg-paper p-4 text-sm">
-                  <p className="font-semibold text-navy-900">{i.name}</p>
+                  <p className="font-semibold text-ink">{i.name}</p>
                   <p className="mt-1 text-muted">{i.description}</p>
                   <p className="mt-1">
                     <span className="font-medium">Definição de caso:</span> {i.case_definition}

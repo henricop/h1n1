@@ -33,8 +33,8 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
         </div>
       )}
       <header className="mt-4">
-        <h1 className="text-3xl font-bold leading-tight text-navy-900 sm:text-4xl">{fm.title}</h1>
-        <p className="mt-3 rounded-md border-l-4 border-navy-700 bg-navy-50 p-4 text-lg leading-relaxed text-navy-950" data-summary-answer>
+        <h1 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">{fm.title}</h1>
+        <p className="mt-3 rounded-md border-l-4 border-navy-700 bg-navy-50 p-4 text-lg leading-relaxed text-ink" data-summary-answer>
           {fm.summary_answer}
         </p>
         {fm.clinical && (
@@ -49,7 +49,7 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
 
       {fm.sources.length > 0 && (
         <section aria-labelledby="h-fontes" className="mt-10 border-t border-line pt-6">
-          <h2 id="h-fontes" className="text-xl font-semibold text-navy-900">
+          <h2 id="h-fontes" className="text-xl font-semibold text-ink">
             Fontes
           </h2>
           <ol className="mt-3 list-decimal space-y-2 pl-6 text-sm">
@@ -66,7 +66,7 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
       )}
 
       <section aria-labelledby="h-autoria" className="mt-8 rounded-md border border-line bg-paper p-4 text-sm">
-        <h2 id="h-autoria" className="font-semibold text-navy-900">
+        <h2 id="h-autoria" className="font-semibold text-ink">
           Autoria e revisão
         </h2>
         <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
@@ -81,7 +81,7 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
 
       {related.length > 0 && (
         <nav aria-labelledby="h-rel" className="mt-8">
-          <h2 id="h-rel" className="text-xl font-semibold text-navy-900">
+          <h2 id="h-rel" className="text-xl font-semibold text-ink">
             Leia também
           </h2>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -89,7 +89,7 @@ export async function MdxArticle({ page, children }: { page: ContentPage; childr
               <li key={p.frontmatter.slug}>
                 <Link href={p.frontmatter.slug} className="touch flex rounded-md border border-line bg-paper px-4 py-3 no-underline hover:border-navy-600">
                   <span>
-                    <span className="font-medium text-navy-900">{p.frontmatter.title}</span>
+                    <span className="font-medium text-ink">{p.frontmatter.title}</span>
                     <span className="mt-0.5 block text-sm text-muted">{p.frontmatter.description}</span>
                   </span>
                 </Link>

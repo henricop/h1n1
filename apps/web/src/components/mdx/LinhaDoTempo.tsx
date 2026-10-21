@@ -27,7 +27,7 @@ export function LinhaDoTempo({
           return (
             <li key={`${e.data}-${i}`} className="relative mb-6">
               <span aria-hidden="true" className="absolute -left-[1.6rem] top-1.5 h-3 w-3 rounded-full border-2 border-navy-700 bg-paper" />
-              <time dateTime={e.data} className="text-sm font-semibold text-navy-700">
+              <time dateTime={e.data} className="text-sm font-semibold text-signal">
                 {e.data}
               </time>
               <p className="font-medium">{e.titulo}</p>

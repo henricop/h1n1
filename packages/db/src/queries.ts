@@ -315,3 +315,162 @@ export async function diffSnapshots(db: Db, indicatorId: string, snapshotA: stri
     })
     .filter((r) => !(r.suppressed && r.value_a === null && r.value_b === null && num(r.value_a) === num(r.value_b)));
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// Visualização e análise (CONTRATO_API.md §3.13)
+// ---------------------------------------------------------------------------------------------------------
+
+export interface MatrixQuery {
+  indicator: string;
+  geoLevel: GeoLevel;
+  /** chave canônica do estrato (default '' = total) */
+  stratumKey?: string;
+  from?: string;
+  to?: string;
+  /** restringe às geos informadas (ex.: países com centroide) */
+  geoCodes?: readonly string[];
+}
+
+export interface MatrixRow {
+  geo_code: string;
+  /** alinhado a `periods`; null quando a célula não existe na snapshot vigente */
+  values: (number | null)[];
+  /** alinhado a `periods`; true quando a célula existe e está provisória */
+  provisional: boolean[];
+}
+
+export interface MatrixResult {
+  indicator: IndicatorRow;
+  source: SourceRow;
+  publication: PublicationRow | null;
+  snapshot: Snapshot | null;
+  /** períodos distintos presentes, ordenados */
+  periods: string[];
+  rows: MatrixRow[];
+  meta: SeriesResult['meta'];
+}
+
+/** Teto de células lidas para a matriz (geo × período). */
+const MATRIX_SCAN_CAP = 1_000_000;
+
+/**
+ * Matriz geo × período de um único estrato da snapshot vigente, em UMA consulta, agrupada em memória.
+ * Destinada a visualizações densas (globo, mapa) de indicadores SEM supressão (threshold 0): aplica a máscara
+ * de supressão simples do indicador como defesa em profundidade (valor < threshold em recorte não nacional →
+ * null), mas NÃO calcula supressão complementar — para indicadores com threshold > 0 e estratos use getSeries.
+ */
+export async function getMatrix(db: Db, q: MatrixQuery): Promise<MatrixResult | null> {
+  const indicator = await getIndicatorRow(db, q.indicator);
+  if (!indicator) return null;
+  const source = await getSource(db, indicator.source_id);
+  if (!source) return null;
+  const publication = await getCurrentPublication(db, q.indicator);
+  const snapshot = publication ? await getSnapshot(db, publication.snapshot_id) : null;
+  const threshold = indicator.suppression_threshold;
+
+  const periodSet = new Set<string>();
+  const byGeo = new Map<string, Map<string, { value: number | null; provisional: boolean }>>();
+  let truncated = false;
+  if (publication) {
+    const params: unknown[] = [q.indicator, publication.snapshot_id, q.geoLevel, q.stratumKey ?? ''];
+    const where = ['indicator_id = $1', 'snapshot_id = $2', 'geo_level = $3', 'stratum_key = $4'];
+    if (q.from) { params.push(q.from); where.push(`period >= $${params.length}`); }
+    if (q.to) { params.push(q.to); where.push(`period <= $${params.length}`); }
+    if (q.geoCodes && q.geoCodes.length) { params.push([...q.geoCodes]); where.push(`geo_code = any($${params.length}::text[])`); }
+    params.push(MATRIX_SCAN_CAP);
+    const sql = `select geo_code, period, value, update_status from observations
+      where ${where.join(' and ')} order by geo_code, period limit $${params.length}`;
+    const rows = (await db.query<{ geo_code: string; period: string; value: unknown; update_status: string }>(sql, params)).rows;
+    if (rows.length >= MATRIX_SCAN_CAP) truncated = true;
+    const exempt = q.geoLevel === 'country' && (q.stratumKey ?? '') === '';
+    for (const r of rows) {
+      let value = num(r.value);
+      if (threshold > 0 && !exempt && value !== null && value > 0 && value < threshold) value = null;
+      periodSet.add(r.period);
+      let cells = byGeo.get(r.geo_code);
+      if (!cells) { cells = new Map(); byGeo.set(r.geo_code, cells); }
+      cells.set(r.period, { value, provisional: r.update_status === 'provisional' });
+    }
+  }
+  const periods = [...periodSet].sort();
+  const out: MatrixRow[] = [];
+  for (const [geo_code, cells] of byGeo) {
+    const values: (number | null)[] = new Array(periods.length).fill(null);
+    const provisional: boolean[] = new Array(periods.length).fill(false);
+    periods.forEach((p, i) => {
+      const c = cells.get(p);
+      if (c) { values[i] = c.value; provisional[i] = c.provisional; }
+    });
+    out.push({ geo_code, values, provisional });
+  }
+  out.sort((a, b) => (a.geo_code < b.geo_code ? -1 : a.geo_code > b.geo_code ? 1 : 0));
+  let count = 0;
+  for (const r of out) count += r.values.length;
+  return {
+    indicator, source, publication, snapshot, periods, rows: out,
+    meta: {
+      data_as_of: publication?.data_as_of ?? snapshot?.data_as_of ?? null,
+      fetched_at: snapshot?.fetched_at ?? null,
+      universe_note: indicator.universe_note,
+      case_definition: indicator.case_definition,
+      license: snapshot?.license ?? source.license ?? null,
+      suppression_threshold: indicator.suppression_threshold,
+      caveats: indicator.caveats,
+      count,
+      truncated,
+    },
+  };
+}
+
+export interface IngestionRunRow {
+  id: string;
+  connector: string;
+  source_id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: string;
+  rows_in: number;
+  rows_out: number;
+  /** mensagem de erro já higienizada: sem caminhos de disco, truncada a 200 caracteres */
+  error: string | null;
+}
+
+export const RUN_ERROR_MAX = 200;
+
+/** Caminhos absolutos POSIX (/a/b/c.ext), relativos com ./ ou ../, e Windows (C:\a\b). */
+const DISK_PATH_RE = /(?:[A-Za-z]:\\(?:[^\\\s'"`]+\\)*[^\\\s'"`]*)|(?:(?:^|[\s('"`=:])\.{0,2}\/(?:[^/\s'"`)]+\/)*[^/\s'"`)]*)/g;
+
+/** Remove caminhos de disco e trunca a mensagem de erro de uma run (nunca exponha o texto cru). */
+export function sanitizeRunError(error: string | null | undefined): string | null {
+  if (error === null || error === undefined) return null;
+  let s = String(error).replace(/[\u0000-\u001F\u007F]+/g, ' ');
+  s = s.replace(DISK_PATH_RE, (m) => {
+    const lead = /^[\s('"`=:]/.test(m) ? m[0]! : '';
+    return `${lead}[caminho]`;
+  });
+  s = s.replace(/\s+/g, ' ').trim();
+  if (s.length > RUN_ERROR_MAX) s = s.slice(0, RUN_ERROR_MAX - 1) + '…';
+  return s.length ? s : null;
+}
+
+/** Execuções de ingestão (ingestion_runs), mais recentes primeiro, sem params nem caminhos de disco. */
+export async function listIngestionRuns(db: Db, filter: { sourceId?: string; limit?: number } = {}): Promise<IngestionRunRow[]> {
+  const params: unknown[] = [];
+  let sql = `select id::text as id, connector, source_id, started_at::text as started_at, finished_at::text as finished_at,
+    status, rows_in, rows_out, error from ingestion_runs`;
+  if (filter.sourceId) { params.push(filter.sourceId); sql += ` where source_id = $1`; }
+  params.push(Math.min(Math.max(1, filter.limit ?? 50), 500));
+  sql += ` order by started_at desc, id desc limit $${params.length}`;
+  const rows = (await db.query<Record<string, unknown>>(sql, params)).rows;
+  return rows.map((r) => ({
+    id: String(r.id),
+    connector: String(r.connector),
+    source_id: String(r.source_id),
+    started_at: String(r.started_at),
+    finished_at: r.finished_at === null || r.finished_at === undefined ? null : String(r.finished_at),
+    status: String(r.status),
+    rows_in: num(r.rows_in) ?? 0,
+    rows_out: num(r.rows_out) ?? 0,
+    error: sanitizeRunError(r.error as string | null),
+  }));
+}

@@ -1,0 +1,107 @@
+{
+ "indicator": {
+  "id": "sivep_srag_ah1n1pdm09_confirmed",
+  "name": "SRAG por influenza A(H1N1)pdm09 confirmada por RT-PCR (SIVEP-Gripe)"
+ },
+ "meta": {
+  "data_as_of": "2026-10-13",
+  "universe_note": "Os números representam notificações de síndrome respiratória aguda grave (SRAG) hospitalizada registradas no SIVEP-Gripe e classificadas segundo o dicionário de dados, não todos os casos de H1N1 da população.",
+  "license": "CC-BY (portal dadosabertos.saude.gov.br)",
+  "source_id": "BR-03",
+  "case_definition": "CLASSI_FIN = 1 AND PCR_FLUASU = 1."
+ },
+ "delay": {
+  "period": "2025-W40/2026-W33",
+  "n": 41,
+  "cdf": [
+   0.36,
+   0.58,
+   0.72,
+   0.81,
+   0.87,
+   0.91,
+   0.94,
+   0.96,
+   0.975,
+   0.985,
+   0.99,
+   0.995,
+   1
+  ]
+ },
+ "results": [
+  {
+   "period": "2026-W34",
+   "weeks_ago": 7,
+   "observed": 80,
+   "reported_share": 0.96,
+   "estimated": 83,
+   "lower": 80,
+   "upper": 87
+  },
+  {
+   "period": "2026-W35",
+   "weeks_ago": 6,
+   "observed": 68,
+   "reported_share": 0.94,
+   "estimated": 72,
+   "lower": 68,
+   "upper": 78
+  },
+  {
+   "period": "2026-W36",
+   "weeks_ago": 5,
+   "observed": 62,
+   "reported_share": 0.91,
+   "estimated": 68,
+   "lower": 62,
+   "upper": 76
+  },
+  {
+   "period": "2026-W37",
+   "weeks_ago": 4,
+   "observed": 56,
+   "reported_share": 0.87,
+   "estimated": 64,
+   "lower": 56,
+   "upper": 75
+  },
+  {
+   "period": "2026-W38",
+   "weeks_ago": 3,
+   "observed": 50,
+   "reported_share": 0.81,
+   "estimated": 62,
+   "lower": 50,
+   "upper": 78
+  },
+  {
+   "period": "2026-W39",
+   "weeks_ago": 2,
+   "observed": 32,
+   "reported_share": 0.72,
+   "estimated": 44,
+   "lower": 32,
+   "upper": 63
+  },
+  {
+   "period": "2026-W40",
+   "weeks_ago": 1,
+   "observed": 27,
+   "reported_share": 0.58,
+   "estimated": 47,
+   "lower": 27,
+   "upper": 77
+  },
+  {
+   "period": "2026-W41",
+   "weeks_ago": 0,
+   "observed": 22,
+   "reported_share": 0.36,
+   "estimated": 61,
+   "lower": 22,
+   "upper": 115
+  }
+ ],
+ "note": "Estimativa de notificações ainda não digitadas, a partir da distribuição histórica de atraso entre primeiros sintomas e digitação (método na metodologia). Não é previsão de casos futuros."
+}

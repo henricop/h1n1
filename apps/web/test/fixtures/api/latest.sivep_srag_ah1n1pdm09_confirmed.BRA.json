@@ -1,0 +1,14 @@
+{
+ "indicator": {
+  "id": "sivep_srag_ah1n1pdm09_confirmed",
+  "name": "SRAG por influenza A(H1N1)pdm09 confirmada por RT-PCR (SIVEP-Gripe)"
+ },
+ "geo_code": "BRA",
+ "period": "2026-W41",
+ "period_end": "2026-10-10",
+ "value": 22,
+ "suppressed": false,
+ "provisional": true,
+ "trend_pct_vs_4w": -46.7,
+ "data_as_of": "2026-10-13"
+}

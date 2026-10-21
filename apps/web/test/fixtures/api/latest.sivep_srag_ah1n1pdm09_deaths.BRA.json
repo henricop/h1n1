@@ -1,0 +1,14 @@
+{
+ "indicator": {
+  "id": "sivep_srag_ah1n1pdm09_deaths",
+  "name": "Óbitos entre SRAG por A(H1N1)pdm09 confirmada (SIVEP-Gripe)"
+ },
+ "geo_code": "BRA",
+ "period": "2026-W41",
+ "period_end": "2026-10-10",
+ "value": 3,
+ "suppressed": false,
+ "provisional": true,
+ "trend_pct_vs_4w": -42.9,
+ "data_as_of": "2026-10-13"
+}

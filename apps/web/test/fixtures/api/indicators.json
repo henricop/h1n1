@@ -659,6 +659,49 @@
    ]
   },
   {
+   "source_id": "BR-03",
+   "measurement": "percent",
+   "unit": "percent",
+   "universe_note": "Os números representam notificações de síndrome respiratória aguda grave (SRAG) hospitalizada registradas no SIVEP-Gripe e classificadas segundo o dicionário de dados, não todos os casos de H1N1 da população.",
+   "methodology_version": "sivep-v1",
+   "geo_levels": [
+    "country",
+    "state"
+   ],
+   "period_type": "year",
+   "event_date_basis": "symptom_onset",
+   "stratum_schema": {
+    "delay_weeks": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11",
+     "12"
+    ]
+   },
+   "mirror_group": "br_srag",
+   "suppression_threshold": 0,
+   "denominator_indicator_id": null,
+   "min_denominator": 100,
+   "id": "sivep_reporting_delay_cdf",
+   "name": "Atraso de notificação: proporção acumulada de registros digitados até d semanas após os primeiros sintomas (SIVEP-Gripe)",
+   "description": "Para SRAG por influenza (CLASSI_FIN = 1) com primeiros sintomas há pelo menos 13 semanas antes da data da base, nas 52 semanas anteriores: percentual de registros cuja DT_DIGITA (ou DT_NOTIFIC quando ausente) ocorreu até d semanas após DT_SIN_PRI, para d = 0..12. Base do nowcast.",
+   "case_definition": "100 × registros(CLASSI_FIN = 1, atraso_semanas <= d) / registros(CLASSI_FIN = 1) na janela de referência; atraso_semanas = floor((DT_DIGITA ?? DT_NOTIFIC) - DT_SIN_PRI) / 7).",
+   "caveats": [
+    "Distribuição empírica de atraso; muda entre temporadas e entre UFs.",
+    "Usada apenas para estimar (nowcast) quantas notificações das últimas semanas ainda não foram digitadas; a estimativa não é contagem.",
+    "Período = ano epidemiológico da data da base; a janela de cálculo é móvel (52 semanas)."
+   ]
+  },
+  {
    "id": "ibge_population_estimate",
    "name": "População residente estimada (IBGE)",
    "description": "Estimativas populacionais anuais por UF e Brasil (agregado 6579, variável 9324).",
@@ -729,7 +772,8 @@
      "5-14",
      "15-44",
      "45-64",
-     "65+"
+     "65-79",
+     "80+"
     ]
    },
    "mirror_group": null,

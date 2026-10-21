@@ -17,6 +17,7 @@ describe('sitemap', () => {
     const urls = buildSitemap(loadAllPages()).map((e) => new URL(e.url).pathname);
     expect(urls).toContain('/');
     expect(urls).toContain('/dados/brasil/');
+    expect(urls).toContain('/dados/mundo/');
     expect(urls).toContain('/dados/fontes/');
     expect(urls).toContain('/dados/metodologia/');
     expect(urls).toContain('/o-que-e-h1n1/');

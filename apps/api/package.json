@@ -17,6 +17,7 @@
     "@fastify/rate-limit": "^11.2.1",
     "@fastify/swagger": "^9.9.2",
     "@fastify/swagger-ui": "^6.1.2",
+    "@h1n1/analytics": "workspace:*",
     "@h1n1/core": "workspace:*",
     "@h1n1/db": "workspace:*",
     "fastify": "^5.12.7",

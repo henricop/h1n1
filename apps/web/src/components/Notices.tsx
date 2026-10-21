@@ -12,7 +12,7 @@ export function ReviewBanner() {
 
 export function ClinicalNotice() {
   return (
-    <p className="rounded-md border border-line bg-navy-50 px-4 py-3 text-sm text-navy-900">{SITE.medicalDisclaimer}</p>
+    <p className="rounded-md border border-line bg-navy-50 px-4 py-3 text-sm text-ink">{SITE.medicalDisclaimer}</p>
   );
 }
 
@@ -22,7 +22,7 @@ export function DataUnavailable({ attemptedAt, detail }: { attemptedAt: string; 
   const hora = Number.isNaN(d.getTime()) ? attemptedAt : `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC de ${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
   return (
     <div role="status" className="rounded-md border border-line bg-paper p-4">
-      <p className="font-semibold text-navy-900">Dados indisponíveis no momento</p>
+      <p className="font-semibold text-ink">Dados indisponíveis no momento</p>
       <p className="mt-1 text-sm text-muted">Última tentativa: {hora}. Nenhum número antigo é exibido como se fosse atual.</p>
       {detail && process.env.NODE_ENV !== 'production' && <p className="mt-2 font-mono text-xs text-muted">{detail}</p>}
     </div>
@@ -45,7 +45,7 @@ export function FreshnessNote({ state }: { state: FreshnessState }) {
   if (!state.verified) {
     return (
       <span
-        className="inline-flex items-center rounded-full border border-line bg-navy-50 px-2 py-0.5 text-xs font-medium text-navy-900"
+        className="inline-flex items-center rounded-full border border-line bg-navy-50 px-2 py-0.5 text-xs font-medium text-ink"
         title="Não foi possível consultar /v1/freshness; a idade da base não pôde ser confirmada."
       >
         frescor não verificado

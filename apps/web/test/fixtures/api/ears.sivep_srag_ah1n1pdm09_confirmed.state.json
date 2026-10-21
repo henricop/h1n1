@@ -1,0 +1,373 @@
+{
+ "indicator": {
+  "id": "sivep_srag_ah1n1pdm09_confirmed",
+  "name": "SRAG por influenza A(H1N1)pdm09 confirmada por RT-PCR (SIVEP-Gripe)"
+ },
+ "meta": {
+  "data_as_of": "2026-10-13",
+  "universe_note": "Os números representam notificações de síndrome respiratória aguda grave (SRAG) hospitalizada registradas no SIVEP-Gripe e classificadas segundo o dicionário de dados, não todos os casos de H1N1 da população.",
+  "license": "CC-BY (portal dadosabertos.saude.gov.br)",
+  "source_id": "BR-03",
+  "case_definition": "CLASSI_FIN = 1 AND PCR_FLUASU = 1."
+ },
+ "method": {
+  "name": "EARS C1/C2/C3 (CDC Early Aberration Reporting System)",
+  "baseline": "7 semanas anteriores",
+  "guard": "2 semanas (C2/C3)",
+  "thresholds": "C1 > 3; C2 > 3; C3 > 2 (desvios-padrão acima da média do baseline)",
+  "note": "Sinal estatístico, não surto confirmado. Avaliada a última semana consolidada; semanas provisórias ainda recebem registros e não são avaliadas."
+ },
+ "results": [
+  {
+   "geo_code": "BR-RO",
+   "name": "Rondônia",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-AC",
+   "name": "Acre",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-AM",
+   "name": "Amazonas",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-RR",
+   "name": "Roraima",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-PA",
+   "name": "Pará",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-AP",
+   "name": "Amapá",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-TO",
+   "name": "Tocantins",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-MA",
+   "name": "Maranhão",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-PI",
+   "name": "Piauí",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-CE",
+   "name": "Ceará",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-RN",
+   "name": "Rio Grande do Norte",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-PB",
+   "name": "Paraíba",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-PE",
+   "name": "Pernambuco",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-AL",
+   "name": "Alagoas",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-SE",
+   "name": "Sergipe",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-BA",
+   "name": "Bahia",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-MG",
+   "name": "Minas Gerais",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-ES",
+   "name": "Espírito Santo",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-RJ",
+   "name": "Rio de Janeiro",
+   "period": "2026-W37",
+   "value": 5,
+   "provisional": false,
+   "c1": 3.4,
+   "c2": 3.9,
+   "c3": 2.6,
+   "flags": [
+    "C1",
+    "C2",
+    "C3"
+   ]
+  },
+  {
+   "geo_code": "BR-SP",
+   "name": "São Paulo",
+   "period": "2026-W37",
+   "value": 16,
+   "provisional": false,
+   "c1": -1.09,
+   "c2": -1.31,
+   "c3": 0,
+   "flags": []
+  },
+  {
+   "geo_code": "BR-PR",
+   "name": "Paraná",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-SC",
+   "name": "Santa Catarina",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-RS",
+   "name": "Rio Grande do Sul",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-MS",
+   "name": "Mato Grosso do Sul",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-MT",
+   "name": "Mato Grosso",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-GO",
+   "name": "Goiás",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  },
+  {
+   "geo_code": "BR-DF",
+   "name": "Distrito Federal",
+   "period": "2026-W37",
+   "value": null,
+   "provisional": false,
+   "c1": null,
+   "c2": null,
+   "c3": null,
+   "flags": [
+    "suppressed"
+   ]
+  }
+ ]
+}

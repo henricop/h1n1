@@ -14,7 +14,7 @@ export function Comparativo({ titulo, colunas = [], linhas, nota, children }: Pr
   if (!linhas) {
     return (
       <div className="my-6 overflow-x-auto [&>table]:data-table [&_th]:text-left [&_td]:align-top">
-        {titulo && <p className="font-medium text-navy-900">{titulo}</p>}
+        {titulo && <p className="font-medium text-ink">{titulo}</p>}
         {children}
         {nota && <p className="mt-2 text-xs text-muted">{nota}</p>}
       </div>
@@ -23,7 +23,7 @@ export function Comparativo({ titulo, colunas = [], linhas, nota, children }: Pr
   return (
     <div className="my-6 overflow-x-auto">
       <table className="data-table">
-        <caption className="font-medium text-navy-900">{titulo}</caption>
+        <caption className="font-medium text-ink">{titulo}</caption>
         <thead>
           <tr>
             <th scope="col">Aspecto</th>

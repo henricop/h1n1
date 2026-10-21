@@ -58,12 +58,13 @@ export async function seedGeo(db: Db): Promise<number> {
     ['GBR', 'country', 'Reino Unido', 'WLD', null, 'GB'],
     ['ENG', 'country', 'Inglaterra', 'GBR', null, null],
     ['USA', 'country', 'Estados Unidos', 'WLD', null, 'US'],
-    ['BR-N', 'region', 'Norte', 'BRA', null, null],
-    ['BR-NE', 'region', 'Nordeste', 'BRA', null, null],
-    ['BR-SE', 'region', 'Sudeste', 'BRA', null, null],
-    ['BR-S', 'region', 'Sul', 'BRA', null, null],
-    ['BR-CO', 'region', 'Centro-Oeste', 'BRA', null, null],
-    ...BR_STATES.map((s): [string, string, string, string, string, null] => [`BR-${s.uf}`, 'state', s.name, `BR-${s.region}`, s.ibge, null]),
+    // Regiões usam prefixo BR-R- para não colidir com UFs (BR-SE é Sergipe).
+    ['BR-R-N', 'region', 'Norte', 'BRA', '1', null],
+    ['BR-R-NE', 'region', 'Nordeste', 'BRA', '2', null],
+    ['BR-R-SE', 'region', 'Sudeste', 'BRA', '3', null],
+    ['BR-R-S', 'region', 'Sul', 'BRA', '4', null],
+    ['BR-R-CO', 'region', 'Centro-Oeste', 'BRA', '5', null],
+    ...BR_STATES.map((s): [string, string, string, string, string, null] => [`BR-${s.uf}`, 'state', s.name, `BR-R-${s.region}`, s.ibge, null]),
   ];
   for (const [code, level, name, parent, ibge, iso2] of rows) {
     await db.query(
