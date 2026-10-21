@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import type { Db } from '@h1n1/db';
 import { ApiError, errorBody } from './errors.js';
 import { TEXT_MAX } from './schemas.js';
+import type { LruCacheOptions } from './cache.js';
 import { healthRoutes } from './routes/health.js';
 import { sourcesRoutes } from './routes/sources.js';
 import { indicatorsRoutes } from './routes/indicators.js';
@@ -79,6 +80,8 @@ export interface BuildAppOptions {
    * Ao atingi-lo, globo e mapa respondem 200 com meta.truncated=true; as rotas de análise respondem 400 too_many_rows.
    */
   vizRowLimit?: number;
+  /** cache LRU das respostas de /v1/globe e /v1/map/brazil (default: TTL 10 min, 50 entradas; `false` desliga) */
+  vizCache?: LruCacheOptions | false;
 }
 
 /** Teto padrão de observações por série nas rotas de visualização/análise (= SERIES_MAX_LIMIT). */
@@ -90,6 +93,21 @@ export function parseTrustProxy(raw: string | undefined): FastifyServerOptions['
   if (v === '' || v.toLowerCase() === 'false' || v === '0') return false;
   if (v.toLowerCase() === 'true' || v === '1') return true;
   return v;
+}
+
+/**
+ * Chave do rate limit por IP. O gerador padrão do @fastify/rate-limit faz `req.ip.toLowerCase()`, mas `req.ip`
+ * é `socket.remoteAddress`, que fica undefined quando o cliente já fechou a conexão antes de o hook rodar
+ * (ex.: o navegador aborta por timeout enquanto a API ainda processa pedidos anteriores) — resultava em 500
+ * "Cannot read properties of undefined (reading 'toLowerCase')". Sem IP a chave é 'unknown'; IPv4 mapeado em
+ * IPv6 (::ffff:a.b.c.d) é reduzido ao IPv4.
+ */
+export function rateLimitKey(req: { ip?: string | undefined; socket?: { remoteAddress?: string | undefined } | undefined }): string {
+  const raw = req.ip ?? req.socket?.remoteAddress;
+  if (typeof raw !== 'string' || raw === '') return 'unknown';
+  const ip = raw.toLowerCase();
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(ip);
+  return mapped ? mapped[1]! : ip;
 }
 
 /** ETag forte derivada do corpo serializado (sha256 truncado). */
@@ -185,6 +203,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     await app.register(rateLimit, {
       max: rateLimitMax,
       timeWindow: '1 minute',
+      keyGenerator: (req) => rateLimitKey(req),
       enableDraftSpec: true, // RateLimit-Limit / RateLimit-Remaining / RateLimit-Reset
       errorResponseBuilder: (_req, ctx) =>
         new ApiError(
@@ -233,7 +252,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(freshnessRoutes, { db });
   await app.register(snapshotsRoutes, { db });
   await app.register(geoRoutes, { db });
-  await app.register(vizRoutes, { db, rowLimit });
+  await app.register(vizRoutes, { db, rowLimit, ...(opts.vizCache !== undefined ? { cache: opts.vizCache } : {}) });
   await app.register(analyticsRoutes, { db, rowLimit });
   await app.register(runsRoutes, { db });
 

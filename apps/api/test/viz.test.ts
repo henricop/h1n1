@@ -5,6 +5,7 @@ import { epiWeekStart, toIsoDate } from '@h1n1/core';
 import { buildApp } from '../src/app.js';
 import { weeksBetween, NOWCAST_INDICATORS } from '../src/routes/analytics.js';
 import { inferGeoLevel } from '../src/schemas.js';
+import { LruCache, cacheKey } from '../src/cache.js';
 
 const SIVEP = 'sivep_srag_ah1n1pdm09_confirmed';
 const FLU = 'flunet_ah1n1pdm09_detections';
@@ -475,5 +476,95 @@ describe('openapi', () => {
     for (const p of ['/v1/globe', '/v1/map/brazil', '/v1/analytics/ears', '/v1/analytics/nowcast', '/v1/analytics/seasons', '/v1/runs', '/v1/indicators/{id}/latest']) {
       expect(spec.paths[p], p).toBeDefined();
     }
+  });
+});
+
+describe('cache em memória de /v1/globe e /v1/map/brazil', () => {
+  const FLU2 = 'flunet_ah3_detections';
+  const SIVEP2 = 'sivep_srag_ah3n2_confirmed';
+
+  it('LruCache: TTL, limite de entradas (LRU) e chave canônica', () => {
+    let t = 1000;
+    const c = new LruCache<number>({ ttlMs: 100, max: 2, now: () => t });
+    c.set('a', 1); c.set('b', 2);
+    expect(c.get('a')).toBe(1); // 'a' vira a mais recente
+    c.set('c', 3); // expulsa 'b' (menos recente)
+    expect(c.get('b')).toBeUndefined();
+    expect(c.get('a')).toBe(1);
+    expect(c.get('c')).toBe(3);
+    expect(c.size).toBe(2);
+    t += 101;
+    expect(c.get('a')).toBeUndefined(); // expirou
+    expect(c.has('c')).toBe(false);
+    expect(c.hits).toBe(3);
+    expect(c.misses).toBe(2); // has() não conta
+    expect(cacheKey(['globe', 'x', undefined, null, '2026-W01', 'all'])).toBe('globe|x|||2026-W01|all');
+    expect(new LruCache().ttlMs).toBe(10 * 60 * 1000);
+    expect(new LruCache().max).toBe(50);
+  });
+
+  it('globo: MISS → HIT com o mesmo corpo; parâmetros diferentes não colidem; publicação nova invalida', async () => {
+    const snapA = await insertSnapshot('INT-01', '2026-05-11');
+    for (let i = 0; i < 3; i++) await insertObs({ indicator: FLU2, snap: snapA, level: 'country', geo: 'BRA', period: W(i + 1), periodType: 'isoweek', value: i + 1 });
+    await publishIndicator(db, { indicatorId: FLU2, snapshotId: snapA, dataAsOf: '2026-05-11' });
+
+    const miss = await get(`/v1/globe?indicator=${FLU2}`);
+    expect(miss.statusCode).toBe(200);
+    expect(miss.headers['x-cache']).toBe('MISS');
+    const hit = await get(`/v1/globe?indicator=${FLU2}`);
+    expect(hit.headers['x-cache']).toBe('HIT');
+    expect(hit.body).toBe(miss.body);
+    expect(hit.headers.etag).toBe(miss.headers.etag);
+    expect(hit.headers['cache-control']).toContain('max-age=300');
+    // from/to/origin fazem parte da chave
+    const sub = await get(`/v1/globe?indicator=${FLU2}&from=${W(2)}`);
+    expect(sub.headers['x-cache']).toBe('MISS');
+    expect(sub.json().weeks).toEqual([W(2), W(3)]);
+    expect((await get(`/v1/globe?indicator=${FLU2}&from=2026`)).headers['x-cache']).toBe('MISS'); // normaliza para W01 → chave própria
+    expect((await get(`/v1/globe?indicator=${FLU2}&from=${W(1)}`)).headers['x-cache']).toBe('HIT');
+    expect((await get(`/v1/globe?indicator=${FLU2}&origin=SENTINEL`)).headers['x-cache']).toBe('MISS');
+    // erros não passam pelo cache
+    expect((await get(`/v1/globe?indicator=${FLU2}&origin=foo`)).headers['x-cache']).toBeUndefined();
+
+    // publicação nova do mesmo indicador → chave muda → MISS com os dados novos
+    const snapB = await insertSnapshot('INT-01', '2026-05-18');
+    for (let i = 0; i < 3; i++) await insertObs({ indicator: FLU2, snap: snapB, level: 'country', geo: 'BRA', period: W(i + 1), periodType: 'isoweek', value: 10 * (i + 1) });
+    await publishIndicator(db, { indicatorId: FLU2, snapshotId: snapB, dataAsOf: '2026-05-18' });
+    const fresh = await get(`/v1/globe?indicator=${FLU2}`);
+    expect(fresh.headers['x-cache']).toBe('MISS');
+    expect(fresh.json().countries[0]).toMatchObject({ iso3: 'BRA', values: [10, 20, 30] });
+    expect(fresh.json().meta.data_as_of).toBe('2026-05-18');
+    expect((await get(`/v1/globe?indicator=${FLU2}`)).headers['x-cache']).toBe('HIT');
+  });
+
+  it('mapa do Brasil: MISS → HIT; publicação nova invalida; cache desligável por opção', async () => {
+    const snapA = await insertSnapshot('BR-03', DATA_AS_OF);
+    await insertObs({ indicator: SIVEP2, snap: snapA, level: 'country', geo: 'BRA', period: W(1), value: 40 });
+    await insertObs({ indicator: SIVEP2, snap: snapA, level: 'state', geo: 'BR-SP', period: W(1), value: 40 });
+    await publishIndicator(db, { indicatorId: SIVEP2, snapshotId: snapA, dataAsOf: DATA_AS_OF });
+    const miss = await get(`/v1/map/brazil?indicator=${SIVEP2}`);
+    expect(miss.statusCode).toBe(200);
+    expect(miss.headers['x-cache']).toBe('MISS');
+    const hit = await get(`/v1/map/brazil?indicator=${SIVEP2}`);
+    expect(hit.headers['x-cache']).toBe('HIT');
+    expect(hit.body).toBe(miss.body);
+    expect((await get(`/v1/map/brazil?indicator=${SIVEP2}&to=${W(1)}`)).headers['x-cache']).toBe('MISS');
+
+    const snapB = await insertSnapshot('BR-03', DATA_AS_OF);
+    await insertObs({ indicator: SIVEP2, snap: snapB, level: 'country', geo: 'BRA', period: W(1), value: 55 });
+    await insertObs({ indicator: SIVEP2, snap: snapB, level: 'state', geo: 'BR-SP', period: W(1), value: 55 });
+    await publishIndicator(db, { indicatorId: SIVEP2, snapshotId: snapB, dataAsOf: DATA_AS_OF });
+    const fresh = await get(`/v1/map/brazil?indicator=${SIVEP2}`);
+    expect(fresh.headers['x-cache']).toBe('MISS');
+    expect(fresh.json().national.values).toEqual([55]);
+
+    const noCache = await buildApp({ db, rateLimit: false, vizCache: false });
+    await noCache.ready();
+    const r1 = await noCache.inject({ method: 'GET', url: `/v1/map/brazil?indicator=${SIVEP2}` });
+    const r2 = await noCache.inject({ method: 'GET', url: `/v1/map/brazil?indicator=${SIVEP2}` });
+    expect(r1.headers['x-cache']).toBeUndefined();
+    expect(r2.headers['x-cache']).toBeUndefined();
+    expect(r2.body).toBe(r1.body);
+    await noCache.close();
   });
 });

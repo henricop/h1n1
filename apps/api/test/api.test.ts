@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createDb, migrate, seedAll, publishIndicator, type Db } from '@h1n1/db';
-import { buildApp, parseTrustProxy, CACHE } from '../src/app.js';
+import { buildApp, parseTrustProxy, rateLimitKey, CACHE } from '../src/app.js';
 import { normalizePeriodBound } from '../src/schemas.js';
 
 const IND = 'sivep_srag_ah1n1pdm09_confirmed';
@@ -569,6 +569,26 @@ describe('frescor', () => {
 });
 
 describe('rate limit', () => {
+  it('chave por IP tolera requisição sem IP (socket já fechado) em vez de 500 em toLowerCase; IPv4 mapeado vira IPv4', async () => {
+    // Regressão: @fastify/rate-limit fazia req.ip.toLowerCase() e req.ip (socket.remoteAddress) é undefined quando o cliente
+    // abortou a conexão antes do hook — /tmp/h1n1-api.log, 500 "Cannot read properties of undefined (reading 'toLowerCase')".
+    expect(rateLimitKey({ ip: undefined, socket: {} })).toBe('unknown');
+    expect(rateLimitKey({ ip: undefined, socket: undefined })).toBe('unknown');
+    expect(rateLimitKey({ ip: '' })).toBe('unknown');
+    expect(rateLimitKey({ ip: undefined, socket: { remoteAddress: '10.0.0.5' } })).toBe('10.0.0.5');
+    expect(rateLimitKey({ ip: '::FFFF:10.0.0.9' })).toBe('10.0.0.9');
+    expect(rateLimitKey({ ip: '2001:DB8::1' })).toBe('2001:db8::1');
+    // integração: IPv4 mapeado em IPv6 e o IPv4 puro compartilham o mesmo balde
+    const limited = await buildApp({ db, rateLimit: true });
+    await limited.ready();
+    const a = await limited.inject({ method: 'GET', url: '/health', remoteAddress: '::ffff:10.0.0.11' });
+    const b = await limited.inject({ method: 'GET', url: '/health', remoteAddress: '10.0.0.11' });
+    expect(a.statusCode).toBe(200);
+    expect(a.headers['ratelimit-remaining']).toBe('119');
+    expect(b.headers['ratelimit-remaining']).toBe('118');
+    await limited.close();
+  });
+
   it('responde 429 no formato de erro padrão com cabeçalhos RateLimit-* (draft)', async () => {
     const limited = await buildApp({ db, rateLimit: true });
     await limited.ready();

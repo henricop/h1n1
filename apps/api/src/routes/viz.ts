@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { BR_STATES, COUNTRY_CENTROIDS } from '@h1n1/core';
-import { getSeries, getMatrix, getIndicatorRow, type Db, type IndicatorRow, type SeriesResult } from '@h1n1/db';
+import { getSeries, getMatrix, getIndicatorRow, getCurrentPublication, type Db, type IndicatorRow, type SeriesResult } from '@h1n1/db';
+import { LruCache, cacheKey, type LruCacheOptions } from '../cache.js';
 import type { PublishedObservation } from '@h1n1/core';
 import { parseOr400, globeQuery, mapBrazilQuery, normalizePeriodRange, type PeriodType } from '../schemas.js';
 import { notFound, badRequest, tooManyRows } from '../errors.js';
@@ -45,6 +46,11 @@ export interface VizRouteOptions {
   db: Db;
   /** máximo de observações lidas por série (ver BuildAppOptions.vizRowLimit) */
   rowLimit?: number;
+  /**
+   * Cache LRU em memória das respostas prontas de /v1/globe e /v1/map/brazil (default: TTL 10 min, 50 entradas).
+   * `false` desliga. A chave inclui a snapshot da publicação vigente: publicação nova → chave nova.
+   */
+  cache?: LruCacheOptions | false;
 }
 
 export const indicatorRef = (i: IndicatorRow) => ({ id: i.id, name: i.name });
@@ -85,6 +91,7 @@ export function alignToAxis(
 export async function vizRoutes(app: FastifyInstance, opts: VizRouteOptions) {
   const { db } = opts;
   const limit = opts.rowLimit ?? 100000;
+  const cache = opts.cache === false ? null : new LruCache<unknown>(opts.cache ?? {});
 
   app.get('/v1/globe', {
     config: { cache: 'series', etag: true },
@@ -99,7 +106,7 @@ export async function vizRoutes(app: FastifyInstance, opts: VizRouteOptions) {
       querystring: GLOBE_QUERY,
       response: { 200: GLOBE_RESPONSE, ...errorResponses(400, 404) },
     },
-  }, async (req) => {
+  }, async (req, reply) => {
     const q = parseOr400(globeQuery, req.query);
     const indicator = await requireIndicator(db, q.indicator, {
       ok: (i) => i.id.startsWith('flunet_') && i.geo_levels.includes('country') && i.measurement === 'count',
@@ -107,6 +114,13 @@ export async function vizRoutes(app: FastifyInstance, opts: VizRouteOptions) {
     });
     const range = normalizePeriodRange(q.from, q.to, indicator.period_type as PeriodType);
     const origin = q.origin ?? 'all';
+    // chave = indicador | snapshot vigente | from | to | origin — publicação nova invalida automaticamente
+    const key = cache ? cacheKey(['globe', indicator.id, (await getCurrentPublication(db, indicator.id))?.snapshot_id, range.from, range.to, origin]) : null;
+    const hit = key ? cache!.get(key) : undefined;
+    if (hit !== undefined) {
+      reply.header('X-Cache', 'HIT');
+      return hit;
+    }
     const m = await getMatrix(db, {
       indicator: indicator.id,
       geoLevel: 'country',
@@ -123,7 +137,12 @@ export async function vizRoutes(app: FastifyInstance, opts: VizRouteOptions) {
       if (!row || row.values.every((v) => v === null)) continue;
       countries.push({ iso3: c.iso3, name: c.name, lat: c.lat, lon: c.lon, who_region: c.who_region, values: row.values });
     }
-    return { indicator: indicatorRef(indicator), meta: vizMeta(m), weeks: m.periods, countries };
+    const body = { indicator: indicatorRef(indicator), meta: vizMeta(m), weeks: m.periods, countries };
+    if (key) {
+      cache!.set(key, body);
+      reply.header('X-Cache', 'MISS');
+    }
+    return body;
   });
 
   app.get('/v1/map/brazil', {
@@ -138,13 +157,19 @@ export async function vizRoutes(app: FastifyInstance, opts: VizRouteOptions) {
       querystring: MAP_BRAZIL_QUERY,
       response: { 200: MAP_BRAZIL_RESPONSE, ...errorResponses(400, 404) },
     },
-  }, async (req) => {
+  }, async (req, reply) => {
     const q = parseOr400(mapBrazilQuery, req.query);
     const indicator = await requireIndicator(db, q.indicator, {
       ok: (i) => i.geo_levels.includes('state'),
       message: 'o mapa do Brasil só aceita indicadores com nível state',
     });
     const range = normalizePeriodRange(q.from, q.to, indicator.period_type as PeriodType);
+    const key = cache ? cacheKey(['map', indicator.id, (await getCurrentPublication(db, indicator.id))?.snapshot_id, range.from, range.to]) : null;
+    const hit = key ? cache!.get(key) : undefined;
+    if (hit !== undefined) {
+      reply.header('X-Cache', 'HIT');
+      return hit;
+    }
     const base = { indicator: indicator.id, limit, ...(range.from ? { from: range.from } : {}), ...(range.to ? { to: range.to } : {}) };
     const [states, national] = await Promise.all([
       getSeries(db, { ...base, geoLevel: 'state' }),
@@ -164,12 +189,17 @@ export async function vizRoutes(app: FastifyInstance, opts: VizRouteOptions) {
       return { code, uf: s.uf, name: s.name, ibge: s.ibge, values: a.values, suppressed: a.suppressed };
     });
     const nat = alignToAxis(national.observations, weeks);
-    return {
+    const body = {
       indicator: indicatorRef(indicator),
       meta: { ...vizMeta(states), truncated: states.meta.truncated || national.meta.truncated },
       weeks,
       states: out,
       national: { values: nat.values, provisional: nat.provisional },
     };
+    if (key) {
+      cache!.set(key, body);
+      reply.header('X-Cache', 'MISS');
+    }
+    return body;
   });
 }

@@ -113,3 +113,16 @@ describe('db', () => {
     expect(JSON.stringify(cut)).not.toContain('"value":7');
   });
 });
+
+describe('migração 0002: índice de matriz', () => {
+  it('aplica 0002_observations_matrix_idx.sql e cria observations_matrix_idx cobrindo o predicado do globo/mapa', async () => {
+    const applied = (await db.query<{ name: string }>('select name from schema_migrations order by name')).rows.map((r) => r.name);
+    expect(applied).toContain('0002_observations_matrix_idx.sql');
+    const idx = (await db.query<{ indexdef: string }>(`select indexdef from pg_indexes where tablename = 'observations' and indexname = 'observations_matrix_idx'`)).rows[0];
+    expect(idx).toBeDefined();
+    expect(idx!.indexdef).toContain('(indicator_id, snapshot_id, geo_level, stratum_key, geo_code, period)');
+    expect(idx!.indexdef).toContain('INCLUDE (value, update_status)');
+    // migrate é idempotente
+    expect(await migrate(db)).toEqual([]);
+  });
+});

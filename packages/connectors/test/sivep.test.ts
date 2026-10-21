@@ -301,3 +301,45 @@ describe('sivep_reporting_delay_cdf (fixture sintética)', () => {
     expect(v.ok).toBe(true);
   });
 });
+
+describe('sivepConnector.normalize: data_as_of do bruto chega ao agregador', () => {
+  /** Simula o pipeline: RawSnapshot do fetch (data_as_of vindo do nome do arquivo) + NormalizeContext. */
+  async function run(dataAsOf: string | null) {
+    const logs: string[] = [];
+    const coverage = new Map<string, { from: string; to: string }>();
+    const report: Record<string, unknown> = {};
+    const raw = {
+      url: 'https://x/SRAG/2026/INFLUD26-19-10-2026.csv', urls: [], path: fixture, ext: 'csv', sha256: 'abc', bytes: 1, content_type: 'text/csv',
+      license: 'CC-BY', data_as_of: dataAsOf, fetched_at: '2026-10-21T00:00:00Z', extra: { year: 2026 },
+    };
+    const ctx = {
+      snapshotId: 'snap-1', options: { year: 2026 }, log: (m: string) => logs.push(m), ensureGeo: () => {}, report,
+      countRowsIn: () => {}, addError: () => {}, setCoverage: (id: string, from: string, to: string) => coverage.set(id, { from, to }),
+    };
+    const out = await sivepConnector.normalize(raw, ctx);
+    const observations = Array.isArray(out) ? out : [];
+    return { observations, logs, coverage, report };
+  }
+
+  it('com data_as_of: emite 13 observações BRA de sivep_reporting_delay_cdf (d = 0..12), cobertura do ano e log da janela', async () => {
+    const { observations, logs, coverage, report } = await run('2026-10-19');
+    const bra = observations.filter((o) => o.indicator_id === DELAY_CDF_ID && o.geo_code === 'BRA');
+    expect(bra).toHaveLength(13);
+    expect(bra.map((o) => o.stratum.delay_weeks)).toEqual(Array.from({ length: 13 }, (_, d) => String(d)));
+    expect(bra.every((o) => o.period_type === 'year' && o.period === '2026' && o.geo_level === 'country' && o.snapshot_id === 'snap-1')).toBe(true);
+    expect(observations.filter((o) => o.indicator_id === DELAY_CDF_ID)).toHaveLength(28 * 13);
+    expect(coverage.get(DELAY_CDF_ID)).toEqual({ from: '2026', to: '2026' });
+    expect(logs.some((l) => l.includes(`${DELAY_CDF_ID}: janela 2025-07-21..2026-07-19`))).toBe(true);
+    expect(logs.some((l) => l.includes('data_as_of desconhecido'))).toBe(false);
+    expect(report.delay_window_coverage).toMatchObject({ data_as_of: '2026-10-19', period: '2026' });
+  });
+
+  it('sem data_as_of: nenhuma observação do indicador, sem cobertura, e aviso explícito no log', async () => {
+    const { observations, logs, coverage, report } = await run(null);
+    expect(observations.some((o) => o.indicator_id === DELAY_CDF_ID)).toBe(false);
+    expect(coverage.has(DELAY_CDF_ID)).toBe(false);
+    expect(coverage.has('sivep_srag_ah1n1pdm09_confirmed')).toBe(true);
+    expect(logs.some((l) => l.includes('data_as_of desconhecido'))).toBe(true);
+    expect(report.delay_window_coverage).toBeNull();
+  });
+});
