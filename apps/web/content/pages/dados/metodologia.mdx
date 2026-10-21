@@ -1,0 +1,118 @@
+---
+title: "Metodologia dos dados: de onde vêm os números de H1N1 deste site"
+description: "Fontes (SIVEP-Gripe, FluNet, IBGE), snapshots versionados, semana epidemiológica, atraso de notificação, supressão de células e H1N1 vs influenza A vs SRAG."
+slug: "/dados/metodologia/"
+intent: "Entender a origem, as definições e os limites dos indicadores publicados"
+nav_group: "dados"
+clinical: false
+index_policy: "index"
+review_status: "pending_editorial_review"
+author: "Redação H1N1, com apoio de IA, a partir de fontes oficiais (sem revisão clínica até o momento)"
+reviewer: null
+reviewed_at: null
+updated_at: "2026-10-20"
+sources:
+  - id: "BR-03"
+    title: "Ministério da Saúde / DATASUS — SRAG 2019 a 2026 (dados abertos)"
+    url: "https://dadosabertos.saude.gov.br/dataset/srag-2019-a-2026"
+    accessed_at: "2026-10-20"
+  - id: "BR-01"
+    title: "Ministério da Saúde / DATASUS — SRAG 2009 a 2012 (dados abertos)"
+    url: "https://dadosabertos.saude.gov.br/dataset/srag-2009-2012"
+    accessed_at: "2026-10-20"
+  - id: "BR-02"
+    title: "Ministério da Saúde / DATASUS — SRAG 2013 a 2018 (dados abertos)"
+    url: "https://dadosabertos.saude.gov.br/dataset/srag-2013-2018"
+    accessed_at: "2026-10-20"
+  - id: "INT-01"
+    title: "OMS — FluNet"
+    url: "https://www.who.int/tools/flunet/"
+    accessed_at: "2026-10-20"
+  - title: "OMS — Global Influenza Surveillance and Response System (GISRS)"
+    url: "https://www.who.int/initiatives/global-influenza-surveillance-and-response-system"
+    accessed_at: "2026-10-20"
+  - title: "OMS — WHO surveillance case definitions for ILI and SARI"
+    url: "https://www.who.int/teams/global-influenza-programme/surveillance-and-monitoring/case-definitions-for-ili-and-sari"
+    accessed_at: "2026-10-20"
+  - id: "BR-13"
+    title: "IBGE — API de localidades (documentação)"
+    url: "https://servicodados.ibge.gov.br/api/docs/localidades"
+    accessed_at: "2026-10-20"
+  - title: "IBGE — API de agregados (documentação)"
+    url: "https://servicodados.ibge.gov.br/api/docs/agregados?versao=3"
+    accessed_at: "2026-10-20"
+  - title: "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)"
+    url: "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica"
+    accessed_at: "2026-10-20"
+  - title: "Ministério da Saúde — Guia de Vigilância em Saúde, 6ª edição, volume 1 (2023)"
+    url: "https://bvsms.saude.gov.br/bvs/publicacoes/guia_vigilancia_saude_6ed_v1.pdf"
+    accessed_at: "2026-10-20"
+related:
+  - "/dados/brasil/"
+  - "/historia/"
+  - "/sobre/politica-editorial/"
+  - "/sobre/correcoes/"
+summary_answer: "Os números deste site vêm de bases oficiais (SIVEP-Gripe, FluNet, IBGE), baixadas como snapshots versionados e processadas por código reproduzível. Cada indicador exibe definição, universo, fonte e data. H1N1 confirmado, influenza A e SRAG são indicadores diferentes e nunca são somados."
+---
+
+<Resposta>
+Todo número publicado neste site vem de uma consulta determinística a uma base oficial baixada e versionada: SIVEP-Gripe (Ministério da Saúde), FluNet (OMS) e IBGE (população). Não há dado digitado à mão, nem estimativa produzida por inteligência artificial. Cada indicador aparece com definição de caso, universo, fonte, data da base e avisos de atraso de notificação. A regra central é que <Glossario termo="A(H1N1)pdm09" /> confirmado, <Glossario termo="influenza A" /> e <Glossario termo="SRAG" /> são medidas diferentes e nunca são somadas ou trocadas entre si.
+</Resposta>
+
+<Alerta tipo="info">
+A tabela de indicadores, com definições, universos e datas, é gerada automaticamente pela aplicação a partir da ontologia de indicadores e aparece abaixo deste texto. O texto explica as regras; a tabela mostra o que está em vigor.
+</Alerta>
+
+## De onde vêm os dados
+
+**SIVEP-Gripe (Ministério da Saúde / DATASUS).** Sistema oficial de registro de casos e óbitos por SRAG no Brasil. Os microdados são publicados no portal de dados abertos, com dicionário de variáveis e ficha de notificação. Os bancos de 2019 a 2024 estão congelados; o banco do ano corrente é "vivo" e atualizado semanalmente. <Fato id="sivep-dados-abertos-banco-vivo-semanal-revisoes" /> As bases são anonimizadas pelo Ministério da Saúde antes da publicação. <Fato id="sivep-dados-abertos-anonimizacao-lgpd" /> Para 2009 a 2018, usamos os bancos legados do Sinan Web Influenza, que exigem harmonização antes de qualquer comparação. <Fato id="sinan-web-influenza-2009-2018-sivep-gripe-2019" />
+
+**FluNet (OMS / GISRS).** Base global de vigilância virológica, lançada em 1997, com detecções de influenza por tipo e <Glossario termo="subtipo" />, reportadas pelos Centros Nacionais de Influenza; dados por país são públicos e atualizados semanalmente. <Fato id="flunet-lancado-1997-dados-publicos-semanais" /> O sistema de vigilância global da OMS opera desde 1952. <Fato id="gisrs-vigilancia-global-desde-1952" /> FluNet mede detecções em amostras processadas, não incidência na população.
+
+**IBGE.** Códigos de municípios, estados e regiões (API de localidades) e estimativas populacionais (API de agregados), usados como denominadores. A versão do denominador é fixada e registrada em cada taxa.
+
+Outras fontes do catálogo (CDC, ECDC, UKHSA, InfoGripe/Fiocruz) são usadas como contexto e nunca somadas às bases primárias: InfoGripe, por exemplo, é derivado do próprio SIVEP-Gripe.
+
+## O que é um snapshot versionado
+
+Cada download de uma base oficial é guardado como arquivo imutável com URL de origem, data e hora, hash de conteúdo e licença. Os indicadores são calculados a partir desse arquivo por código reproduzível, e a data do snapshot aparece junto do número. Quando a fonte revisa os dados, o site gera um novo snapshot e mantém o anterior. Isso permite medir revisões e explicar por que um número mudou, sem atribuir intenção a ninguém. Se uma validação falha, o indicador não é publicado e a última versão válida permanece, claramente datada.
+
+## Semana epidemiológica brasileira e semana ISO
+
+O SIVEP-Gripe organiza os casos por <Glossario termo="semana epidemiológica" />, que no Brasil começa no domingo e termina no sábado, com a primeira semana do ano definida pela regra do Ministério da Saúde. O FluNet usa a semana ISO, que começa na segunda-feira. As duas convenções podem divergir em até um dia e, nas viradas de ano, em uma semana. O site identifica cada série pelo seu tipo de semana e não mistura as duas no mesmo gráfico sem conversão explícita.
+
+A semana de cada caso do SIVEP-Gripe é a dos primeiros sintomas, e a unidade da federação é a de residência. No FluNet, a semana é a do processamento da amostra, que pode ser posterior à coleta.
+
+## Atraso de notificação
+
+Casos de SRAG levam dias ou semanas para ser notificados, digitados, testados e encerrados. As semanas mais recentes são sempre incompletas e tendem a subir nas revisões. O Ministério da Saúde registra que as notificações passam por revisões contínuas para corrigir inconsistências. <Fato id="sivep-dados-abertos-banco-vivo-semanal-revisoes" /> Por isso, o site marca as semanas recentes como provisórias e não interpreta queda nas últimas semanas como queda real sem essa ressalva. Nenhum painel é apresentado como "atualizado no momento": o rótulo é sempre a data da base.
+
+## Supressão de células pequenas
+
+Em recortes por estado, faixa etária ou outros cruzamentos, contagens menores que 5 são suprimidas e exibidas como "menos de 5". A regra protege contra reidentificação de pessoas, mesmo em bases anonimizadas, e evita leituras estatísticas frágeis. Totais nacionais e agregados maiores não são suprimidos. Cruzamentos que aumentariam o risco de reidentificação não são publicados.
+
+## Por que H1N1 confirmado não é influenza A nem SRAG
+
+Esta é a regra que mais evita erros de leitura.
+
+- **SRAG** é uma síndrome clínica: síndrome gripal com dispneia, pressão no tórax, saturação baixa ou cianose. <Fato id="definicao-srag-ms" /> A base contém apenas casos hospitalizados e óbitos, não as infecções leves. <Fato id="srag-notificacao-hospitalizados-e-obitos" /> SRAG pode ter como causa influenza, covid-19, vírus sincicial respiratório, outros agentes ou causa não identificada.
+- **SRAG por influenza** é o subconjunto confirmado por <Glossario termo="RT-PCR" /> ou outra biologia molecular, e inclui influenza A sem subtipo, A(H1N1)pdm09, A(H3N2) e influenza B. <Fato id="classificacao-srag-por-influenza" />
+- **Influenza A não subtipada** significa que o subtipo não foi testado ou não foi determinado. Não é H1N1 e não é somada a H1N1.
+- **A(H1N1)pdm09 confirmado** é apenas o que foi testado e identificado como esse subtipo. Depende de quantas amostras foram subtipadas, o que varia por ano, região e laboratório.
+
+Consequência prática: o número de H1N1 confirmado é sempre menor que o de influenza confirmada, que é menor que o de SRAG. Uma pessoa com gripe leve por H1N1 não aparece em nenhum deles. Os indicadores do site são nomeados por esse universo, com o texto obrigatório "os números representam [universo da fonte], não todos os casos de H1N1 da população". As definições internacionais da OMS para síndrome gripal e SARI diferem das brasileiras e são usadas apenas nas séries globais. <Fato id="oms-definicao-sari" />
+
+## Comparações entre países e períodos
+
+Só comparamos séries com a mesma fonte, a mesma definição de caso e o mesmo tipo de semana. Detecções do FluNet entre países refletem estratégias de testagem diferentes, não incidências comparáveis. Séries brasileiras de 2009 a 2018 e de 2019 em diante vêm de sistemas diferentes e não são unidas em uma linha contínua; o motivo está em [/historia/](/historia/).
+
+## Política de correção
+
+Erros de processamento, de rótulo ou de definição são corrigidos na própria página, com registro no changelog público em [/sobre/correcoes/](/sobre/correcoes/), indicando o que mudou, quando e por quê. Revisões de dados feitas pela fonte não são erros do site; são registradas como nova versão do snapshot e sinalizadas no indicador. Dúvidas e apontamentos podem ser enviados pelo canal indicado em [/contato/](/contato/).
+
+<Limites>
+- Nenhum indicador deste site mede o total de pessoas infectadas por H1N1 na população.
+- Detecções laboratoriais e notificações de SRAG dependem de testagem e cobertura; variações podem refletir mudança na vigilância, não na doença.
+- Dados populacionais não permitem inferir risco individual.
+- Este texto é a política em vigor na data de atualização; mudanças futuras serão registradas no changelog.
+</Limites>

@@ -1,0 +1,19 @@
+[
+  {
+    "id": "oms-pandemia-2009",
+    "claim": "A OMS declarou a pandemia de influenza A(H1N1) em 11 de junho de 2009.",
+    "source_title": "OMS: World now at the start of 2009 influenza pandemic",
+    "source_url": "https://www.who.int/director-general/speeches/detail/world-now-at-the-start-of-2009-influenza-pandemic",
+    "quote": "The world is now at the start of the 2009 influenza pandemic.",
+    "verified_by": "Equipe editorial (fixture de teste)",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-fim-pandemia-2010",
+    "claim": "Em 10 de agosto de 2010, a OMS anunciou o fim da fase pandêmica do H1N1.",
+    "source_title": "OMS: H1N1 in post-pandemic period",
+    "source_url": "https://www.who.int/director-general/speeches/detail/h1n1-in-post-pandemic-period",
+    "verified_by": "Equipe editorial (fixture de teste)",
+    "verified_at": "2026-10-20"
+  }
+]

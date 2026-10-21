@@ -1,0 +1,246 @@
+{
+ "data": [
+  {
+   "indicator_id": "sivep_srag_notifications",
+   "source_id": "BR-03",
+   "snapshot_id": "7f1c2a8e-sivep-2026-10-14",
+   "data_as_of": "2026-10-13",
+   "fetched_at": "2026-10-14T06:12:44.000Z",
+   "published_at": "2026-10-14T06:40:02.000Z",
+   "age_days": 6,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-14T06:12:44.000Z"
+  },
+  {
+   "indicator_id": "sivep_srag_influenza_confirmed",
+   "source_id": "BR-03",
+   "snapshot_id": "7f1c2a8e-sivep-2026-10-14",
+   "data_as_of": "2026-10-13",
+   "fetched_at": "2026-10-14T06:12:44.000Z",
+   "published_at": "2026-10-14T06:40:02.000Z",
+   "age_days": 6,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-14T06:12:44.000Z"
+  },
+  {
+   "indicator_id": "sivep_srag_ah1n1pdm09_confirmed",
+   "source_id": "BR-03",
+   "snapshot_id": "7f1c2a8e-sivep-2026-10-14",
+   "data_as_of": "2026-10-13",
+   "fetched_at": "2026-10-14T06:12:44.000Z",
+   "published_at": "2026-10-14T06:40:02.000Z",
+   "age_days": 6,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-14T06:12:44.000Z"
+  },
+  {
+   "indicator_id": "sivep_srag_ah3n2_confirmed",
+   "source_id": "BR-03",
+   "snapshot_id": "7f1c2a8e-sivep-2026-10-14",
+   "data_as_of": "2026-10-13",
+   "fetched_at": "2026-10-14T06:12:44.000Z",
+   "published_at": "2026-10-14T06:40:02.000Z",
+   "age_days": 6,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-14T06:12:44.000Z"
+  },
+  {
+   "indicator_id": "sivep_srag_inf_a_not_subtyped",
+   "source_id": "BR-03",
+   "snapshot_id": "7f1c2a8e-sivep-2026-10-14",
+   "data_as_of": "2026-10-13",
+   "fetched_at": "2026-10-14T06:12:44.000Z",
+   "published_at": "2026-10-14T06:40:02.000Z",
+   "age_days": 6,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-14T06:12:44.000Z"
+  },
+  {
+   "indicator_id": "sivep_srag_influenza_deaths",
+   "source_id": "BR-03",
+   "snapshot_id": "7f1c2a8e-sivep-2026-10-14",
+   "data_as_of": "2026-10-13",
+   "fetched_at": "2026-10-14T06:12:44.000Z",
+   "published_at": "2026-10-14T06:40:02.000Z",
+   "age_days": 6,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-14T06:12:44.000Z"
+  },
+  {
+   "indicator_id": "sivep_srag_ah1n1pdm09_deaths",
+   "source_id": "BR-03",
+   "snapshot_id": "7f1c2a8e-sivep-2026-10-14",
+   "data_as_of": "2026-10-13",
+   "fetched_at": "2026-10-14T06:12:44.000Z",
+   "published_at": "2026-10-14T06:40:02.000Z",
+   "age_days": 6,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-14T06:12:44.000Z"
+  },
+  {
+   "indicator_id": "sivep_srag_influenza_icu",
+   "source_id": "BR-03",
+   "snapshot_id": "7f1c2a8e-sivep-2026-10-14",
+   "data_as_of": "2026-10-13",
+   "fetched_at": "2026-10-14T06:12:44.000Z",
+   "published_at": "2026-10-14T06:40:02.000Z",
+   "age_days": 6,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-14T06:12:44.000Z"
+  },
+  {
+   "indicator_id": "flunet_specimens_processed",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
+  },
+  {
+   "indicator_id": "flunet_ah1n1pdm09_detections",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
+  },
+  {
+   "indicator_id": "flunet_ah3_detections",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
+  },
+  {
+   "indicator_id": "flunet_inf_a_detections",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
+  },
+  {
+   "indicator_id": "flunet_inf_a_not_subtyped",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
+  },
+  {
+   "indicator_id": "flunet_inf_b_detections",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
+  },
+  {
+   "indicator_id": "flunet_inf_all_detections",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
+  },
+  {
+   "indicator_id": "flunet_ah1n1pdm09_share_of_inf_a",
+   "source_id": "INT-01",
+   "snapshot_id": "a93d55b1-flunet-2026-10-13",
+   "data_as_of": "2026-10-12",
+   "fetched_at": "2026-10-13T03:40:10.000Z",
+   "published_at": "2026-10-13T04:01:11.000Z",
+   "age_days": 7,
+   "last_run_status": "ok",
+   "last_run_finished_at": "2026-10-13T03:40:10.000Z"
+  },
+  {
+   "indicator_id": "flunet_inf_a_not_subtypable",
+   "source_id": "INT-01",
+   "snapshot_id": null,
+   "data_as_of": null,
+   "fetched_at": null,
+   "published_at": null,
+   "age_days": null,
+   "last_run_status": null,
+   "last_run_finished_at": null
+  },
+  {
+   "indicator_id": "flunet_influenza_positivity",
+   "source_id": "INT-01",
+   "snapshot_id": null,
+   "data_as_of": null,
+   "fetched_at": null,
+   "published_at": null,
+   "age_days": null,
+   "last_run_status": null,
+   "last_run_finished_at": null
+  },
+  {
+   "indicator_id": "sivep_srag_influenza_subtype_completeness",
+   "source_id": "BR-03",
+   "snapshot_id": "old-snapshot-2026-09-01",
+   "data_as_of": "2026-08-31",
+   "fetched_at": "2026-09-01T06:00:00.000Z",
+   "published_at": "2026-09-01T06:30:00.000Z",
+   "age_days": 49,
+   "last_run_status": "failed",
+   "last_run_finished_at": "2026-10-14T06:00:00.000Z"
+  },
+  {
+   "indicator_id": "ibge_population_estimate",
+   "source_id": "BR-14",
+   "snapshot_id": null,
+   "data_as_of": null,
+   "fetched_at": null,
+   "published_at": null,
+   "age_days": null,
+   "last_run_status": null,
+   "last_run_finished_at": null
+  },
+  {
+   "indicator_id": "worldbank_population_total",
+   "source_id": "INT-11",
+   "snapshot_id": null,
+   "data_as_of": null,
+   "fetched_at": null,
+   "published_at": null,
+   "age_days": null,
+   "last_run_status": null,
+   "last_run_finished_at": null
+  },
+  {
+   "indicator_id": "ukhsa_influenza_testing_positivity",
+   "source_id": "UK-01",
+   "snapshot_id": null,
+   "data_as_of": null,
+   "fetched_at": null,
+   "published_at": null,
+   "age_days": null,
+   "last_run_status": null,
+   "last_run_finished_at": null
+  }
+ ]
+}

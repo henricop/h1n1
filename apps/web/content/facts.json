@@ -1,0 +1,515 @@
+[
+  {
+    "id": "pandemia-2009-primeiros-casos-reportados-abril-2009",
+    "claim": "Os primeiros casos humanos confirmados do novo vírus influenza A(H1N1) de origem suína foram reportados à OMS pelos Estados Unidos e pelo México em abril de 2009.",
+    "source_title": "OMS — Disease Outbreak News, Influenza-like illness in the United States and Mexico, 24 April 2009",
+    "source_url": "https://www.who.int/emergencies/disease-outbreak-news/item/2009_04_24-en",
+    "quote": "The United States Government has reported seven confirmed human cases of Swine Influenza A/H1N1 in the USA (five in California and two in Texas) and nine suspect cases.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-espii-2009-04-25",
+    "claim": "Em 25 de abril de 2009 a OMS declarou o evento uma Emergência de Saúde Pública de Importância Internacional.",
+    "source_title": "CDC — 2009 H1N1 Pandemic Timeline (arquivo)",
+    "source_url": "https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-pandemic-timeline.html",
+    "quote": "April 25: The World Health Organization (WHO) declared a public health emergency of international concern.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-fase-4-2009-04-27",
+    "claim": "Em 27 de abril de 2009 a OMS elevou o alerta de pandemia da fase 3 para a fase 4, com base em evidência de transmissão pessoa a pessoa e surtos comunitários.",
+    "source_title": "CDC — 2009 H1N1 Pandemic Timeline (arquivo)",
+    "source_url": "https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-pandemic-timeline.html",
+    "quote": "April 27: WHO Director-General raised the level of influenza pandemic alert from phase 3 to phase 4, based on data showing person-to-person spread and the ability of the virus to cause community-level outbreaks.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-fase-5-2009-04-29",
+    "claim": "Em 29 de abril de 2009 a OMS elevou o alerta de pandemia para a fase 5, sinalizando pandemia iminente.",
+    "source_title": "CDC — 2009 H1N1 Pandemic Timeline (arquivo)",
+    "source_url": "https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-pandemic-timeline.html",
+    "quote": "April 29: WHO raised the level of influenza pandemic alert from phase 4 to phase 5, signaling that a pandemic was imminent",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-declaracao-pandemia-fase-6-2009-06-11",
+    "claim": "Em 11 de junho de 2009 a OMS declarou pandemia de influenza e elevou o alerta mundial à fase 6.",
+    "source_title": "CDC — 2009 H1N1 Pandemic Timeline (arquivo)",
+    "source_url": "https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-pandemic-timeline.html",
+    "quote": "June 11: The World Health Organization (WHO) declared a pandemic and raised the worldwide pandemic alert level to phase 6, which means the virus was spreading to other parts of the world.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-74-paises-com-casos-confirmados-junho-2009",
+    "claim": "Quando a OMS declarou a pandemia, em junho de 2009, 74 países e territórios já haviam reportado infecções confirmadas em laboratório.",
+    "source_title": "OMS — Influenza A(H1N1) pandemic 2009-2010 (página de situação)",
+    "source_url": "https://www.who.int/emergencies/situations/influenza-a-(h1n1)-outbreak",
+    "quote": "By the time WHO declared a pandemic in June 2009, a total of 74 countries and territories had reported laboratory confirmed infections.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-fim-pandemia-periodo-pos-pandemico-2010-08-10",
+    "claim": "Em 10 de agosto de 2010 a Diretora-Geral da OMS declarou que o mundo deixava a fase 6 e entrava no período pós-pandêmico.",
+    "source_title": "OMS — H1N1 in post-pandemic period, statement, 10 August 2010",
+    "source_url": "https://www.who.int/news/item/10-08-2010-h1n1-in-post-pandemic-period",
+    "quote": "The world is no longer in phase 6 of influenza pandemic alert. We are now moving into the post-pandemic period. The new H1N1 virus has largely run its course.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-expectativa-comportamento-sazonal-pos-pandemia",
+    "claim": "Ao encerrar a pandemia, a OMS afirmou esperar que o vírus H1N1 passasse a se comportar como um vírus de influenza sazonal e continuasse a circular por anos.",
+    "source_title": "OMS — H1N1 in post-pandemic period, statement, 10 August 2010",
+    "source_url": "https://www.who.int/news/item/10-08-2010-h1n1-in-post-pandemic-period",
+    "quote": "Based on experience with past pandemics, we expect the H1N1 virus to take on the behaviour of a seasonal influenza virus and continue to circulate for some years to come.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "nomenclatura-ah1n1pdm09",
+    "claim": "O vírus A(H1N1) que circula hoje é escrito A(H1N1)pdm09 porque causou a pandemia de 2009 e substituiu o A(H1N1) que circulava antes.",
+    "source_title": "OMS — Influenza (seasonal), fact sheet",
+    "source_url": "https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)",
+    "quote": "The A(H1N1) is also written as A(H1N1)pdm09 as it caused the pandemic in 2009 and replaced the previous A(H1N1) virus which had circulated prior to 2009.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "cdc-designacao-ah1n1pdm09",
+    "claim": "O novo vírus H1N1 de 2009 continha uma combinação de genes de influenza nunca antes identificada em animais ou pessoas e foi designado influenza A(H1N1)pdm09.",
+    "source_title": "CDC — 2009 H1N1 Pandemic (H1N1pdm09 virus) (arquivo)",
+    "source_url": "https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-h1n1-pandemic.html",
+    "quote": "This new H1N1 virus contained a unique combination of influenza genes not previously identified in animals or people. This virus was designated as influenza A (H1N1)pdm09 virus.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ah1n1pdm09-circula-como-virus-sazonal",
+    "claim": "O vírus H1N1 de 2009 continua a circular como vírus sazonal e está incluído nas vacinas contra influenza sazonal.",
+    "source_title": "OMS — Influenza A(H1N1) pandemic 2009-2010 (página de situação)",
+    "source_url": "https://www.who.int/emergencies/situations/influenza-a-(h1n1)-outbreak",
+    "quote": "The H1N1 (2009) virus continues to circulate as a seasonal virus and is included in the vaccines against seasonal influenza.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "subtipos-influenza-a-circulantes-em-humanos",
+    "claim": "Segundo o Ministério da Saúde, os subtipos de influenza A que atualmente circulam de forma sazonal em humanos são A(H1N1)pdm09 e A(H3N2).",
+    "source_title": "Ministério da Saúde — Gripe (influenza)",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza",
+    "quote": "Dentre os subtipos de vírus influenza A, atualmente os subtipos A(H1N1)pdm09 e A(H3N2) circulam de maneira sazonal e infectam humanos.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "pandemia-2009-mortalidade-estimada-primeiro-ano",
+    "claim": "O CDC estimou, por modelagem, entre 151.700 e 575.400 óbitos no mundo associados ao vírus A(H1N1)pdm09 nos primeiros 12 meses de circulação; trata-se de estimativa com intervalo, não de contagem.",
+    "source_title": "CDC — 2009 H1N1 Pandemic (H1N1pdm09 virus) (arquivo)",
+    "source_url": "https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-h1n1-pandemic.html",
+    "quote": "CDC estimated that 151,700-575,400 people worldwide died from (H1N1)pdm09 virus infection during the first year the virus circulated.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "pandemia-2009-obitos-estimados-concentrados-em-menores-de-65",
+    "claim": "Segundo estimativa citada pelo CDC, cerca de 80% dos óbitos associados ao A(H1N1)pdm09 no primeiro ano ocorreram em pessoas com menos de 65 anos, padrão diferente das epidemias sazonais típicas.",
+    "source_title": "CDC — 2009 H1N1 Pandemic (H1N1pdm09 virus) (arquivo)",
+    "source_url": "https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-h1n1-pandemic.html",
+    "quote": "Globally, 80 percent of (H1N1)pdm09 virus-related deaths were estimated to have occurred in people younger than 65 years of age.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "incubacao-influenza-1-a-4-dias",
+    "claim": "Os sintomas da influenza começam, em geral, cerca de 2 dias após a infecção, com variação de 1 a 4 dias.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Os sintomas geralmente começam cerca de 2 dias após os vírus da gripe infectarem o trato respiratório de uma pessoa, porém esse período pode variar de 1 a 4 dias",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "transmissibilidade-adultos-24h-antes-pico-24-72h",
+    "claim": "Adultos saudáveis infectados transmitem o vírus desde 24 horas antes do início dos sintomas; o pico de excreção viral ocorre entre 24 e 72 horas do início da doença e declina a níveis não detectáveis por volta do 5º dia.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Indivíduos adultos saudáveis, quando infectados, transmitem o vírus 24 horas antes do início de sintomas, porém em quantidades mais baixas do que durante o período sintomático. Nesse período, o pico da excreção viral ocorre principalmente entre as primeiras 24 até 72 horas do início da doença, e declina até níveis não detectáveis por volta do 5º dia após o início dos sintomas.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "transmissibilidade-prolongada-criancas-imunossuprimidos",
+    "claim": "Pessoas com sistema imunológico enfraquecido podem excretar vírus por semanas ou meses; crianças excretam vírus mais cedo, em maior quantidade e por mais tempo do que adultos.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Pessoas com sistema imunológico enfraquecido podem excretar vírus por semanas ou meses. As crianças, comparadas aos adultos, também excretam vírus mais precocemente, com maior carga viral e por longos períodos",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-afastamento-ate-24h-sem-febre",
+    "claim": "O Ministério da Saúde orienta que pessoas com sintomas de gripe evitem sair de casa no período de transmissão (que pode ser de até 7 dias após o início dos sintomas) e se afastem de trabalho ou escola até 24 horas após cessar a febre sem antitérmico.",
+    "source_title": "Ministério da Saúde — Gripe (influenza)",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza",
+    "quote": "Indivíduos que apresentem sintomas de gripe devem evitar sair de casa em período de transmissão da doença (podendo ser por um período de até 7 dias após o início dos sintomas). Orientar o afastamento temporário (trabalho, escola etc.) até 24 horas após cessar a febre sem a utilização de medicamento antitérmico.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "definicao-sindrome-gripal-vigilancia-sentinela",
+    "claim": "Na vigilância sentinela da influenza, síndrome gripal é definida como febre, mesmo que referida, acompanhada de tosse ou dor de garganta, com início dos sintomas nos últimos 7 dias.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Indivíduo com febre, mesmo que referida, acompanhada de tosse ou dor de garganta e com início dos sintomas nos últimos 7 dias.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "definicao-srag-ms",
+    "claim": "Síndrome respiratória aguda grave (SRAG) é definida pelo Ministério da Saúde como indivíduo com síndrome gripal que apresenta dispneia ou desconforto respiratório, ou pressão ou dor persistente no tórax, ou saturação de oxigênio igual ou inferior a 94% em ar ambiente, ou coloração azulada dos lábios ou do rosto.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Indivíduo com SG que apresente: dispneia/desconforto respiratório, ou pressão ou dor persistente no tórax, ou saturação de O2 menor ou igual a 94% em ar ambiente, ou coloração azulada (cianose) dos lábios ou do rosto.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "srag-notificacao-hospitalizados-e-obitos",
+    "claim": "Para efeito de notificação no SIVEP-Gripe, são considerados os casos de SRAG hospitalizados e os óbitos por SRAG, independentemente de hospitalização.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Para efeito de notificação no Sivep-Gripe, serão considerados os casos de Srag hospitalizados e óbitos por Srag, independentemente de hospitalização.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "duracao-tipica-influenza-7-dias",
+    "claim": "A influenza sazonal geralmente tem resolução espontânea em aproximadamente 7 dias, embora tosse, mal-estar e fadiga possam permanecer por algumas semanas.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Geralmente, tem resolução espontânea em aproximadamente 7 dias, embora a tosse, o mal-estar e a fadiga possam permanecer por algumas semanas.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "sg-criancas-menores-de-2-anos",
+    "claim": "Em crianças com menos de 2 anos, o Ministério da Saúde também considera síndrome gripal a febre de início súbito (mesmo que referida) com sintomas respiratórios (tosse, coriza e obstrução nasal), na ausência de outro diagnóstico específico.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Em crianças com menos de 2 anos de idade, considera-se também como caso de SG: febre de início súbito (mesmo que referida) e sintomas respiratórios (tosse, coriza e obstrução nasal), na ausência de outro diagnóstico específicos",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-condicoes-e-fatores-de-risco-para-complicacoes",
+    "claim": "O Ministério da Saúde lista como condições e fatores de risco para complicações por influenza: gestantes e puérperas, adultos com 60 anos ou mais, crianças menores de 5 anos, população indígena aldeada ou com dificuldade de acesso, menores de 19 anos em uso prolongado de ácido acetilsalicílico, e pessoas com pneumopatias, tuberculose, cardiovasculopatias, nefropatias, hepatopatias, doenças hematológicas, distúrbios metabólicos, transtornos neurológicos, imunossupressão ou obesidade.",
+    "source_title": "Ministério da Saúde — Guia de Vigilância em Saúde, 6ª edição, volume 1 (2023)",
+    "source_url": "https://bvsms.saude.gov.br/bvs/publicacoes/guia_vigilancia_saude_6ed_v1.pdf",
+    "quote": "Gestantes em qualquer idade gestacional, puérperas até duas semanas após o parto (incluindo as que tiveram aborto ou perda fetal). Adultos ≥60 anos. Crianças <5 anos (sendo que o maior risco de hospitalização é em menores de 2 anos, especialmente as menores de 6 meses com maior taxa de mortalidade). População indígena aldeada ou com dificuldade de acesso.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-grupos-de-maior-risco",
+    "claim": "Para a OMS, têm maior risco de doença grave ou complicações: gestantes, crianças menores de 5 anos, pessoas idosas, pessoas com doenças crônicas e pessoas com condições ou tratamentos imunossupressores.",
+    "source_title": "OMS — Influenza (seasonal), fact sheet",
+    "source_url": "https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)",
+    "quote": "People at greater risk of severe disease or complications when infected are pregnant women, children under 5 years of age, older people, individuals with chronic medical conditions (such as chronic cardiac, pulmonary, renal, metabolic, neurodevelopmental, liver or hematologic diseases) and individuals with immunosuppressive conditions/treatments",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-hospitalizacao-e-obito-concentrados-em-grupos-de-risco",
+    "claim": "Segundo a OMS, hospitalização e morte por influenza ocorrem principalmente entre os grupos de alto risco.",
+    "source_title": "OMS — Influenza (seasonal), fact sheet",
+    "source_url": "https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)",
+    "quote": "Hospitalization and death due to influenza occur mainly among high-risk groups.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "vigilancia-srag-implantada-2009",
+    "claim": "A vigilância universal de SRAG no Brasil foi criada em 2009, em decorrência da pandemia de influenza pelo vírus A(H1N1)pdm09, e monitora casos hospitalizados e óbitos.",
+    "source_title": "Ministério da Saúde — Guia de Vigilância em Saúde, 6ª edição, volume 1 (2023)",
+    "source_url": "https://bvsms.saude.gov.br/bvs/publicacoes/guia_vigilancia_saude_6ed_v1.pdf",
+    "quote": "Criada em 2009, em decorrência da pandemia de influenza pelo vírus influenza A (H1N1)pdm09, a vigilância de Srag monitora os casos hospitalizados e óbitos por Srag",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "srag-obitos-independente-hospitalizacao-desde-2010",
+    "claim": "Em janeiro de 2010 passaram a ser notificados os casos de SRAG hospitalizados e os óbitos por SRAG, independentemente de hospitalização.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Em janeiro de 2010, passaram a ser notificados os casos de Srag hospitalizados e os óbitos por Srag, independentemente de hospitalização.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "sinan-web-influenza-2009-2018-sivep-gripe-2019",
+    "claim": "De 2009 a 2018 o sistema oficial de registro de casos e óbitos por SRAG era o Sinan Web Influenza; a partir de 2019 passou a ser o SIVEP-Gripe.",
+    "source_title": "Ministério da Saúde / DATASUS — SRAG 2009 a 2012, Banco de Dados de Síndrome Respiratória Aguda Grave (dados abertos)",
+    "source_url": "https://dadosabertos.saude.gov.br/dataset/srag-2009-2012",
+    "quote": "De 2009 até 2018, o sistema oficial para o registo dos casos e óbitos por SRAG era o Sistema de Informação de Agravos de Notificação – Sinan Web Influenza. A partir de 2019, o sistema oficial passou a ser é o Sistema de Informação da Vigilância Epidemiológica da Gripe (SIVEP-Gripe).",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "vigilancia-sentinela-sg-implantada-2000",
+    "claim": "A vigilância de influenza no Brasil foi implantada em 2000, por meio da vigilância sentinela de síndrome gripal.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "A vigilância de influenza foi implantada em 2000, por meio da vigilância sentinela de síndrome gripal (SG), e a vigilância universal da síndrome respiratória aguda grave (Srag) foi implantada em 2009, com a pandemia da influenza A(H1N1)pdm09.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "vigilancia-srag-universal-desde-covid",
+    "claim": "A partir da pandemia de covid-19, a vigilância de SRAG passou a ter caráter universal: todos os casos de SRAG devem ser obrigatoriamente notificados.",
+    "source_title": "Ministério da Saúde — Guia de Vigilância em Saúde, 6ª edição, volume 1 (2023)",
+    "source_url": "https://bvsms.saude.gov.br/bvs/publicacoes/guia_vigilancia_saude_6ed_v1.pdf",
+    "quote": "A partir da pandemia de covid-19, a vigilância de Srag tem caráter universal, ou seja, todos os casos de Srag devem ser obrigatoriamente notificados.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "vacinacao-influenza-incorporada-pni-1999",
+    "claim": "A estratégia de vacinação contra a influenza foi incorporada ao Programa Nacional de Imunizações em 1999.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "A estratégia de vacinação contra a influenza foi incorporada no Programa Nacional de Imunizações (PNI) em 1999, com o propósito de reduzir internações, complicações e óbitos na população-alvo.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "estrategia-vacinacao-influenza-2026-periodo",
+    "claim": "A Estratégia de Vacinação contra a Influenza 2026 nas regiões Nordeste, Centro-Oeste, Sul e Sudeste teve início oficial em 28 de março de 2026, com vacinação dos grupos prioritários prevista de 28 de março a 30 de maio de 2026.",
+    "source_title": "Ministério da Saúde — Estratégia de Vacinação contra a Influenza nas Regiões Nordeste, Centro-Oeste, Sul e Sudeste, 2026",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/influenza/estrategia-de-vacinacao-contra-a-influenza-nas-regioes-nordeste-centro-oeste-sul-e-sudeste-2026",
+    "quote": "sendo o dia “D” de divulgação e mobilização no dia 28 de março de 2026. A vacinação dos grupos prioritários ocorrerá no período de 28 de março a 30 de maio do ano corrente.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "composicao-vacina-influenza-trivalente-brasil-2026",
+    "claim": "Conforme a Instrução Normativa 408/2025 da Anvisa, as vacinas trivalentes usadas no Brasil a partir de fevereiro de 2026 contêm cepas A/Missouri/11/2025 (H1N1)pdm09, A/Singapore/GP20238/2024 (H3N2) e B/Austria/1359417/2021 (linhagem B/Victoria).",
+    "source_title": "Ministério da Saúde — Estratégia de Vacinação contra a Influenza nas Regiões Nordeste, Centro-Oeste, Sul e Sudeste, 2026",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/influenza/estrategia-de-vacinacao-contra-a-influenza-nas-regioes-nordeste-centro-oeste-sul-e-sudeste-2026",
+    "quote": "as vacinas sazonais trivalentes utilizadas no Brasil, a partir de fevereiro de 2026, deverão apresentar três tipos de cepas de vírus em combinação: A/Missouri/11/2025 (H1N1)pdm09. A/Singapore/GP20238/2024 (H3N2). B/Austria/1359417/2021 (B/linhagem Victoria).",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "vacina-influenza-calendario-nacional-grupos-de-rotina",
+    "claim": "A vacina influenza trivalente faz parte do Calendário Nacional de Vacinação para crianças de 6 meses a menores de 6 anos, idosos com 60 anos ou mais e gestantes; para os demais grupos prioritários é ofertada como estratégia especial.",
+    "source_title": "Ministério da Saúde — Estratégia de Vacinação contra a Influenza nas Regiões Nordeste, Centro-Oeste, Sul e Sudeste, 2026",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/influenza/estrategia-de-vacinacao-contra-a-influenza-nas-regioes-nordeste-centro-oeste-sul-e-sudeste-2026",
+    "quote": "A vacina influenza trivalente faz parte do Calendário Nacional de Vacinação para crianças a partir de 6 meses a menores de 6 anos de idade (5 anos, 11 meses e 29 dias), idosos com 60 anos e gestantes. Além disso, a vacinação contra influenza também está disponível, como estratégia especial, para os grupos prioritários.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "calendario-nacional-criancas-6m-a-6a-vacinacao-anual",
+    "claim": "No Calendário Nacional de Vacinação, crianças de 6 meses a menores de 6 anos devem ser vacinadas contra influenza todo ano; quem recebe a vacina pela primeira vez toma 2 doses com 30 dias de intervalo.",
+    "source_title": "Ministério da Saúde — Calendário de Vacinação",
+    "source_url": "https://www.gov.br/saude/pt-br/vacinacao/calendario",
+    "quote": "Crianças de 6 meses a menores de 6 anos devem ser vacinadas todo ano. Quem vai receber a vacina pela primeira vez deve tomar 2 doses com 30 dias de intervalo. As que já tomaram em anos anteriores recebem apenas 1 dose por ano.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-composicao-hemisferio-sul-2027-componente-h1n1",
+    "claim": "Para a temporada 2027 do hemisfério sul, a OMS recomenda como componente H1N1 um vírus semelhante a A/Missouri/11/2025 (H1N1)pdm09.",
+    "source_title": "OMS — Recommended composition of influenza virus vaccines for use in the 2027 southern hemisphere influenza season (25 September 2026)",
+    "source_url": "https://www.who.int/publications/m/item/recommended-composition-of-influenza-virus-vaccines-for-use-in-the-2027-southern-hemisphere-influenza-season",
+    "quote": "For vaccines for use in the 2027 southern hemisphere influenza season, WHO recommends the following: Egg-based vaccines • an A/Missouri/11/2025 (H1N1)pdm09-like virus;",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-recomenda-composicao-vacinal-duas-vezes-ao-ano",
+    "claim": "A OMS recomenda a composição das vacinas de influenza sazonal duas vezes por ano, uma para o hemisfério norte e outra para o hemisfério sul.",
+    "source_title": "OMS — Influenza (seasonal), fact sheet",
+    "source_url": "https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)",
+    "quote": "recommends seasonal influenza vaccine compositions twice a year for the northern and southern hemisphere influenza seasons",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-vacinacao-anual-recomendada-grupos",
+    "claim": "A OMS recomenda vacinação anual contra influenza para gestantes, crianças de 6 meses a 5 anos, pessoas acima de 65 anos, pessoas com doenças crônicas e trabalhadores da saúde.",
+    "source_title": "OMS — Influenza (seasonal), fact sheet",
+    "source_url": "https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)",
+    "quote": "Annual vaccination is recommended for: pregnant women, children aged 6 months to 5 years, people over age 65, people with chronic medical conditions, health workers.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-vacinacao-forma-mais-eficaz-prevencao",
+    "claim": "Para o Ministério da Saúde, a vacinação é a forma mais eficaz de prevenção contra a gripe e suas complicações, e a mudança constante dos vírus exige vacinação anual.",
+    "source_title": "Ministério da Saúde — Gripe (influenza)",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza",
+    "quote": "A vacinação é a forma mais eficaz de prevenção contra a gripe e suas complicações. [...] Devido a essa mudança dos vírus, é necessário a vacinação anual contra a gripe.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-vacina-sus-protege-tres-cepas-hemisferio-sul",
+    "claim": "Segundo o Ministério da Saúde, a vacina ofertada no SUS protege contra os três vírus da gripe que mais circularam no último ano no hemisfério sul.",
+    "source_title": "Ministério da Saúde — Gripe (influenza)",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza",
+    "quote": "Este imunobiológico oferecido no Sistema Único de Saúde (SUS) protege contra os três subtipos do vírus da gripe que mais circularam no último ano no Hemisfério Sul.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-nao-ha-como-diferenciar-influenza-e-covid-pelo-quadro-clinico",
+    "claim": "Segundo o Ministério da Saúde, não há como diferenciar influenza e covid-19 apenas pelo quadro clínico; é necessária avaliação por profissional médico.",
+    "source_title": "Ministério da Saúde — Guia de Vigilância em Saúde, 6ª edição, volume 1 (2023)",
+    "source_url": "https://bvsms.saude.gov.br/bvs/publicacoes/guia_vigilancia_saude_6ed_v1.pdf",
+    "quote": "Não há como diferenciar influenza e covid-19 apenas pelo quadro clínico, por isso é importante passar pela avaliação de um profissional médico, que avaliará e indicará a melhor conduta, de acordo com cada caso.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-confirmacao-etiologica-depende-de-laboratorio",
+    "claim": "Independentemente do agente, as infecções respiratórias virais apresentam sinais e sintomas semelhantes; a confirmação do agente causador depende de diagnóstico laboratorial.",
+    "source_title": "Ministério da Saúde — Guia de Vigilância em Saúde, 6ª edição, volume 1 (2023)",
+    "source_url": "https://bvsms.saude.gov.br/bvs/publicacoes/guia_vigilancia_saude_6ed_v1.pdf",
+    "quote": "independentemente da etiologia, essas infecções virais apresentam sinais e sintomas respiratórios, de modo que a confirmação da identificação etiológica se baseia em diagnóstico laboratorial.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "rt-qpcr-criterio-laboratorial-padrao-ouro",
+    "claim": "O critério laboratorial padrão-ouro para confirmação de casos de síndrome gripal e SRAG na vigilância brasileira é o RT-qPCR.",
+    "source_title": "Ministério da Saúde — Guia de vigilância integrada da covid-19, influenza e outros vírus respiratórios de importância em saúde pública (2024)",
+    "source_url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2024/guia-vigilancia-integrada-da-covid-19-influenza-e-outros-virus-respiratorios-de-importancia-em-saude-publica",
+    "quote": "Critério laboratorial padrão-ouro RT-qPCR.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "classificacao-srag-por-influenza",
+    "claim": "Na classificação final da vigilância, SRAG por influenza é o caso confirmado por RT-PCR ou outra biologia molecular, incluindo detecções de influenza A, A(H1N1)pdm09, A(H3N2) e influenza B; o subtipo H1N1 é apenas uma parte desse conjunto.",
+    "source_title": "Ministério da Saúde — Guia de Vigilância em Saúde, 6ª edição, volume 1 (2023)",
+    "source_url": "https://bvsms.saude.gov.br/bvs/publicacoes/guia_vigilancia_saude_6ed_v1.pdf",
+    "quote": "É considerado Srag por influenza os casos detectáveis para influenza A, influenza A(H1N1)pdm09, influenza A(H3N2) e por influenza B.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "gisrs-vigilancia-global-desde-1952",
+    "claim": "A vigilância global de influenza é conduzida pelo Sistema Global de Vigilância e Resposta à Influenza (GISRS) da OMS desde 1952.",
+    "source_title": "OMS — Global Influenza Surveillance and Response System (GISRS)",
+    "source_url": "https://www.who.int/initiatives/global-influenza-surveillance-and-response-system",
+    "quote": "Global influenza surveillance has been conducted through WHO's Global Influenza Surveillance and Response System (GISRS) since 1952.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "flunet-lancado-1997-dados-publicos-semanais",
+    "claim": "FluNet é a ferramenta global da OMS para vigilância virológica de influenza, lançada em 1997; os dados por país são públicos e atualizados semanalmente.",
+    "source_title": "OMS — FluNet",
+    "source_url": "https://www.who.int/tools/flunet/",
+    "quote": "FluNet is a global web-based tool for influenza virological surveillance first launched in 1997. [...] The data at country level are publically available and updated weekly.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "sivep-dados-abertos-banco-vivo-semanal-revisoes",
+    "claim": "No portal de dados abertos do Ministério da Saúde, os bancos de SRAG de 2019 a 2024 estão congelados e o banco do ano corrente é atualizado semanalmente; as notificações passam por revisões contínuas para corrigir inconsistências.",
+    "source_title": "Ministério da Saúde / DATASUS — SRAG 2019 a 2026, Banco de Dados de Síndrome Respiratória Aguda Grave (dados abertos)",
+    "source_url": "https://dadosabertos.saude.gov.br/dataset/srag-2019-a-2026",
+    "quote": "de 2019 a 2024 os bancos estão “congelados”, ou seja, não estão mais sendo atualizados; e o banco “vivo” correspondente ao ano atual, atualizado semanalmente. [...] as notificações passam por revisões contínuas",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "sivep-dados-abertos-anonimizacao-lgpd",
+    "claim": "As bases de SRAG disponibilizadas no portal de dados abertos passam por anonimização, em cumprimento à Lei Geral de Proteção de Dados Pessoais (Lei 13.709/2018).",
+    "source_title": "Ministério da Saúde / DATASUS — SRAG 2019 a 2026, Banco de Dados de Síndrome Respiratória Aguda Grave (dados abertos)",
+    "source_url": "https://dadosabertos.saude.gov.br/dataset/srag-2019-a-2026",
+    "quote": "As bases de dados de SRAG disponibilizadas neste portal passam por tratamento que envolve a anonimização, em cumprimento a Lei Geral de Proteção de Dados Pessoais (LGPD), Lei 13.709/2018.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "cdc-gripe-vs-resfriado-virus-diferentes",
+    "claim": "Segundo o CDC, gripe e resfriado comum são doenças respiratórias causadas por vírus diferentes e, por compartilharem sintomas, pode ser difícil distingui-las apenas pelos sintomas.",
+    "source_title": "CDC — Cold Versus Flu",
+    "source_url": "https://www.cdc.gov/flu/about/coldflu.html",
+    "quote": "Influenza (flu) and the common cold are both contagious respiratory illnesses, but they are caused by different viruses. Colds and flu share many symptoms, so it can be difficult to tell the difference between them based on symptoms alone.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "cdc-covid-sintomas-aparecem-2-a-5-dias-ate-14",
+    "claim": "Segundo o CDC, os sintomas de influenza costumam surgir de 1 a 4 dias após a infecção; na covid-19, de 2 a 5 dias, podendo chegar a 14 dias.",
+    "source_title": "CDC — Similarities and Differences between Flu and COVID-19",
+    "source_url": "https://www.cdc.gov/flu/about/flu-vs-covid19.html",
+    "quote": "Flu: Typically, a person may experience symptoms anywhere from one to four days after infection. COVID-19: Typically, a person may experience symptoms anywhere from two to five days, and up to 14 days after infection.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "cdc-nao-e-possivel-distinguir-gripe-e-covid-pelos-sintomas",
+    "claim": "Segundo o CDC, não é possível distinguir influenza e covid-19 apenas pelos sintomas; é necessário teste para confirmar o diagnóstico.",
+    "source_title": "CDC — Similarities and Differences between Flu and COVID-19",
+    "source_url": "https://www.cdc.gov/flu/about/flu-vs-covid19.html",
+    "quote": "You cannot tell the difference between flu and COVID-19 by the symptoms alone because many of the signs and symptoms are the same. Testing is needed to confirm a diagnosis.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-creche-crianca-em-casa-24h-sem-febre",
+    "claim": "Em creches, o Ministério da Saúde recomenda que a criança doente fique em casa por pelo menos 24 horas após o desaparecimento da febre, sem uso de antitérmico, e que aumento de crianças com sintomas respiratórios seja informado ao serviço local de saúde.",
+    "source_title": "Ministério da Saúde — Medidas preventivas em creche",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza/medidas-preventivas-em-creche",
+    "quote": "Recomenda-se que a criança fique em casa, a fim de evitar transmissão da doença - por pelo menos 24 horas após o desaparecimento da febre, sem utilização de medicamento antitérmico.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-gestantes-maior-gravidade",
+    "claim": "Segundo o Ministério da Saúde, a gripe causa mais gravidade em gestantes do que em mulheres em idade fértil não grávidas, e a vacinação na gravidez protege gestante, feto e recém-nascido nos primeiros meses de vida.",
+    "source_title": "Ministério da Saúde — Medidas Preventivas para Gestantes",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza/medidas-preventivas-para-gestantes",
+    "quote": "A gripe (influenza) causa mais gravidade em gestantes do que em mulheres em idade fértil e que não estão grávidas. [...] A vacinação contra influenza durante a gravidez protege a gestante, o feto e o recém-nascido nos primeiros meses de vida.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-definicao-sari",
+    "claim": "A OMS define SARI (infecção respiratória aguda grave) para vigilância como infecção respiratória aguda com histórico de febre ou febre medida de 38 °C ou mais, tosse, início nos últimos 10 dias e necessidade de hospitalização; a definição brasileira de SRAG é diferente.",
+    "source_title": "OMS — WHO surveillance case definitions for ILI and SARI",
+    "source_url": "https://www.who.int/teams/global-influenza-programme/surveillance-and-monitoring/case-definitions-for-ili-and-sari",
+    "quote": "SARI case definition: An acute respiratory infection with: history of fever or measured fever of ≥ 38 C° and cough; with onset within the last 10 days. and requires hospitalization.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "ms-tipos-de-virus-influenza-a-b-c-d",
+    "claim": "Existem quatro tipos de vírus influenza (A, B, C e D); os tipos A e B causam as epidemias sazonais e apenas o tipo A é responsável pelas pandemias.",
+    "source_title": "Ministério da Saúde — Gripe (influenza)",
+    "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza",
+    "quote": "Existem quatro tipos de vírus influenza/gripe: A, B, C e D. O vírus influenza A e B são responsáveis por epidemias sazonais, sendo o vírus influenza A responsável pelas grandes pandemias.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  },
+  {
+    "id": "oms-virus-pandemico-2009-nao-relacionado-ao-h1n1-sazonal-anterior",
+    "claim": "Análises genéticas mostraram que o vírus pandêmico de 2009 se originou de vírus de influenza animal e não era relacionado aos vírus H1N1 sazonais humanos que circulavam desde 1977.",
+    "source_title": "OMS — Influenza A(H1N1) pandemic 2009-2010 (página de situação)",
+    "source_url": "https://www.who.int/emergencies/situations/influenza-a-(h1n1)-outbreak",
+    "quote": "Genetic analyses of this virus have shown that it originated from animal influenza viruses and is unrelated to the human seasonal H1N1 viruses that have been in general circulation among people since 1977.",
+    "verified_by": "Redação H1N1 (apoio de IA); pendente de revisão",
+    "verified_at": "2026-10-20"
+  }
+]

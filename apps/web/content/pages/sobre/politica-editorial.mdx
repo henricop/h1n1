@@ -1,0 +1,88 @@
+---
+title: "Política editorial do H1N1"
+description: "Como o H1N1 produz, revisa e publica: aprovação por tipo de página, hierarquia de fontes, IA com revisão humana, independência e o que o site não faz."
+slug: "/sobre/politica-editorial/"
+intent: "Conhecer as regras de produção, revisão e publicação do site"
+nav_group: "sobre"
+clinical: false
+index_policy: "index"
+review_status: "pending_editorial_review"
+author: "Redação H1N1, com apoio de IA, a partir de fontes oficiais (sem revisão clínica até o momento)"
+reviewer: null
+reviewed_at: null
+updated_at: "2026-10-20"
+sources:
+  - id: "BR-11"
+    title: "Ministério da Saúde — Gripe (influenza)"
+    url: "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/g/gripe-influenza"
+    accessed_at: "2026-10-20"
+  - title: "OMS — Influenza (seasonal), fact sheet"
+    url: "https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)"
+    accessed_at: "2026-10-20"
+related:
+  - "/sobre/equipe-e-revisao/"
+  - "/sobre/correcoes/"
+  - "/sobre/financiamento-e-publicidade/"
+  - "/dados/metodologia/"
+summary_answer: "O H1N1 publica informação educativa e dados oficiais sobre influenza A(H1N1). Páginas clínicas só são indexadas após revisão por profissional de saúde qualificado; até lá, ficam marcadas como 'em revisão'. Textos são redigidos com apoio de IA, sempre a partir de fontes oficiais citadas, e revisados por humanos."
+---
+
+<Resposta>
+O H1N1 é uma central pública de referência e um observatório de dados sobre influenza A(H1N1)pdm09. Esta política define quem produz, quem revisa e o que pode ser publicado. A regra que organiza tudo: conteúdo clínico não é indexado nem apresentado como revisado antes da revisão por profissional de saúde qualificado, e nenhum número epidemiológico aparece em texto livre sem fonte e definição.
+</Resposta>
+
+## Processo de aprovação
+
+Cada tipo de conteúdo tem um fluxo mínimo antes de ser publicado como revisado. A tabela reproduz o processo definido no plano do projeto.
+
+<Comparativo>
+| Tipo de conteúdo | Produção | Revisão mínima antes de publicar |
+|---|---|---|
+| Página de conceito geral (o que é, história, transmissão, metodologia) | Redação e pesquisa | Checagem de fonte e editor responsável |
+| Sintomas, prevenção, vacina e tratamento | Redação apoiada em protocolos oficiais | Profissional de saúde qualificado + checagem editorial |
+| Estatística ou comparação epidemiológica | Analista de dados | Revisão metodológica + editorial |
+| Pesquisa original com conclusão de saúde | Analista + autor técnico | Revisor epidemiológico ou clínico apropriado |
+| Atualização automatizada de gráfico | ETL determinístico | QA automatizado, alarmes e revisão por exceção |
+</Comparativo>
+
+Enquanto a revisão exigida não acontece, a página existe com o estado `pending_clinical_review` ou `pending_editorial_review`, visível no rodapé, e as páginas clínicas ficam fora dos índices de busca (`noindex_until_reviewed`). A única exceção prevista é a página de sinais de alerta, publicada como informação de segurança com citação literal do Ministério da Saúde; mesmo ela exibe o aviso de revisão pendente.
+
+Páginas clínicas sensíveis não são lançadas como revisadas sem a revisão apropriada. Nenhuma pontuação de demanda de busca justifica publicar conteúdo clínico não revisado ou estatística com denominador inadequado.
+
+## Hierarquia de fontes
+
+1. **Normas e protocolos oficiais brasileiros:** Ministério da Saúde (guias de vigilância, protocolos de tratamento, notas técnicas, estratégias de vacinação), Anvisa.
+2. **Organismos internacionais de saúde:** OMS, OPAS.
+3. **Agências nacionais de referência de outros países:** CDC, ECDC, UKHSA, quando o tema não tem fonte brasileira equivalente ou para comparação.
+4. **Instituições científicas públicas:** Fiocruz, universidades, artigos revisados por pares, usados como contexto e sempre com citação.
+5. **Dados primários:** SIVEP-Gripe, Sinan, FluNet, IBGE, sempre versionados.
+
+Quando fontes divergem, prevalece a norma brasileira vigente, e a divergência é registrada. Toda afirmação clínica ou epidemiológica tem fonte com URL e data de acesso no cabeçalho da página. Marcos históricos e intervalos numéricos entram apenas na base de fatos, com citação literal; números atuais vêm exclusivamente da API de indicadores.
+
+## Política de uso de inteligência artificial
+
+Os textos do H1N1 são redigidos com apoio de inteligência artificial, sempre a partir de documentos oficiais lidos e citados, com paráfrase e não cópia. A IA não é fonte de informação: ela organiza e redige a partir das fontes. Todo texto produzido dessa forma é publicado com o estado "em revisão" até passar por revisão humana qualificada, e a autoria indica explicitamente o apoio de IA. Números nunca são gerados por IA; vêm de consultas determinísticas ao banco versionado.
+
+Não usamos IA para gerar páginas em escala, variações regionais sem dados próprios ou revisão simulada.
+
+## Independência
+
+O conteúdo não é influenciado por anunciantes, patrocinadores ou fabricantes de vacinas, medicamentos ou testes. No momento, o site não tem financiamento externo nem publicidade; as regras para o futuro estão em [/sobre/financiamento-e-publicidade/](/sobre/financiamento-e-publicidade/). Os microdados pertencem aos órgãos de origem; "análise independente" descreve a interpretação produzida pelo projeto, não a autoria dos dados.
+
+## O que o site não faz
+
+- Não diagnostica, não calcula probabilidade individual de H1N1 nem oferece "teste por sintomas".
+- Não prescreve medicamentos nem informa doses de antivirais.
+- Não rotula painéis como atualizados instantaneamente, não emite alertas de proximidade geográfica sem evidência e não informa disponibilidade de doses sem integração verificável.
+- Não publica contagens em texto livre; todo número tem indicador, universo, fonte e data.
+- Não substitui a avaliação de um serviço de saúde; todo conteúdo é educativo.
+- Não coleta sintomas, localização exata ou histórico de saúde dos visitantes.
+
+## Atualização e correção
+
+A data de atualização de cada página é real e muda apenas quando o conteúdo muda. Páginas clínicas são revistas quando orientações oficiais mudam. Erros são corrigidos com registro público em [/sobre/correcoes/](/sobre/correcoes/).
+
+<Limites>
+- Esta política descreve o compromisso do projeto; ela não garante ausência de erro, e por isso existe o canal de correções.
+- A revisão clínica ainda não está formalizada; veja o estado atual em [/sobre/equipe-e-revisao/](/sobre/equipe-e-revisao/).
+</Limites>
