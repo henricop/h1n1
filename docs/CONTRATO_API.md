@@ -304,7 +304,7 @@ Resposta `200`:
 }
 ```
 
-`age_days` é calculado sobre `fetched_at` da snapshot vigente. Limites de alerta por fonte (UI): SIVEP 14 dias, FluNet 21 dias, UKHSA 14 dias, IBGE/Banco Mundial 400 dias.
+`age_days` é calculado sobre `fetched_at` da snapshot vigente; `last_run_*` refere-se à última execução da FONTE do indicador, não do indicador. Limite de alerta na UI (implementado): único, 14 dias para todas as fontes; limites por fonte (FluNet 21, IBGE/Banco Mundial 400) são uma evolução prevista.
 
 ### 3.9. `GET /v1/snapshots` — implementado
 

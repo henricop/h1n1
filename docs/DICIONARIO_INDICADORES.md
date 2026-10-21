@@ -1,6 +1,6 @@
 # H1N1 · Dicionário de indicadores
 
-**Versão:** 1.0 · **Data:** 2026-10-20 · **Fonte de verdade:** `packages/core/src/indicators.ts` (`INDICATORS`, `MIRROR_GROUPS`) e `packages/core/src/epiweek.ts`. Este documento é a leitura humana dessas definições; em caso de divergência, o código prevalece e este arquivo deve ser atualizado. A página `/dados/metodologia/` renderiza o dicionário a partir de `/v1/indicators`, não deste arquivo.
+**Versão:** 1.0 · **Data:** 2026-10-20 · **Fonte de verdade:** `packages/core/src/indicators.ts` (`INDICATORS`, `MIRROR_GROUPS`) e `packages/core/src/epiweek.ts`. Este documento é a leitura humana dessas definições; em caso de divergência, o código prevalece e este arquivo deve ser atualizado. A página `/dados/metodologia/` renderiza a tabela de indicadores a partir de `INDICATORS` do `@h1n1/core` (importado pelo site; é a mesma fonte que alimenta `/v1/indicators`, via seed da tabela `indicators`), não deste arquivo.
 
 **Regra central (plano 10.4):** H1N1 confirmado ≠ influenza A não subtipada ≠ SRAG ≠ síndrome gripal ≠ registro de vacina.
 
@@ -105,7 +105,8 @@ Campos literais do arquivo `INFLUD<aa>-<dd-mm-aaaa>.csv` (separador `;`), confor
 | Campo | Uso no H1N1 |
 |---|---|
 | `SG_UF` | UF de **residência** → `geo_code = BR-<UF>`; ignorado/exterior fica fora dos recortes por estado, mas entra no total `BRA` |
-| `SEM_PRI` | Semana epidemiológica dos **primeiros sintomas** → `period` (convenção brasileira) |
+| `SEM_PRI` | Semana epidemiológica dos **primeiros sintomas** → `period` (convenção brasileira). Usada quando válida (1..53); o **ano** do período é o de `epiWeek(DT_SIN_PRI)` quando a data existe (senão, o ano do arquivo) |
+| `DT_SIN_PRI` | Data dos primeiros sintomas: só define a **semana** quando `SEM_PRI` é inválida; divergências `SEM_PRI ≠ epiWeek(DT_SIN_PRI).week` são contadas no relatório da ingestão (`rows_sem_pri_mismatch`) |
 | `CLASSI_FIN` | Classificação final; `1` = SRAG por influenza |
 | `TP_FLU_PCR` | Tipo de influenza por RT-PCR; `1` = influenza A |
 | `PCR_FLUASU` | Subtipo de influenza A por RT-PCR; `1` = A(H1N1)pdm09; `2` = A(H3N2); `3` = não subtipado; `4` = não subtipável |
@@ -114,10 +115,10 @@ Campos literais do arquivo `INFLUD<aa>-<dd-mm-aaaa>.csv` (separador `;`), confor
 | `NU_IDADE_N` + `TP_IDADE` | Idade → `age_group` via `ageGroupFromYears` |
 
 Caveats comuns:
-- Semanas recentes estão sujeitas a atraso de notificação e digitação; os valores são provisórios e tendem a subir em revisões.
+- Semanas recentes estão sujeitas a atraso de notificação e digitação; os valores são provisórios e tendem a subir em revisões. O conector marca como `provisional` as **8 últimas semanas epidemiológicas** do arquivo (a partir da última SE com dado).
 - A base contém apenas SRAG hospitalizada ou óbito por SRAG; não mede infecções leves.
 - A UF é a de residência do paciente (`SG_UF`); a semana é a dos primeiros sintomas (`SEM_PRI`).
-- Registros com UF ignorada ou residência fora do Brasil ficam fora dos recortes por estado.
+- Registros com UF ignorada ou residência fora do Brasil ficam fora dos recortes por estado, mas contam no total `BRA`; nas semanas em que isso ocorreu, o total nacional e seus estratos levam a flag `uf_ignored` (a soma das UFs pode ser menor que o nacional).
 
 Arquivo verificado em 2026-10-20: `INFLUD26-19-10-2026.csv` (261 MB, CC-BY).
 
@@ -202,10 +203,10 @@ Arquivo verificado em 2026-10-20: `INFLUD26-19-10-2026.csv` (261 MB, CC-BY).
 ### ukhsa_influenza_testing_positivity
 - **Nome:** Positividade de testes para influenza, Inglaterra (UKHSA)
 - **Definição de caso:** métrica `influenza_testing_positivityByWeek`, geografia `England`, estrato padrão, por semana (verificado em 2026-10-20: 3.933 registros).
-- **Medida/unidade:** percent / percent · `geo_levels: [country]` (código `ENG`) · `period_type: isoweek` · `event_date_basis: specimen_processing` · estrato `age ∈ {all, 0-4, 5-14, 15-44, 45-64, 65+}` · supressão 0 · `mirror_group: null`
+- **Medida/unidade:** percent / percent · `geo_levels: [country]` (código `ENG`) · `period_type: isoweek` · `event_date_basis: specimen_processing` · estrato `age ∈ {all, 0-4, 5-14, 15-44, 45-64, 65-79, 80+}` · supressão 0 · `mirror_group: null`
 - **Universo:** "Os números representam a positividade de testes laboratoriais reportados à UKHSA na Inglaterra, não casos de H1N1 nem incidência populacional."
-- **Caveats:** influenza geral, sem subtipo; não é H1N1. Semanas em período de atraso de notificação são marcadas como provisórias.
-- **Observação:** as faixas etárias da UKHSA **não coincidem** com as do SIVEP; não comparar estratos entre fontes.
+- **Caveats:** influenza geral, sem subtipo; não é H1N1. Semanas em período de atraso de notificação (`in_reporting_delay_period`) são marcadas como provisórias.
+- **Observação:** o conector aceita as faixas publicadas pela UKHSA e previstas no `stratum_schema` (inclui `65-79` e `80+`, que substituem o antigo `65+`); outras faixas são descartadas e contadas (`age_skipped`). As faixas etárias da UKHSA **não coincidem** com as do SIVEP; não comparar estratos entre fontes.
 
 ---
 
@@ -278,14 +279,38 @@ Consequências práticas:
 ## 8. Supressão e publicação (resumo)
 
 - Supressão de célula pequena (`applySuppression`): células com `0 < value < 5` em qualquer recorte que não seja total nacional sem estrato saem com `value: null`, `suppressed: true`. Zeros não são suprimidos.
-- Supressão complementar: se, num grupo (mesmo indicador, snapshot, geo, período), apenas uma célula de estrato foi suprimida e o total existe, a próxima menor célula também é suprimida para impedir recuperação por subtração.
+- Supressão complementar: se, num grupo (mesmo indicador, snapshot, geo, período), apenas uma célula de estrato foi suprimida e o total existe, a próxima menor célula também é suprimida para impedir recuperação por subtração. O cálculo é feito sobre o **grupo completo** (total + todos os estratos) mesmo quando a consulta pede um único estrato.
 - Razões com `denominator < min_denominator` saem com `value: null` e flag `denominator_below_minimum`.
 - Só a snapshot `current` do indicador é servida; publicação é atômica e bloqueada em falha de validação.
 - Nunca há recorte por município, nem cruzamento município × idade × data.
 
 ---
 
-## 9. Indicadores previstos, ainda não definidos
+## 9. Status provisório e `quality_flags`
+
+**`update_status`** (`provisional` | `final`), definido pelo conector:
+
+| Fonte | Regra de `provisional` |
+|---|---|
+| SIVEP | as **últimas 8 semanas epidemiológicas** (SE > última SE com dado − 8) |
+| FluNet | as **últimas 4 semanas ISO** de cada país (semanas que começam em até 21 dias antes do início da última semana) |
+| UKHSA | semanas com `in_reporting_delay_period = true` |
+
+**`quality_flags` que existem no código** (lista fechada; qualquer outra não é emitida):
+
+| Flag | Onde | Significado |
+|---|---|---|
+| `uf_ignored` | SIVEP | na semana houve registros sem UF válida (ignorada/exterior): entram no total nacional `BRA` e nos seus estratos, mas não em nenhuma UF |
+| `numerator_exceeds_denominator` | FluNet (`share_of_inf_a`, `positivity`) | numerador > denominador; o percentual **não** é calculado (`value: null`) |
+| `carried_forward` | qualquer conector com cobertura declarada (SIVEP) | observação copiada da publicação anterior porque o período está fora da cobertura da snapshot atual (ex.: arquivo de 2025 mantido ao publicar o de 2026); ver `docs/README.md`, seção "Comportamento operacional" |
+| `origin_source_unknown` | FluNet | semana com `ORIGIN_SOURCE` fora de `SENTINEL`/`NONSENTINEL`/`NOTDEFINED`: a linha entra no total, sem estrato próprio |
+| `denominator_below_minimum` | acrescentada na leitura (`getSeries`), não na ingestão | razão com `denominator < min_denominator`: `value: null` |
+
+**Não existem** `reporting_delay` (o atraso da UKHSA vira `update_status: provisional`) nem `schema_changed` (detecção de mudança de esquema está pendente; ver ADR-004).
+
+---
+
+## 10. Indicadores previstos, ainda não definidos
 
 Entram como novos ids quando houver conector e revisão metodológica; não existem em `INDICATORS` hoje:
 

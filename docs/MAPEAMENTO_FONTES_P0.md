@@ -4,11 +4,11 @@
 
 Legenda de estratégia de ingestão:
 
-- **Conector F2** — conector previsto na fase F2 de `docs/PLANO_EXECUCAO.md` (`packages/connectors`: flunet, sivep, ibge, worldbank, ukhsa, cdc-nwss, gho, clinicaltrials, pubmed, ena). Em implementação paralela a este documento; indicadores correspondentes já existem em `packages/core`.
-- **Planejado** — sem conector no MVP; plano descrito.
-- **Manual** — sem acesso programático confiável; ingestão por download humano com snapshot registrada, ou apenas referência (RAG/citação).
+- **Conector** — conector **implementado** em `packages/connectors` (registro em `src/registry.ts`): `flunet`, `sivep`, `ibge`, `worldbank`, `ukhsa`. Os indicadores correspondentes existem em `packages/core`.
+- **Planejado** — sem conector; plano descrito. Inclui os conectores previstos na F2 que **ainda não existem**: `cdc-nwss`, `gho`, `clinicaltrials`, `pubmed`, `ena`.
+- **Manual** — sem acesso programático confiável; apenas referência (RAG/citação). O conector `manual` (snapshot registrada a partir de download humano) **não existe** (ver ADR-004, "Pendente").
 
-Pipeline comum (ADR-004): `fetch → snapshot imutável (sha256, url, fetched_at, license, data_as_of) → normalize → load → validate → publish`. Toda fonte, inclusive manual, passa por `snapshots` e `ingestion_runs`.
+Pipeline comum (ADR-004): `fetch → snapshot imutável (sha256, url, fetched_at, license, data_as_of) → normalize → load → validate → publish`. Toda fonte **com conector** passa por `snapshots` e `ingestion_runs`.
 
 ---
 
@@ -18,25 +18,34 @@ Pipeline comum (ADR-004): `fetch → snapshot imutável (sha256, url, fetched_at
 |---|---|---|---|---|---|---|---|
 | BR-01 | SINAN SRAG 2009–2012 | CKAN dadosabertos.saude.gov.br | CSV/JSON/XML por ano | CC-BY | Histórico | Planejado | — |
 | BR-02 | SINAN SRAG 2013–2018 | CKAN dadosabertos.saude.gov.br | CSV/JSON/XML por ano | CC-BY | Histórico | Planejado | — |
-| BR-03 | SIVEP-Gripe 2019–2026 | S3 `ckan.saude.gov.br/SRAG/<ano>/INFLUD<aa>-<dd-mm-aaaa>.csv` (**verificado**) | CSV `;` (261 MB em 2026) | CC-BY | Semanal | **Conector F2** | 9 `sivep_*` |
+| BR-03 | SIVEP-Gripe 2019–2026 | S3 `ckan.saude.gov.br/SRAG/<ano>/INFLUD<aa>-<dd-mm-aaaa>.csv` (**verificado**) | CSV `;` (261 MB em 2026) | CC-BY | Semanal | **Conector** (`sivep`) | 9 `sivep_*` |
 | BR-05 | PNI doses aplicadas 2026 | CKAN dadosabertos.saude.gov.br | CSV | CC-BY | Semanal | Planejado | — |
 | BR-07 | SIM | CKAN dadosabertos.saude.gov.br | CSV/JSON/XML | CC-BY | Periódica; prévias | Planejado | — |
-| INT-01 | FluNet | OData `xmart-api-public.who.int/FLUMART/VIW_FNT` (**verificado**) | JSON OData | verify_per_source | Semanal | **Conector F2** | 10 `flunet_*` |
+| INT-01 | FluNet | OData `xmart-api-public.who.int/FLUMART/VIW_FNT` (**verificado**) | JSON OData | verify_per_source | Semanal | **Conector** (`flunet`) | 10 `flunet_*` |
 | INT-02 | FluID | OData `FLUMART/VIW_FID_EPI` (view existe; `VIW_FID` NOT_ALLOWED) | JSON OData | verify_per_source | Conforme notificações | Planejado | — |
 | INT-07 | ERVISS (ECDC) | Portal; CSV semanais publicados no site do ERVISS | CSV/portal | verify_per_source | Semanal na temporada | Planejado | — |
-| EU-01 | ENA Portal API | REST `ebi.ac.uk/ena/portal/api` (**verificado**, `tax_tree(114727)`) | JSON/TSV | verify_per_source (ENA: dados públicos, atribuição) | Contínua | **Conector F2** (metadados) | — (não epidemiológico) |
+| EU-01 | ENA Portal API | REST `ebi.ac.uk/ena/portal/api` (**verificado**, `tax_tree(114727)`) | JSON/TSV | verify_per_source (ENA: dados públicos, atribuição) | Contínua | Planejado (conector `ena` **não existe**) | — (não epidemiológico) |
 | US-01 | FluView Interactive (NREVSS/ILINet) | Painel com download; CSV por formulário | CSV | verify_per_source (public domain presumido) | Semanal | Planejado | — |
 | US-03 | FluView reports | HTML + CSV | HTML/CSV | verify_per_source | Semanal | Manual | — |
 | US-12 | NCBI Influenza Virus Database | CGI legado | HTML/FASTA | verify_per_source | Contínua | Manual / referência | — |
 | US-13 | NCBI Virus + Datasets | API/CLI `datasets` | JSONL | verify_per_source | Contínua | Planejado | — |
-| US-14 | NCBI E-utilities | REST (**verificado** via PubMed/MeSH) | XML/JSON | verify_per_source | Contínua | **Conector F2** (pubmed) | — |
-| UK-01 | UKHSA dashboard API | REST `api.ukhsa-dashboard.data.gov.uk` (**verificado**) | JSON paginado | verify_per_source (OGL presumido) | Semanal na temporada | **Conector F2** | 1 `ukhsa_*` |
+| US-14 | NCBI E-utilities | REST (**verificado** via PubMed/MeSH) | XML/JSON | verify_per_source | Contínua | Planejado (conector `pubmed` **não existe**) | — |
+| UK-01 | UKHSA dashboard API | REST `api.ukhsa-dashboard.data.gov.uk` (**verificado**) | JSON paginado | verify_per_source (OGL presumido) | Semanal na temporada | **Conector** (`ukhsa`) | 1 `ukhsa_*` |
 | CA-01 | FluWatch+ | CSV + dicionário XLSX | CSV | verify_per_source | Semanal | Planejado | — |
 | AU-01 | NNDSS datasets | Arquivos oficiais (XLSX/CSV) | XLSX/CSV | verify_per_source | Anual | Planejado | — |
 | MX-01 | Datos abiertos (SSA/DGE) | ZIP/CSV por download | CSV | verify_per_source | Frequente | Planejado | — |
 | CN-01 | CNIC Weekly Reports | HTML/PDF | PDF | verify_per_source | Semanal | Manual / referência | — |
 
-Fontes P0 com conector na fundação: **4** (BR-03, INT-01, UK-01, EU-01) + E-utilities para PubMed (US-14). Os demais conectores da F2 (IBGE, Banco Mundial, CDC NWSS, GHO, ClinicalTrials) são fontes P1/P2 e não entram nesta lista.
+Fontes P0 **com conector implementado**: **3** (BR-03, INT-01, UK-01). **EU-01 (ENA) e US-14 (E-utilities/PubMed) são P0 sem conector** (planejado).
+
+Fontes não P0 com conector implementado (fora da lista acima, porque o catálogo as classifica P1/P2):
+
+| Id | Fonte | Prioridade | Conector | Indicador |
+|---|---|---|---|---|
+| BR-14 | IBGE: estimativas populacionais (o conector usa o agregado 6579 / variável 9324, por UF e Brasil) | P1 | `ibge` | `ibge_population_estimate` |
+| INT-11 | Banco Mundial, `SP.POP.TOTL` | P2 | `worldbank` | `worldbank_population_total` |
+
+Conectores previstos e **não implementados**: `cdc-nwss`, `gho`, `clinicaltrials`, `pubmed`, `ena`.
 
 ---
 
@@ -69,8 +78,8 @@ Fontes P0 com conector na fundação: **4** (BR-03, INT-01, UK-01, EU-01) + E-ut
 - **Campos-chave H1N1:** `CLASSI_FIN` (1 = influenza), `TP_FLU_PCR` (1 = A), `PCR_FLUASU` (1 = A(H1N1)pdm09; 2 = A(H3N2); 3 = não subtipado; 4 = não subtipável), `EVOLUCAO` (2 = óbito; 3 = óbito outras causas), `UTI`, `SG_UF` (residência), `SEM_PRI` (semana dos primeiros sintomas), `DT_SIN_PRI`, `NU_IDADE_N`/`TP_IDADE`, `DT_NOTIFIC`, `SEM_NOT`.
 - **Licença:** CC-BY (portal dadosabertos.saude.gov.br).
 - **Cadência:** semanal nos bancos vivos (ano corrente e anterior); anos fechados revisados esporadicamente.
-- **Estratégia:** **Conector F2 `sivep`**. (1) Descobrir o arquivo do ano via CKAN ou padrão de nome; (2) baixar para `data/snapshots/BR-03/` com sha256, `data_as_of` = data no nome do arquivo; (3) parse em streaming (nunca carregar 261 MB em memória, nunca persistir linhas); (4) agregar por `SG_UF × SEM_PRI × age_group` para cada um dos 9 indicadores; (5) `update_status = provisional` para as últimas 8 semanas e para o ano corrente; (6) validar (esquema, UF válidas, semanas no intervalo, sem negativos, totais ≥ estratos); (7) `publishIndicator` atômico; (8) supressão só na publicação.
-- **Riscos:** tamanho (261 MB e crescendo); mudança de esquema entre anos (dicionário 2019–2025 pode não cobrir 2026); codificação inconsistente; revisões retroativas grandes (medir com `/v1/diff`); interpretação pública de "SRAG com H1N1" como "casos de H1N1"; microdados pessoais sensíveis (anonimizados pelo MS, mas tratados com minimização; ver LGPD).
+- **Estratégia:** **Conector `sivep` (implementado)**. (1) Descobrir o arquivo do ano via CKAN ou padrão de nome; (2) baixar para `data/snapshots/br_sivep_gripe/` com sha256, `data_as_of` = data no nome do arquivo; (3) parse em streaming (nunca carregar 261 MB em memória, nunca persistir linhas); (4) agregar por `SG_UF × SEM_PRI × age_group` para cada um dos 9 indicadores (`SEM_PRI` quando válida, com o ano de `DT_SIN_PRI`; zeros explícitos de SE 1 até a última SE com dado); (5) `update_status = provisional` somente para as **últimas 8 SE** do arquivo; (6) o **bruto é apagado após a agregação** (`retainRaw: false`; fica o sidecar `.meta.json` com sha256, url, licença e `raw_file_deleted: true`); (7) validar: regras por indicador (valores, período, geo, estrato, queda abrupta) e **invariantes cruzadas** (H1N1 ≤ influenza ≤ notificações; óbitos H1N1 ≤ óbitos influenza ≤ influenza; UTI ≤ influenza; soma dos estratos `age_group` = total; soma das UFs ≤ total nacional); (8) `publishIndicator` atômico com carry-forward entre anos (2025 e 2026 compõem uma série); execução parcial (`--max-rows`) nunca publica; (9) supressão só na publicação.
+- **Riscos:** tamanho (261 MB e crescendo); mudança de esquema entre anos (dicionário 2019–2025 pode não cobrir 2026; **não há detecção automática** de mudança de esquema, a flag `schema_changed` não existe); codificação inconsistente; revisões retroativas grandes (medir com `/v1/diff`); interpretação pública de "SRAG com H1N1" como "casos de H1N1"; microdados pessoais sensíveis (anonimizados pelo MS, mas tratados com minimização; ver LGPD).
 
 ### BR-05 · PNI: doses aplicadas 2026
 
@@ -99,7 +108,7 @@ Fontes P0 com conector na fundação: **4** (BR-03, INT-01, UK-01, EU-01) + E-ut
 - **Campos-chave H1N1:** `AH1N12009`, `AH1` (sazonal pré-2009), `AH3`, `AH5`, `AH7N9`, `ANOTSUBTYPED`, `ANOTSUBTYPABLE`, `INF_A`, `INF_B`, `BVIC`, `BYAM`, `BNOTDETERMINED`, `INF_ALL`, `INF_NEGATIVE`, `SPEC_PROCESSED_NB`, `SPEC_RECEIVED_NB`, `ISO_YEAR`, `ISO_WEEK`, `ISO_WEEKSTARTDATE`, `ORIGIN_SOURCE`, `COUNTRY_CODE`, `COUNTRY_AREA_TERRITORY`.
 - **Licença:** verify_per_source. A OMS publica dados sob política de dados abertos com atribuição; confirmar termos do xMart antes de redistribuir CSV.
 - **Cadência:** semanal (com atraso variável por país).
-- **Estratégia:** **Conector F2 `flunet`**. (1) Consultar OData por país (BRA no MVP; lista ampliável); (2) snapshot do JSON com sha256; (3) mapear colunas → 10 indicadores `flunet_*`, `period = ISO_YEAR-W<ISO_WEEK>`, estrato `origin_source`; (4) `update_status = provisional` para as últimas 4 semanas ISO; (5) validar (`INF_ALL ≤ SPEC_PROCESSED_NB`, sem negativos); (6) publicar.
+- **Estratégia:** **Conector `flunet` (implementado)**. (1) Consultar OData por país (BRA no MVP; lista ampliável); (2) snapshot do JSON com sha256; (3) mapear colunas → 10 indicadores `flunet_*`, `period = ISO_YEAR-W<ISO_WEEK>`, estrato `origin_source`; linhas duplicadas por (`COUNTRY_CODE`, `ISO_YEAR`, `ISO_WEEK`, `ORIGIN_SOURCE`) contam uma vez e quarentenam a snapshot; (4) `update_status = provisional` para as **últimas 4 semanas ISO** de cada país; (5) validar: regras por indicador e invariantes cruzadas (`ah1n1pdm09 + ah3 + não subtipada + não subtipável ≤ inf_a ≤ inf_all`); a checagem `INF_ALL ≤ SPEC_PROCESSED_NB` **não** é feita; (6) publicar. Países novos entram na tabela `geo` automaticamente.
 - **Riscos:** xMart pode mudar nomes de view (como `VIW_FID` → NOT_ALLOWED); países com relato irregular; semana de processamento vs coleta; detecções não são incidência; OPAS (INT-06) reapresenta os mesmos dados (`who_flu`).
 
 ### INT-02 · FluID (OMS / GISRS)
@@ -129,7 +138,7 @@ Fontes P0 com conector na fundação: **4** (BR-03, INT-01, UK-01, EU-01) + E-ut
 - **Campos-chave H1N1:** `tax_id`, `scientific_name`, `strain`, `collection_date`, `country`, `host`, `isolate`, `first_public`.
 - **Licença:** dados INSDC são públicos sem restrição; citar ENA/EMBL-EBI.
 - **Cadência:** contínua.
-- **Estratégia:** **Conector F2 `ena`** limitado a **metadados agregados** (contagem de sequências por país × mês de coleta) para `/historia/` e pesquisas. Não baixar sequências. Não é indicador epidemiológico; universo "sequências depositadas, não casos". Espelho `insdc`: não somar com NCBI.
+- **Estratégia:** **planejado (conector `ena` não existe)**, limitado a **metadados agregados** (contagem de sequências por país × mês de coleta) para `/historia/` e pesquisas. Não baixar sequências. Não é indicador epidemiológico; universo "sequências depositadas, não casos". Espelho `insdc`: não somar com NCBI.
 - **Riscos:** viés de deposição (países sequenciam de forma desigual); datas de coleta incompletas; volume.
 
 ### US-01 · FluView Interactive: NREVSS e ILINet (CDC)
@@ -179,7 +188,7 @@ Fontes P0 com conector na fundação: **4** (BR-03, INT-01, UK-01, EU-01) + E-ut
 - **Campos-chave:** `db=nuccore` com termo `Influenza A virus H1N1[Organism]`; `db=pubmed` com MeSH "Influenza A Virus, H1N1 Subtype".
 - **Licença:** verify_per_source; metadados e resumos do PubMed são utilizáveis com atribuição; texto completo não presumido.
 - **Cadência:** contínua. Limite de 3 req/s sem chave, 10 req/s com chave (`api_key`).
-- **Estratégia:** **Conector F2 `pubmed`** (metadados bibliográficos para biblioteca científica e RAG com citação). Para `nuccore`, não ingerir no MVP (coberto por ENA/NCBI Virus).
+- **Estratégia:** **planejado (conector `pubmed` não existe)** (metadados bibliográficos para biblioteca científica e RAG com citação). Para `nuccore`, não ingerir no MVP (coberto por ENA/NCBI Virus).
 - **Riscos:** limites de taxa; `tool`/`email` obrigatórios na requisição; resumos não são evidência clínica; publicação de contagem de artigos não é indicador de saúde.
 
 ### UK-01 · UKHSA influenza dashboard
@@ -189,7 +198,7 @@ Fontes P0 com conector na fundação: **4** (BR-03, INT-01, UK-01, EU-01) + E-ut
 - **Campos-chave:** `metric_value`, `epiweek`/`year` (semana ISO), `age`, `in_reporting_delay_period` (→ `provisional`). Outras métricas disponíveis: internações, UTI, positividade por idade.
 - **Licença:** verify_per_source (conteúdo GOV.UK normalmente Open Government Licence v3; confirmar na página de dados).
 - **Cadência:** semanal na temporada.
-- **Estratégia:** **Conector F2 `ukhsa`**. Indicador `ukhsa_influenza_testing_positivity`, `geo_code = ENG`, estrato `age`. Universo: positividade, não H1N1.
+- **Estratégia:** **Conector `ukhsa` (implementado)**. Indicador `ukhsa_influenza_testing_positivity`, `geo_code = ENG`, estrato `age` (`0-4`, `5-14`, `15-44`, `45-64`, `65-79`, `80+`; outras faixas são descartadas); `in_reporting_delay_period` vira `provisional`. Universo: positividade, não H1N1.
 - **Riscos:** nomes de métricas mudam entre temporadas; influenza geral, sem subtipo; faixas etárias diferentes das do SIVEP.
 
 ### CA-01 · FluWatch+ / Canadian Respiratory Virus Surveillance
@@ -246,5 +255,6 @@ Fontes P0 com conector na fundação: **4** (BR-03, INT-01, UK-01, EU-01) + E-ut
 | 6 | MX-01, AU-01 | `/dados/mundo/` ampliado | Conectores com parse em streaming (MX) e anual (AU) |
 | 7 | US-13 NCBI Datasets | Pesquisa de variantes (P2) | Metadados agregados; escolher canônico ENA vs NCBI |
 | 8 | US-03, US-12, CN-01 | Conteúdo editorial | Apenas snapshot + citação; sem indicador |
+| 9 | EU-01 ENA, US-14 E-utilities/PubMed (P0 sem conector) | Backlog S4-06 | Conectores `ena` e `pubmed` (metadados; sem indicador epidemiológico derivado) |
 
 Critério para promover uma fonte "planejada" a conector: licença confirmada por escrito ou página oficial salva em snapshot; dicionário de campos registrado; teste de esquema com fixture; indicador definido em `packages/core` com `universe_note` e caveats revisados.

@@ -1,11 +1,11 @@
 # H1N1 · Backlog por sprint (roadmap de 90 dias)
 
-**Versão:** 1.0 · **Data:** 2026-10-20 · **Deriva de:** seção 14 do plano estratégico (dias 1–15, 16–30, 31–60, 61–90) convertida em 6 sprints de 2 semanas (84 dias; a semana restante é folga de estabilização). Sprint 1 começa em 2026-10-20 (dia 1).
+**Versão:** 1.1 (estado atualizado em 2026-10-21) · **Data:** 2026-10-20 · **Deriva de:** seção 14 do plano estratégico (dias 1–15, 16–30, 31–60, 61–90) convertida em 6 sprints de 2 semanas (84 dias; a semana restante é folga de estabilização). Sprint 1 começa em 2026-10-20 (dia 1).
 
 Legenda de estado:
 
-- **Entregue (fundação)** — concluído na fase F0/F1 de `docs/PLANO_EXECUCAO.md` antes deste backlog.
-- **Em andamento** — fase F2/F3/F4 em execução paralela (conectores, web, docs).
+- **Entregue** — implementado e coberto por teste/verificação no código (estado de 2026-10-21; `docs/PLANO_EXECUCAO.md` §5).
+- **Em andamento** — existe no código, mas falta parte do critério de aceite (em geral conteúdo ou revisão humana).
 - **Pendente** — não iniciado.
 - **Humano** — depende de decisão ou ação humana (domínio, revisor, DPO, contas).
 
@@ -19,14 +19,17 @@ Prioridade de história: P0 (bloqueia o critério de avanço do sprint), P1, P2.
 |---|---|---|
 | Plano de execução, decisões A1–A8 | Entregue | `docs/PLANO_EXECUCAO.md`, `docs/ADR/` |
 | `data/sources.json` (65 fontes, 19 P0) | Entregue | Validado por `parseCatalog` |
-| `packages/core` (tipos, 22 indicadores, `MIRROR_GROUPS`, epiweek BR/MMWR/ISO, supressão, catálogo, geo) | Entregue | `packages/core/src/*` |
-| `packages/db` (migração `0001_init.sql`, adaptador PGlite/pg, consultas, seed, publicação atômica, diff) | Entregue | `packages/db/src/*` |
-| `apps/api` (Fastify, rotas `/health`, `/v1/*`, OpenAPI, CSV, erros padronizados) | Entregue; testes em andamento | `apps/api/src/routes/*`; `apps/api/test/` vazio em 2026-10-20 |
-| `packages/connectors` (flunet, sivep, ibge, worldbank, ukhsa, cdc-nwss, gho, clinicaltrials, pubmed, ena) | Em andamento (F2) | `packages/connectors/src/` vazio em 2026-10-20 |
-| `apps/web` (Next.js, páginas P0, observatório, catálogo, metodologia, sobre) | Em andamento (F3) | `apps/web` ausente em 2026-10-20 |
-| Conteúdo das 12 páginas P0 | Em andamento; clínicas `pending_clinical_review` | — |
-| Documentação (PRD, contrato, dicionário, políticas, demanda, ADRs) | Entregue (F4) | `docs/` |
+| `packages/core` (tipos, 22 indicadores, `MIRROR_GROUPS`, epiweek BR/MMWR/ISO, supressão, catálogo, geo) | Entregue; **18 testes** | `packages/core/src/*` |
+| `packages/db` (migração `0001_init.sql`, adaptador PGlite/pg, consultas, seed, publicação atômica, diff restrito) | Entregue; **3 testes** (também rodados contra Postgres 16 no CI) | `packages/db/src/*` |
+| `apps/api` (Fastify, `/health`, `/v1/*`, OpenAPI, CSV, erros padronizados, cache por rota, ETag/304, rate limit) | Entregue; **20 testes** | `apps/api/src/*`, `apps/api/test/api.test.ts` |
+| `packages/connectors` | **Implementados: `flunet`, `sivep`, `ibge`, `worldbank`, `ukhsa`. Pendentes: `cdc-nwss`, `gho`, `clinicaltrials`, `pubmed`, `ena`.** **70 testes** | `packages/connectors/src/connectors/*`, `registry.ts` |
+| `apps/web` (Next.js, home, páginas MDX, observatório, fontes, metodologia, sobre) | Entregue como aplicação; **54 testes**; conteúdo em revisão | `apps/web/src/app/*`, `apps/web/test/*` |
+| Conteúdo (17 páginas MDX + `facts.json`) | Em andamento: tudo `pending_*`; sem revisor clínico | `apps/web/content/` |
+| CI | Entregue: Node 24, PGlite + job com Postgres 16, build dos apps com `H1N1_API_MOCK=1` | `.github/workflows/ci.yml` |
+| Documentação (PRD, contrato, dicionário, políticas, demanda, ADRs) | Entregue (F4), atualizada em 2026-10-21 | `docs/` |
 | Verificação ao vivo de 11 APIs/arquivos | Entregue | `docs/PLANO_EXECUCAO.md`, tabela de 2026-10-20 |
+
+Total: **165 testes** (18 + 3 + 20 + 70 + 54).
 
 ---
 
@@ -46,9 +49,9 @@ Prioridade de história: P0 (bloqueia o critério de avanço do sprint), P1, P2.
 | S1-08 | Como editor, quero as políticas editorial, de correções, de IA e de publicidade redigidas | P0 | Entregue | `docs/POLITICA_EDITORIAL.md`; páginas `/sobre/*` derivadas | — |
 | S1-09 | Como responsável, quero definir a medição do projeto sem analytics | P1 | Entregue (decisão) / Humano (Search Console) | PRD §11; propriedade no Search Console criada após domínio | S1-01 |
 | S1-10 | Como responsável LGPD, quero designar DPO e canal de titulares | P1 | Humano | `LGPD_E_PRIVACIDADE.md` sem "a definir" no DPO | S1-01 |
-| S1-11 | Como engenheiro, quero testes de contrato da API (`apps/api/test`) | P0 | Em andamento | Testes para 400/404, série vazia, supressão no JSON e CSV, snapshot `superseded` não servida | fundação |
-| S1-12 | Como engenheiro, quero o conector `sivep` com parse em streaming e agregação por UF × SE × faixa | P0 | Em andamento (F2) | `pnpm ingest sivep --year 2026` grava snapshot com sha256 e publica os 9 indicadores com validação; nenhuma linha individual no banco | fundação |
-| S1-13 | Como engenheiro, quero o conector `flunet` | P0 | Em andamento (F2) | `pnpm ingest flunet` publica os 10 indicadores para BRA | fundação |
+| S1-11 | Como engenheiro, quero testes de contrato da API (`apps/api/test`) | P0 | Entregue (20 testes) | Testes para 400/404, série vazia, supressão no JSON e CSV, snapshot `superseded` não servida | fundação |
+| S1-12 | Como engenheiro, quero o conector `sivep` com parse em streaming e agregação por UF × SE × faixa | P0 | Entregue (SIVEP 2025 e 2026 ingeridos; bruto apagado após agregação) | `pnpm ingest sivep --year 2026` grava snapshot com sha256 e publica os 9 indicadores com validação; nenhuma linha individual no banco | fundação |
+| S1-13 | Como engenheiro, quero o conector `flunet` | P0 | Entregue | `pnpm ingest flunet` publica os 10 indicadores para BRA | fundação |
 
 **Critério de avanço:** S1-02 e S1-04 concluídos, ou decisão explícita de lançar sem páginas clínicas indexadas (PRD §10, risco 1).
 
@@ -60,17 +63,17 @@ Prioridade de história: P0 (bloqueia o critério de avanço do sprint), P1, P2.
 
 | ID | História | Prioridade | Estado | Critérios de aceite | Dependências |
 |---|---|---|---|---|---|
-| S2-01 | Como visitante mobile, quero um design system acessível para ler a resposta acima da dobra | P0 | Em andamento (F3) | Tokens, tipografia, componentes base; axe sem violações críticas; contraste AA; alvos 44 px | — |
-| S2-02 | Como visitante, quero a homepage com duas portas e bloco "H1N1 no Brasil" com estados | P0 | Em andamento (F3) | PRD §4.2: normal/defasado/indisponível testados; texto de universo literal; sem "tempo real" | S1-12, S2-05 |
-| S2-03 | Como visitante, quero páginas de referência não clínicas publicadas (`/o-que-e-h1n1/`, `/transmissao/`, `/historia/`, `/sintomas/sinais-de-alerta/`) | P0 | Em andamento (F3/conteúdo) | Template de resposta (PRD §4.3); frontmatter completo; sinais de alerta com citação literal; `facts.json` para história | — |
-| S2-04 | Como editor, quero as páginas clínicas em `pending_clinical_review` com noindex testado em CI | P0 | Em andamento | Teste de CI falha se página não revisada aparecer no sitemap ou sem `noindex`; navegação não as lista | S2-03 |
-| S2-05 | Como engenheiro, quero o pipeline SIVEP com histórico versionado em produção | P0 | Em andamento (F2) | Duas ingestões em datas diferentes geram duas snapshots; `/v1/diff` funciona; publicação atômica | S1-12 |
-| S2-06 | Como visitante, quero uma visualização mínima do observatório com metodologia visível | P0 | Em andamento (F3) | Um gráfico de `sivep_srag_ah1n1pdm09_confirmed` nacional com tabela, universo, `data_as_of`, link para metodologia | S2-05 |
-| S2-07 | Como SEO técnico, quero sitemap, canonicals, metadados e JSON-LD base | P0 | Pendente | `Organization`, `WebSite`, `BreadcrumbList`; sitemap só com páginas publicáveis; `robots.txt`; sem FAQPage | S2-03 |
+| S2-01 | Como visitante mobile, quero um design system acessível para ler a resposta acima da dobra | P0 | Em andamento | Tokens, tipografia, componentes base; axe sem violações críticas; contraste AA; alvos 44 px | — |
+| S2-02 | Como visitante, quero a homepage com duas portas e bloco "H1N1 no Brasil" com estados | P0 | Em andamento | PRD §4.2: normal/defasado/indisponível testados; texto de universo literal; sem "tempo real" | S1-12, S2-05 |
+| S2-03 | Como visitante, quero páginas de referência não clínicas publicadas (`/o-que-e-h1n1/`, `/transmissao/`, `/historia/`, `/sintomas/sinais-de-alerta/`) | P0 | Em andamento (páginas existem e são indexáveis com `index_policy: index`, mas seguem `pending_*`; `sinais-de-alerta` é clínica com `index_policy: index`, exceção explícita com banner) | Template de resposta (PRD §4.3); frontmatter completo; sinais de alerta com citação literal; `facts.json` para história | — |
+| S2-04 | Como editor, quero as páginas clínicas em `pending_clinical_review` com noindex testado em CI | P0 | Em andamento (testes unitários de `derivePolicy`, sitemap e metadados `robots`; teste de rotas construídas pendente) | Teste de CI falha se página não revisada que não seja exceção `index_policy: index` aparecer no sitemap ou sem `noindex`; navegação não as lista | S2-03 |
+| S2-05 | Como engenheiro, quero o pipeline SIVEP com histórico versionado em produção | P0 | Entregue no código (publicação atômica, snapshot nasce `quarantined`, carry-forward entre anos); "em produção" depende de deploy (Humano) | Duas ingestões em datas diferentes geram duas snapshots; `/v1/diff` funciona; publicação atômica | S1-12 |
+| S2-06 | Como visitante, quero uma visualização mínima do observatório com metodologia visível | P0 | Em andamento | Um gráfico de `sivep_srag_ah1n1pdm09_confirmed` nacional com tabela, universo, `data_as_of`, link para metodologia | S2-05 |
+| S2-07 | Como SEO técnico, quero sitemap, canonicals, metadados e JSON-LD base | P0 | Entregue (sitemap só com páginas elegíveis, `robots.txt`, canonical e metadados por página; `Organization`/`WebSite` na home, `BreadcrumbList`; sem `FAQPage`) | `Organization`, `WebSite`, `BreadcrumbList`; sitemap só com páginas publicáveis; `robots.txt`; sem FAQPage | S2-03 |
 | S2-08 | Como responsável, quero Search Console configurado | P1 | Humano | Propriedade verificada; sitemap enviado | S1-01 |
-| S2-09 | Como visitante, quero `/sobre/*` e `/dados/fontes/` publicados | P0 | Em andamento (F3) | 65 fontes com `mirror_group`; equipe/revisão com texto de autoria oficial; correções vazia mas funcional | — |
-| S2-10 | Como engenheiro, quero cabeçalhos de cache e rate limit na API | P1 | Pendente | CONTRATO_API §4 e §5 implementados; 429 com cabeçalhos `RateLimit-*` | — |
-| S2-11 | Como engenheiro, quero conectores `ibge`, `worldbank`, `ukhsa` | P1 | Em andamento (F2) | Indicadores de denominador e UKHSA publicados | — |
+| S2-09 | Como visitante, quero `/sobre/*` e `/dados/fontes/` publicados | P0 | Em andamento | 65 fontes com `mirror_group`; equipe/revisão com texto de autoria oficial; correções vazia mas funcional | — |
+| S2-10 | Como engenheiro, quero cabeçalhos de cache e rate limit na API | P1 | Entregue (cache por rota, ETag/304, `RateLimit-*`, 120/min e 20/min no CSV) | CONTRATO_API §4 e §5 implementados; 429 com cabeçalhos `RateLimit-*` | — |
+| S2-11 | Como engenheiro, quero conectores `ibge`, `worldbank`, `ukhsa` | P1 | Entregue | Indicadores de denominador e UKHSA publicados | — |
 
 **Critério de avanço:** home + 4 páginas não clínicas + observatório mínimo no ar em domínio de staging, com dado SIVEP real e reproduzível.
 
@@ -84,12 +87,12 @@ Prioridade de história: P0 (bloqueia o critério de avanço do sprint), P1, P2.
 |---|---|---|---|---|---|
 | S3-01 | Como editor, quero as 12 páginas P0 escritas e checadas (clínicas aguardando revisor) | P0 | Em andamento | Todas com frontmatter, fontes, template; checagem de fonte registrada | S2-03 |
 | S3-02 | Como revisor clínico, quero revisar o primeiro lote (sintomas, sintomas/criancas, prevencao, vacina) | P0 | Humano | Registros de revisão; páginas aprovadas mudam para `reviewed` e entram no sitemap | S1-02, S3-01 |
-| S3-03 | Como visitante, quero o observatório Brasil completo com filtros e estados | P0 | Pendente | PRD §4.4: 6 indicadores separados, UF, faixa etária, provisório, suprimido "< 5", indisponível, defasado, download CSV, tabela equivalente | S2-06 |
-| S3-04 | Como jornalista, quero o alerta de frescor e a data da base em toda tela com número | P0 | Pendente | RF-17; limites por fonte (SIVEP 14 d, FluNet 21 d) | S3-03 |
-| S3-05 | Como visitante, quero os comparadores (`/comparar/*`) com limites clínicos | P0 | Pendente (`noindex` até revisão) | Quadro de sobreposição; sem probabilidade; sem diagnóstico; frase "só teste diferencia" | S3-02 |
-| S3-06 | Como visitante, quero `/dados/metodologia/` gerada a partir da API | P0 | Pendente | RF-23/24; dicionário igual a `/v1/indicators`; três convenções de semana com exemplos | — |
-| S3-07 | Como engenheiro, quero corrigir `/v1/diff` para aplicar supressão antes de responder | P0 | Pendente | CONTRATO_API §3.11; teste com célula < 5 em UF não aparece no diff | — |
-| S3-08 | Como engenheiro, quero lint de conteúdo (números hard-coded, "tempo real", "mortes por H1N1", "casos de H1N1") | P0 | Pendente | CI falha nos quatro padrões; exceção para `facts` | — |
+| S3-03 | Como visitante, quero o observatório Brasil completo com filtros e estados | P0 | Em andamento (observatório existe em `/dados/brasil/`; faltam revisão e validação com dado real em staging) | PRD §4.4: 6 indicadores separados, UF, faixa etária, provisório, suprimido "< 5", indisponível, defasado, download CSV, tabela equivalente | S2-06 |
+| S3-04 | Como jornalista, quero o alerta de frescor e a data da base em toda tela com número | P0 | Em andamento (selo "Dado defasado" com **limite único de 14 dias** na web e nota "frescor não verificado" se `/v1/freshness` falhar; limites por fonte, como FluNet 21 d, pendentes) | RF-17; limite de defasagem por fonte | S3-03 |
+| S3-05 | Como visitante, quero os comparadores (`/comparar/*`) com limites clínicos | P0 | Em andamento (páginas existem, `noindex` até revisão; conteúdo pendente de revisão) | Quadro de sobreposição; sem probabilidade; sem diagnóstico; frase "só teste diferencia" | S3-02 |
+| S3-06 | Como visitante, quero `/dados/metodologia/` gerada a partir de `INDICATORS` do core | P0 | Entregue (tabela renderizada de `INDICATORS`, a mesma fonte de `/v1/indicators`, mais as 10 regras de integridade) | RF-23/24; dicionário igual a `/v1/indicators`; três convenções de semana com exemplos (a verificar no texto MDX) | — |
+| S3-07 | Como engenheiro, quero corrigir `/v1/diff` para aplicar supressão antes de responder | P0 | Entregue (diff restrito a país sem estrato e a snapshots `ok`; células por UF/estrato nunca saem) | CONTRATO_API §3.11; teste com célula < 5 em UF não aparece no diff | — |
+| S3-08 | Como engenheiro, quero lint de conteúdo (números hard-coded, "tempo real", "mortes por H1N1", "casos de H1N1") | P0 | Em andamento (implementado: "tempo real"/"em tempo real", "ao vivo", "agora mesmo", "surto perto" com contexto negado e "casos de h1n1 na sua cidade"; pendentes: "mortes por H1N1", "casos de H1N1" e números hard-coded) | CI falha nos quatro padrões; exceção para `facts` | — |
 | S3-09 | Como operador, quero alertas de ingestão falha e de frescor | P1 | Pendente | RNF-OPS-03; notificação em duas falhas consecutivas ou `age_days` acima do limite | S2-05 |
 
 **Critério de avanço:** observatório Brasil com dado real, estados e CSV; 12 páginas escritas; lint ativo.
@@ -107,8 +110,8 @@ Prioridade de história: P0 (bloqueia o critério de avanço do sprint), P1, P2.
 | S4-03 | Como PM, quero testes de desempenho, acessibilidade e usabilidade com usuários reais | P0 | Pendente / Humano | Lighthouse mobile dentro dos orçamentos; axe limpo; 5 sessões de usabilidade com tarefas (achar sinais de alerta; ler número com data; baixar CSV) | S3-03 |
 | S4-04 | Como editor, quero revisão semanal do Search Console instituída | P1 | Humano | Ritual documentado; primeiras impressões por cluster registradas | S2-08 |
 | S4-05 | Como revisor, quero revisar o segundo lote (comparadores, materiais) | P0 | Humano | Páginas aprovadas → `reviewed` | S1-02, S3-05, S4-02 |
-| S4-06 | Como engenheiro, quero conectores `pubmed`, `clinicaltrials`, `ena` (metadados) | P2 | Em andamento (F2) | Snapshots registradas; sem indicador epidemiológico derivado | — |
-| S4-07 | Como visitante, quero `/historia/` com marcos metodológicos e fatos verificados | P1 | Pendente | Todos os fatos de `facts` com fonte e citação; marcos de mudança de sistema (SINAN → SIVEP) sinalizados | S2-03 |
+| S4-06 | Como engenheiro, quero conectores `pubmed`, `clinicaltrials`, `ena` (metadados) | P2 | Pendente (nenhum existe; `cdc-nwss` e `gho` também pendentes) | Snapshots registradas; sem indicador epidemiológico derivado | — |
+| S4-07 | Como visitante, quero `/historia/` com marcos metodológicos e fatos verificados | P1 | Em andamento (página e `facts.json` existem; `pending_editorial_review`) | Todos os fatos de `facts` com fonte e citação; marcos de mudança de sistema (SINAN → SIVEP) sinalizados | S2-03 |
 
 **Critério de avanço:** 1 estudo publicado e auditável até o dia 60; 1 material; testes com usuários realizados; páginas clínicas do lote 1 indexadas se houver revisor.
 
@@ -157,8 +160,8 @@ Prioridade de história: P0 (bloqueia o critério de avanço do sprint), P1, P2.
 | Revisor clínico (S1-02) | Indexação de todas as páginas clínicas, comparadores, materiais, pesquisas com conclusão de saúde | Humano |
 | Domínio e entidade (S1-01) | Search Console, e-mail, JSON-LD `Organization`, política de privacidade | Humano |
 | Contas Trends/Keyword Planner (S1-04) | Score de priorização, análise de SERP, decisões do Sprint 6 | Humano |
-| Conector SIVEP (S1-12) | Home, observatório, pesquisa R03/R07 | Engenharia (F2) |
-| Correção de supressão no diff (S3-07) | Pesquisa R07, relatório de revisões | Engenharia |
+| Conector SIVEP (S1-12) — **entregue** | Home, observatório, pesquisa R03/R07 | Engenharia |
+| Correção de supressão no diff (S3-07) — **entregue** (diff restrito ao total nacional) | Pesquisa R07, relatório de revisões | Engenharia |
 | DPO (S1-10) | Base legal confirmada para microdados; página de privacidade final | Humano |
 
 ## O que não entra nos 90 dias

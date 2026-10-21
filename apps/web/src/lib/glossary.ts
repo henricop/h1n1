@@ -28,7 +28,7 @@ export const GLOSSARY: Readonly<Record<string, GlossaryTerm>> = {
     term: 'SRAG',
     short: 'síndrome respiratória aguda grave: quadro gripal com dificuldade para respirar que leva à internação',
     definition:
-      'Síndrome Respiratória Aguda Grave: síndrome gripal acompanhada de dispneia, desconforto respiratório, saturação de oxigênio abaixo de 95% ou piora de doença de base, geralmente com hospitalização. No Brasil é notificada no SIVEP-Gripe; os registros representam casos graves, não todas as infecções.',
+      'Síndrome Respiratória Aguda Grave: síndrome gripal acompanhada de dispneia, desconforto respiratório, saturação de oxigênio igual ou inferior a 94% em ar ambiente ou piora de doença de base, conforme o Guia de Vigilância em Saúde do Ministério da Saúde, geralmente com hospitalização. No Brasil é notificada no SIVEP-Gripe; os registros representam casos graves, não todas as infecções.',
   },
   'síndrome gripal': {
     term: 'síndrome gripal',

@@ -26,6 +26,17 @@ BANNED = [r"tempo real", r"surto perto"]
 INDEX_EXCEPTION = {"/sintomas/sinais-de-alerta/"}
 AUTHOR = "Redação H1N1, com apoio de IA, a partir de fontes oficiais (sem revisão clínica até o momento)"
 INSTITUTIONAL_PREFIX = ("/sobre/", "/contato/")
+# Regra "sem número solto": páginas isentas da checagem numérica (prazos de política,
+# convenções metodológicas). Todas as demais páginas precisam ligar <Fato> no mesmo
+# bloco (parágrafo, item de lista, citação ou linha de tabela) de qualquer número de
+# dias/horas/semanas/meses/anos/percentual.
+NUMBER_CHECK_EXEMPT_PREFIX = ("/sobre/", "/contato/", "/dados/")
+NUM_WORD = (r"(?:\d+(?:[.,]\d+)?|um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|"
+            r"catorze|quatorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|"
+            r"sessenta|setenta|oitenta|noventa|cem)")
+UNIT = r"(?:dias?|horas?|semanas?|m[eê]s|meses|anos?|minutos?|%|por\s+cento)"
+NUMBER_RE = re.compile(
+    rf"\b(?P<n>{NUM_WORD})(?:\s*(?:a|e|ou|–|-)\s*{NUM_WORD})?\s*{UNIT}(?![\w-])", re.I)
 
 
 def scalar(v):
@@ -85,6 +96,32 @@ def parse_frontmatter(text):
             i += 1
         data[key] = items
     return data, body
+
+
+def loose_numbers(body):
+    """Números de dias/horas/percentuais fora de <Fato>.
+
+    O corpo é dividido em blocos (separados por linha em branco). Um bloco com <Fato id>
+    ou fato_id: está coberto. Em tabelas, a cobertura é por linha. Anos de 4 dígitos sem
+    unidade e nomes de rotas/atributos de componentes são ignorados.
+    """
+    found = []
+    blocks = re.split(r"\n\s*\n", body)
+    for block in blocks:
+        lines = block.split("\n")
+        is_table = all(l.strip().startswith("|") for l in lines if l.strip())
+        units = lines if is_table else [block]
+        for unit in units:
+            if "<Fato" in unit or "fato_id:" in unit:
+                continue
+            txt = re.sub(r"<[^>]+>", " ", unit)          # componentes e atributos
+            txt = re.sub(r"\]\([^)]*\)", "]", txt)       # destinos de links
+            for m in NUMBER_RE.finditer(txt):
+                n = m.group("n")
+                if re.fullmatch(r"\d{4}", n):
+                    continue
+                found.append(m.group(0).strip())
+    return found
 
 
 def word_count(body):
@@ -176,6 +213,12 @@ def main():
                 used_facts.add(fid)
                 if fid not in fact_ids:
                     errors.append(f"{rel}: fato_id '{fid}' em LinhaDoTempo não existe em facts.json")
+            if not fm.get("slug", "").startswith(NUMBER_CHECK_EXEMPT_PREFIX):
+                for hit in loose_numbers(body):
+                    errors.append(f"{rel}: número fora de <Fato> no corpo: '{hit}'")
+                for field in ("description", "summary_answer"):
+                    for hit in loose_numbers(str(fm.get(field) or "")):
+                        errors.append(f"{rel}: número em '{field}' do frontmatter: '{hit}'")
             for term in re.findall(r'<Glossario termo="([^"]+)"', body):
                 if term not in GLOSSARIO:
                     errors.append(f"{rel}: termo de glossário indisponível: {term}")

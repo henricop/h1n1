@@ -10,7 +10,7 @@ Princípio: **nenhum score de demanda, prazo ou meta de tráfego justifica publi
 
 | Tipo de conteúdo | Produção | Revisão mínima antes de publicar | Estado inicial no repositório |
 |---|---|---|---|
-| Página de conceito geral (`/o-que-e-h1n1/`, `/transmissao/`, `/historia/`) | Redação e pesquisa com apoio de IA | Checagem de fonte linha a linha + editor responsável | `review_status: editorial_review` → `reviewed` |
+| Página de conceito geral (`/o-que-e-h1n1/`, `/transmissao/`, `/historia/`) | Redação e pesquisa com apoio de IA | Checagem de fonte linha a linha + editor responsável | `review_status: pending_editorial_review` → `reviewed` |
 | Sintomas, prevenção, vacina, comparadores, materiais | Redação apoiada em protocolos oficiais | **Profissional de saúde qualificado** + checagem editorial | `pending_clinical_review` (noindex, fora do sitemap e da navegação) |
 | Sinais de alerta (`/sintomas/sinais-de-alerta/`) | Citação literal da orientação oficial, sem reescrita | Checagem editorial de fidelidade da citação, URL e data de acesso; revisão clínica recomendada, não bloqueante enquanto o texto for literal | `reviewed` (indexável) |
 | Estatística ou comparação epidemiológica (observatório, metodologia) | Analista de dados / pipeline | Revisão metodológica (definição de caso, universo, denominador, semana) + editorial | Indicador publicado só após validação automática (ADR-005) |

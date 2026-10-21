@@ -105,9 +105,13 @@ Dica YAML: valores com `: ` (dois-pontos e espaço) precisam de aspas.
 
 ### Política derivada
 
-- `index_policy: noindex_until_reviewed` e `review_status ≠ reviewed` → `robots: noindex,follow`, fora do sitemap, da navegação e da homepage, com banner "Conteúdo em revisão clínica…".
-- `clinical: true` não revisada → mesmo tratamento (não lançar página clínica sem revisão, seção 11.1 do plano).
+A decisão de indexação vem de `index_policy` e `review_status`; `clinical` **não** decide indexação (`derivePolicy` em `src/lib/content.ts`).
+
+- `index_policy: noindex_until_reviewed` e `review_status ≠ reviewed` → `robots: noindex,follow`, fora do sitemap, da navegação e da homepage.
+- `index_policy: index` é uma **exceção explícita e justificada no frontmatter** (entre as páginas clínicas, hoje só `/sintomas/sinais-de-alerta/`, com citação literal da orientação oficial; páginas não clínicas institucionais e de dados também usam `index`): a página é elegível e indexável (entra no sitemap e na navegação) **mesmo sendo clínica e não revisada**.
+- `clinical: true` e `review_status ≠ reviewed` (qualquer `index_policy`) → banner "Conteúdo em revisão clínica…" (`underReview`). Em página `index` o banner aparece, mas a página continua indexável.
 - `clinical: true` (mesmo revisada) → aviso "Este conteúdo é educativo e não substitui avaliação médica."
+- Resumo: `noindex = não revisada E index_policy = noindex_until_reviewed`; `eligible = !noindex`; `underReview = não revisada E clinical`. Uma página `reviewed` é sempre indexável.
 - Toda página MDX renderiza: breadcrumb (+ BreadcrumbList), resposta curta, corpo, "Fontes", "Autoria e revisão" (`author`, `reviewer` ou "Sem revisão clínica até o momento", `updated_at`), "Leia também". Sem data de publicação em destaque, tags, categorias ou "posts recentes".
 
 ### Navegação

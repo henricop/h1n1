@@ -146,7 +146,7 @@ Estados do bloco "H1N1 no Brasil":
 | Estado | Condição | Renderização |
 |---|---|---|
 | Normal | publicação vigente com `age_days` dentro do limite do indicador | Valor, semana, tendência, `data_as_of`, texto de universo |
-| Defasado | `age_days` acima do limite (SIVEP: 14 dias; FluNet: 21 dias) | Valor + faixa "Dados defasados: última base DD/MM/AAAA" |
+| Defasado | `age_days` acima do limite (implementado na web: limite único de 14 dias para todas as fontes; limites por fonte, como FluNet 21 dias, pendentes) | Valor + faixa "Dados defasados: última base DD/MM/AAAA" |
 | Indisponível | sem publicação vigente (`observations: []`, `data_as_of: null`) | Bloco substituído por "Observatório temporariamente sem dados publicados" + link para `/dados/metodologia/`; **nunca** zero, nunca número antigo sem data |
 | Carregando | SSR/ISR: não existe estado de carregamento visível na home; o HTML já chega com o dado ou com o estado indisponível | — |
 
@@ -304,7 +304,7 @@ Prefixos: **RF** funcional; cada um tem critério de verificação. "Deve" = obr
 | RNF-CWV-02 | Até haver amostra de campo, Lighthouse em CI com orçamento: JS inicial ≤ 150 kB gzip nas páginas de conteúdo |
 | RNF-CWV-03 | Gráficos carregam depois do texto; reservam altura (sem CLS); fallback tabular no HTML |
 | RNF-CWV-04 | Imagens com dimensões explícitas; formatos modernos; sem mapas pesados no MVP |
-| RNF-CWV-05 | Cache HTTP conforme CONTRATO_API.md; páginas ISR revalidadas por evento de publicação |
+| RNF-CWV-05 | Cache HTTP conforme CONTRATO_API.md; páginas ISR revalidadas por tempo (1 h); revalidação por evento de publicação pendente |
 
 ### 6.4. Segurança
 

@@ -73,7 +73,7 @@ h1n1/
 
 | Frente | Entregue | Observações |
 |---|---|---|
-| core/db | sim | 18 + 2 testes; regra da SE brasileira verificada em 4 anos de SIVEP; diff com supressão |
+| core/db | sim | 18 + 3 testes; regra da SE brasileira verificada em 4 anos de SIVEP; diff com supressão |
 | api | sim | 12 rotas, OpenAPI, cache/ETag/rate limit por rota; diff restrito a país sem estrato e a snapshots `ok` |
 | connectors | sim | flunet, sivep, ibge, worldbank, ukhsa; ingestão real de SIVEP 2025 e 2026 integrais; microdados brutos apagados após agregação; carry-forward entre anos |
 | web | sim | 22 rotas; páginas clínicas `noindex` até revisão; exceção explícita `index_policy: index` para sinais de alerta (com banner) |
