@@ -1,18 +1,29 @@
 /**
  * Tipos, constantes e utilitários compartilhados pelos módulos da cena 3D (scene/*).
+ * Contrato: só o Driver (VirusCanvas.tsx) escreve em `stateRef`/`ambientRef`; os módulos leem dentro de useFrame.
  */
 import type { MutableRefObject } from 'react';
 import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { SceneState } from '@/lib/virus/chapters';
+import type { SceneState } from '@/lib/virus/scenestate';
 import type { Vec3 } from '@/lib/virus/geometry';
 
-export type StateRef = MutableRefObject<SceneState>;
+export type StateRef = MutableRefObject<Readonly<SceneState>>;
 
+/** Movimento ambiente (tempo): yaw integrado do `spin`, respiração, oscilação e piscar. */
+export interface AmbientState {
+  t: number;
+  yaw: number;
+  breath: number;
+  wobble: number;
+  blink: number;
+}
+export type AmbientRef = MutableRefObject<AmbientState>;
+
+/** Raio nominal do envelope (unidades de cena; ≈ 55 nm). */
 export const R_ENV = 1;
 export const UP = new THREE.Vector3(0, 1, 0);
-export const CELL_CENTER = new THREE.Vector3(3.3, 0, 0);
-export const CELL_RADIUS = 2.2;
+/** Silhuetas (capítulos 4 e 5), em coordenadas de mundo. */
 export const PERSON_X = 2.8;
 export const MOUTH_Y = 0.95;
 

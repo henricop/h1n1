@@ -8,7 +8,11 @@ import * as THREE from 'three';
 import { fibonacciSphere } from '@/lib/virus/geometry';
 import { PART_COLORS } from '@/lib/virus/parts';
 import { receptorGeometry } from './geometries';
-import { CELL_CENTER, CELL_RADIUS, UP, toVector, type StateRef } from './shared';
+import { UP, toVector, type StateRef } from './shared';
+import { CONTACT_X } from '@/lib/virus/choreography';
+
+const CELL_RADIUS = 2.2;
+const CELL_CENTER = new THREE.Vector3(CONTACT_X + CELL_RADIUS, 0, 0);
 
 /** Célula-alvo (capítulo 3): esfera grande translúcida com receptores voltados para o vírus. */
 export function Cell({ stateRef, receptors }: { stateRef: StateRef; receptors: number }) {
@@ -33,7 +37,7 @@ export function Cell({ stateRef, receptors }: { stateRef: StateRef; receptors: n
     m.instanceMatrix.needsUpdate = true;
   }, [dirs, dummy]);
   useFrame(() => {
-    const c = stateRef.current.cell;
+    const c = stateRef.current.membrane;
     if (group.current) group.current.visible = c > 0.01;
     if (mat.current) mat.current.opacity = 0.82 * c;
     if (recMat.current) recMat.current.opacity = c;

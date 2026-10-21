@@ -19,7 +19,7 @@ export function Envelope({ stateRef, active, onOver, onOut, onClick }: PartProps
   const [hover, setHover] = useState(false);
   useCursor(hover);
   useFrame(() => {
-    const e = stateRef.current.explode;
+    const e = stateRef.current.openEnv;
     if (top.current) {
       top.current.position.y = e * 0.78;
       top.current.rotation.x = -e * 0.22;
@@ -78,7 +78,7 @@ export function Matrix({ stateRef, active, onOver, onOut, onClick }: PartProps) 
   const [hover, setHover] = useState(false);
   useCursor(hover);
   useFrame(() => {
-    const e = stateRef.current.explode;
+    const e = stateRef.current.openM1;
     if (top.current) top.current.position.y = e * 0.34;
     if (bottom.current) bottom.current.position.y = -e * 0.34;
   });
@@ -119,7 +119,7 @@ export function Spikes({ kind, dirs, stateRef, active, onOver, onOut, onClick }:
   useCursor(hover);
   useEffect(() => () => geom.dispose(), [geom]);
   useFrame(() => {
-    const e = stateRef.current.explode;
+    const e = stateRef.current.openSpikes;
     const m = mesh.current;
     if (!m || Math.abs(e - applied.current) < 1e-4) return;
     applied.current = e;
@@ -168,7 +168,7 @@ export function Channels({ dirs, stateRef, active, onOver, onOut, onClick }: Par
   const [hover, setHover] = useState(false);
   useCursor(hover);
   useFrame(() => {
-    const e = stateRef.current.explode;
+    const e = stateRef.current.openSpikes;
     const m = mesh.current;
     if (!m || Math.abs(e - applied.current) < 1e-4) return;
     applied.current = e;
@@ -224,7 +224,7 @@ export function Rnps({ stateRef, active, onOver, onOut, onClick }: PartProps) {
   );
   useEffect(() => () => items.forEach((i) => i.geometry.dispose()), [items]);
   useFrame(() => {
-    const e = stateRef.current.explode;
+    const e = stateRef.current.openRnp;
     const g = group.current;
     if (!g) return;
     g.children.forEach((child, k) => {

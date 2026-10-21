@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadFacts } from '@/lib/content';
-import { CHAPTERS, CHAPTER_COUNT, SCENE_KEYS, chapterFromProgress, progressFromLayout, sceneState, sceneStateFromProgress } from '@/lib/virus/chapters';
+import { CHAPTERS, progressFromLayout } from '@/lib/virus/chapters';
+import { BEATS, CHAPTER_COUNT, MOUTH_LEFT, MOUTH_RIGHT, POSES, START, STEPS_PER_CHAPTER, ambient, chapterFromProgress, fitDistance, progressFromSteps, sceneAt, settledProgress } from '@/lib/virus/choreography';
+import { dampTo, expDamp } from '@/lib/virus/damping';
+import { BOUNDS, REST, SCENE_KEYS, UNIT_KEYS } from '@/lib/virus/scenestate';
 import { CHAPTER_COPY, HOME_FACT_IDS, allFreeText, copyForChapter } from '@/lib/virus/copy';
 import { distance, fibonacciSphere, helixPoints, length, seededRandom, smoothstep } from '@/lib/virus/geometry';
 import { PART_BY_ID, VIRUS_PARTS, nextPart } from '@/lib/virus/parts';
@@ -41,7 +44,7 @@ describe('fibonacciSphere', () => {
   });
 });
 
-describe('capítulos: rolagem → capítulo/explode', () => {
+describe('coreografia: rolagem → estado da cena (função pura)', () => {
   it('chapterFromProgress mapeia e satura nas bordas', () => {
     expect(chapterFromProgress(0)).toEqual({ index: 0, local: 0 });
     expect(chapterFromProgress(-3)).toEqual({ index: 0, local: 0 });
@@ -51,44 +54,171 @@ describe('capítulos: rolagem → capítulo/explode', () => {
     expect(chapterFromProgress(Number.NaN)).toEqual({ index: 0, local: 0 });
   });
 
-  it('explode: inteiro no capítulo 1, aberto no 2, fechado de novo no 3', () => {
-    expect(sceneStateFromProgress(0).explode).toBe(0);
-    expect(sceneStateFromProgress(0.9).explode).toBe(0);
-    expect(sceneStateFromProgress(1.5).explode).toBe(1);
-    expect(sceneStateFromProgress(1.5).labels).toBe(1);
-    expect(sceneStateFromProgress(2.6).explode).toBe(0);
-    expect(sceneStateFromProgress(2.9).approach).toBe(1);
-    expect(sceneStateFromProgress(3.95).droplets).toBe(1);
-    expect(sceneStateFromProgress(4.95).antibodies).toBe(1);
-    expect(sceneStateFromProgress(4.95).people).toBe(0);
+  it('poses e batidas cobrem todas as chaves; toda chave que muda tem batida explícita e keyframes casam com as poses', () => {
+    expect(POSES).toHaveLength(CHAPTER_COUNT);
+    expect(BEATS).toHaveLength(CHAPTER_COUNT);
+    expect(STEPS_PER_CHAPTER).toHaveLength(CHAPTER_COUNT);
+    expect(Object.keys(REST).sort()).toEqual([...SCENE_KEYS].sort());
+    for (let i = 0; i < CHAPTER_COUNT; i++) {
+      const prev = i === 0 ? START : POSES[i - 1]!;
+      const next = POSES[i]!;
+      const beats = BEATS[i]!;
+      for (const k of SCENE_KEYS) {
+        expect(Object.keys(next)).toContain(k);
+        const b = beats[k];
+        if (prev[k] !== next[k]) expect(b, `cap ${i + 1}: '${k}' muda (${prev[k]} → ${next[k]}) sem batida explícita`).toBeDefined();
+        if (!b) continue;
+        if ('w' in b) {
+          expect(b.w[0]).toBeGreaterThanOrEqual(0);
+          expect(b.w[1]).toBeLessThanOrEqual(1);
+          expect(b.w[1]).toBeGreaterThan(b.w[0]);
+        } else {
+          expect(b.k.length).toBeGreaterThanOrEqual(2);
+          expect(b.k[0]![1], `cap ${i + 1}: 1.º keyframe de '${k}' ≠ pose anterior`).toBeCloseTo(prev[k], 9);
+          expect(b.k[b.k.length - 1]![1], `cap ${i + 1}: último keyframe de '${k}' ≠ pose do capítulo`).toBeCloseTo(next[k], 9);
+          for (let j = 1; j < b.k.length; j++) expect(b.k[j]![0]).toBeGreaterThanOrEqual(b.k[j - 1]![0]);
+          expect(b.k[0]![0]).toBeGreaterThanOrEqual(0);
+          expect(b.k[b.k.length - 1]![0]).toBeLessThanOrEqual(1);
+        }
+      }
+    }
   });
 
-  it('todos os campos normalizados ficam em [0, 1] e a cena é contínua ao longo da rolagem', () => {
-    const unit = ['explode', 'spin', 'labels', 'cell', 'approach', 'people', 'droplets', 'antibodies'] as const;
-    let prev = sceneStateFromProgress(0);
-    for (let p = 0; p <= CHAPTER_COUNT; p += 0.005) {
-      const s = sceneStateFromProgress(p);
-      for (const k of unit) {
-        expect(s[k], `${k} em ${p}`).toBeGreaterThanOrEqual(0);
-        expect(s[k], `${k} em ${p}`).toBeLessThanOrEqual(1);
+  it('junções: o fim de cada capítulo é exatamente a pose assentada e o início do seguinte', () => {
+    for (let i = 0; i < CHAPTER_COUNT; i++) {
+      const settled = sceneAt(settledProgress(i));
+      for (const k of SCENE_KEYS) expect(settled[k], `cap ${i + 1} '${k}'`).toBeCloseTo(POSES[i]![k], 6);
+      if (i + 1 < CHAPTER_COUNT) {
+        const startNext = sceneAt(i + 1);
+        for (const k of SCENE_KEYS) expect(startNext[k], `início cap ${i + 2} '${k}'`).toBeCloseTo(POSES[i]![k], 9);
       }
-      for (const k of SCENE_KEYS) expect(Math.abs(s[k] - prev[k]), `salto em ${k} perto de ${p.toFixed(3)}`).toBeLessThan(0.2);
+    }
+    const s0 = sceneAt(0);
+    for (const k of SCENE_KEYS) expect(s0[k]).toBeCloseTo(START[k], 9);
+  });
+
+  it('limites por chave e continuidade (Lipschitz) ao longo de toda a rolagem', () => {
+    const dp = 0.002;
+    let prev = sceneAt(0);
+    for (let p = dp; p <= CHAPTER_COUNT + 0.01; p += dp) {
+      const s = sceneAt(p);
+      for (const k of SCENE_KEYS) {
+        const [lo, hi] = BOUNDS[k];
+        expect(s[k], `${k} em ${p.toFixed(3)} fora de [${lo}, ${hi}]`).toBeGreaterThanOrEqual(lo - 1e-9);
+        expect(s[k], `${k} em ${p.toFixed(3)}`).toBeLessThanOrEqual(hi + 1e-9);
+        if (UNIT_KEYS.includes(k)) {
+          expect(s[k]).toBeGreaterThanOrEqual(-1e-9);
+          expect(s[k]).toBeLessThanOrEqual(1 + 1e-9);
+        }
+        // nenhuma chave salta mais que ~8% do seu intervalo por passo de 0,002 (transições de ≥ 0,05 de largura)
+        const span = hi - lo;
+        expect(Math.abs(s[k] - prev[k]), `salto em '${k}' perto de ${p.toFixed(3)}`).toBeLessThan(span * 0.08);
+      }
       prev = s;
     }
-    expect(sceneState(99, 0.5)).toBeDefined();
+    expect(sceneAt(99)).toBeDefined();
+    expect(sceneAt(Number.NaN)).toEqual(sceneAt(0));
   });
 
-  it('progressFromLayout: antes do primeiro capítulo é 0; dentro, índice + fração; depois, satura', () => {
-    const tops = [1000, 2000, 3000];
-    const heights = [1000, 1000, 1000];
-    expect(progressFromLayout(0, tops, heights)).toBe(0);
-    expect(progressFromLayout(1000, tops, heights)).toBe(0);
-    expect(progressFromLayout(1500, tops, heights)).toBeCloseTo(0.5);
-    expect(progressFromLayout(2250, tops, heights)).toBeCloseTo(1.25);
-    expect(progressFromLayout(3999, tops, heights)).toBeCloseTo(2.999);
-    expect(progressFromLayout(9000, tops, heights)).toBeLessThan(3);
-    expect(progressFromLayout(9000, tops, heights)).toBeGreaterThan(2.99);
-    expect(progressFromLayout(5, [], [])).toBe(0);
+  it('batidas-chave acontecem onde o texto está: assentadas antes do fim do passo correspondente', () => {
+    // cap. 2: desmontagem escalonada na ordem envelope → espinhos → M1 → RNPs → rótulos
+    expect(sceneAt(1.12).openEnv).toBeCloseTo(1, 3);
+    expect(sceneAt(1.12).openSpikes).toBeCloseTo(0, 3);
+    expect(sceneAt(1.33).openSpikes).toBeCloseTo(1, 3);
+    expect(sceneAt(1.33).openM1).toBeCloseTo(0, 3);
+    expect(sceneAt(1.52).openM1).toBeCloseTo(1, 3);
+    expect(sceneAt(1.75).openRnp).toBeCloseTo(1, 3);
+    expect(sceneAt(1.8).labels).toBeCloseTo(1, 3);
+    // cap. 3: remontado antes do encaixe; engole depois do encaixe; abre depois de engolir; libera por último
+    expect(sceneAt(2.2).openEnv + sceneAt(2.2).openRnp).toBeCloseTo(0, 3);
+    expect(sceneAt(2.2).membrane).toBeCloseTo(1, 3);
+    expect(sceneAt(2.36).dock).toBeCloseTo(1, 3);
+    expect(sceneAt(2.36).engulf).toBeCloseTo(0, 3);
+    expect(sceneAt(2.55).engulf).toBeCloseTo(1, 3);
+    expect(sceneAt(2.55).uncoat).toBeCloseTo(0, 3);
+    expect(sceneAt(2.75).uncoat).toBeCloseTo(1, 3);
+    expect(sceneAt(2.95).release).toBeCloseTo(1, 3);
+    expect(sceneAt(2.95).spin).toBe(0);
+    // cap. 4: brota com a câmera ainda perto; pessoas só depois de afastar; o vírion viaja até a boca direita
+    expect(sceneAt(3.15).bud).toBeCloseTo(1, 3);
+    expect(sceneAt(3.15).camZ).toBeCloseTo(POSES[2]!.camZ, 3);
+    expect(sceneAt(3.5).people).toBeCloseTo(1, 3);
+    expect(sceneAt(3.5).membrane).toBeCloseTo(0, 3);
+    expect(sceneAt(3.5).virusX).toBeCloseTo(MOUTH_LEFT.x, 3);
+    expect(sceneAt(3.82).virusX).toBeCloseTo(MOUTH_RIGHT.x, 3);
+    expect(sceneAt(3.82).droplets).toBeCloseTo(1, 3);
+    // cap. 5: pessoas somem ao aproximar; anticorpos antes do bloqueio; deriva antes de regrudar
+    expect(sceneAt(4.2).people).toBeCloseTo(0, 3);
+    expect(sceneAt(4.2).virusScale).toBeCloseTo(1, 3);
+    expect(sceneAt(4.36).antibodies).toBeCloseTo(1, 3);
+    expect(sceneAt(4.36).block).toBeCloseTo(0, 3);
+    expect(sceneAt(4.58).block).toBeCloseTo(1, 3);
+    expect(sceneAt(4.76).drift).toBeCloseTo(1, 3);
+    expect(sceneAt(4.76).rebind).toBeCloseTo(0, 3);
+    expect(sceneAt(4.95).rebind).toBeCloseTo(1, 3);
+    // ordem narrativa: nunca "sem nada na tela": membrana ou pessoas ou vírion grande
+    for (let p = 2; p < 5; p += 0.01) {
+      const s = sceneAt(p);
+      expect(Math.max(s.membrane, s.people, s.virusScale), `vazio em ${p.toFixed(2)}`).toBeGreaterThan(0.3);
+    }
+  });
+
+  it('progressFromSteps: antes do primeiro passo é 0; dentro, capítulo + (passo + fração)/n; depois, satura', () => {
+    const spc = [2, 3];
+    const steps = [
+      { top: 1000, height: 400 },
+      { top: 1500, height: 400 },
+      { top: 2000, height: 300 },
+      { top: 2400, height: 300 },
+      { top: 2800, height: 300 },
+    ];
+    expect(progressFromSteps(0, steps, spc)).toBe(0);
+    expect(progressFromSteps(1000, steps, spc)).toBe(0);
+    expect(progressFromSteps(1250, steps, spc)).toBeCloseTo(0.25);
+    expect(progressFromSteps(1500, steps, spc)).toBeCloseTo(0.5);
+    expect(progressFromSteps(2000, steps, spc)).toBeCloseTo(1);
+    expect(progressFromSteps(2200, steps, spc)).toBeCloseTo(1 + 0.5 / 3);
+    expect(progressFromSteps(2950, steps, spc)).toBeCloseTo(1 + (2 + 0.5) / 3);
+    expect(progressFromSteps(9000, steps, spc)).toBeLessThan(2);
+    expect(progressFromSteps(9000, steps, spc)).toBeGreaterThan(1.99);
+    expect(progressFromSteps(5, [], spc)).toBe(0);
+    // monotônico
+    let last = -1;
+    for (let y = 0; y < 4000; y += 7) {
+      const v = progressFromSteps(y, steps, spc);
+      expect(v).toBeGreaterThanOrEqual(last);
+      last = v;
+    }
+    expect(progressFromLayout(1500, [1000, 2000, 3000], [1000, 1000, 1000])).toBeCloseTo(0.5);
+  });
+
+  it('dampTo converge sem ultrapassar, respeita o limite de velocidade e é estável em dt grandes/NaN', () => {
+    const d = { value: 0, velocity: 0 };
+    let maxV = 0;
+    let prev = 0;
+    for (let i = 0; i < 600; i++) {
+      dampTo(d, 1, 1 / 60, { smoothTime: 0.3, maxSpeed: 2 });
+      expect(d.value).toBeLessThanOrEqual(1 + 1e-9);
+      expect(d.value).toBeGreaterThanOrEqual(prev - 1e-9);
+      maxV = Math.max(maxV, (d.value - prev) * 60);
+      prev = d.value;
+    }
+    expect(d.value).toBeCloseTo(1, 4);
+    expect(maxV).toBeLessThanOrEqual(2.05);
+    const far = { value: 0, velocity: 0 };
+    dampTo(far, 5, 0.5, { smoothTime: 0.3, maxSpeed: 2 });
+    expect(far.value).toBeLessThan(1.2); // limite de velocidade: não atravessa capítulos num só quadro
+    const nan = { value: Number.NaN, velocity: 0 };
+    dampTo(nan, 2, 0.016);
+    expect(nan.value).toBe(2);
+    const stay = { value: 1, velocity: 0 };
+    dampTo(stay, Number.NaN, 0.016);
+    expect(stay.value).toBe(1);
+    expect(expDamp(0, 1, 0.15, 0.15)).toBeCloseTo(1 - Math.exp(-1), 6);
+    expect(fitDistance(1.8)).toBe(1);
+    expect(fitDistance(0.6)).toBeGreaterThan(1);
+    expect(ambient(0).breath).toBeCloseTo(0);
+    expect(Math.abs(ambient(1.7).wobble)).toBeLessThanOrEqual(1);
   });
 
   it('cada capítulo 3D tem texto e âncora única', () => {
@@ -111,7 +241,8 @@ describe('peças e fatos', () => {
       expect(p.factIds.length).toBeGreaterThan(0);
       for (const id of p.factIds) expect(facts.has(id), `${p.id}: fato '${id}' ausente`).toBe(true);
     }
-    for (const c of CHAPTER_COPY) for (const id of c.factIds) expect(facts.has(id), `${c.id}: fato '${id}' ausente`).toBe(true);
+    for (const c of CHAPTER_COPY) for (const st of c.steps) for (const id of st.factIds ?? []) expect(facts.has(id), `${c.id}: fato '${id}' ausente`).toBe(true);
+    CHAPTER_COPY.forEach((c, i) => expect(c.steps.length, `${c.id}: passos`).toBe(STEPS_PER_CHAPTER[i]));
   });
 
   it('fatos novos de virologia têm fonte, citação e verificação datada', () => {

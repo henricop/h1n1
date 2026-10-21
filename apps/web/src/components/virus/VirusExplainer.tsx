@@ -260,18 +260,19 @@ export function VirusExplainer({ facts, panelFacts, textFacts }: Props) {
                 <article aria-current={current === i ? 'step' : undefined} className={`transition-opacity duration-300 ${override === null && current !== i ? 'lg:opacity-60' : 'opacity-100'}`}>
                   <p className="text-sm font-medium text-primary-600">{ch.kicker}</p>
                   <h3 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-4xl">{ch.title}</h3>
-                  <p className="mt-4 text-lg leading-relaxed text-ink">{copy.lead}</p>
-                  {copy.body.map((b) => (
-                    <p key={b} className="mt-3 leading-relaxed text-muted">
-                      {b}
-                    </p>
+                  {copy.steps.map((st, k) => (
+                    <div key={k} data-step className={k === 0 ? 'mt-4' : 'mt-10'}>
+                      <p className={k === 0 ? 'text-lg leading-relaxed text-ink' : 'leading-relaxed text-ink'}>{st.text}</p>
+                      {st.factIds && (
+                        <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-ink">
+                          {st.factIds.map((id) => (
+                            <p key={id}>{facts[id] ?? null}</p>
+                          ))}
+                        </div>
+                      )}
+                      {st.note && <p className="mt-3 text-xs text-faint">{st.note}</p>}
+                    </div>
                   ))}
-                  <div className="mt-4 space-y-3 text-[15px] leading-relaxed text-ink">
-                    {copy.factIds.map((id) => (
-                      <p key={id}>{facts[id] ?? null}</p>
-                    ))}
-                  </div>
-                  {copy.note && <p className="mt-3 text-xs text-faint">{copy.note}</p>}
                   {i === 1 && (
                     <p className="mt-4 text-sm text-muted">
                       Sem mouse? Use a lista de peças no palco 3D ou a{' '}

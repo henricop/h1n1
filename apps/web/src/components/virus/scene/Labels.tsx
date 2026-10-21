@@ -39,7 +39,7 @@ export function Labels({
     return { ha, na, m2 };
   }, [haDirs, naDirs, m2Dirs]);
   useFrame(() => {
-    const e = stateRef.current.explode;
+    const e = stateRef.current.openSpikes;
     const r = refs.current;
     r.ha?.position.copy(anchors.ha).multiplyScalar(R_ENV + 0.5 + e * 0.8).setY(anchors.ha.y * (R_ENV + 0.5 + e * 0.8) + e * 0.35);
     r.na?.position.copy(anchors.na).multiplyScalar(R_ENV + 0.55 + e * 0.95).add(new THREE.Vector3(-e * 0.35, -e * 0.3, 0));
