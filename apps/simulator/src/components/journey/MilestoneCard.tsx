@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JourneyLogEntry, JourneySnapshot } from '../../journey/types';
 import { anatomyRegion } from '../../journey/anatomy';
+import { localized } from '../../i18n';
 import './milestone-card.css';
 
 function shortExplanation(entry: JourneyLogEntry): string {
@@ -28,8 +29,9 @@ export function MilestoneCard({ snapshot, onOpen }: { snapshot: JourneySnapshot;
     const key = `${snapshot.config.seed}:${snapshot.scenarioId}`;
     const old = cursor.current;
     if (!old || old.key !== key || snapshot.simulatedHour < old.hour) {
+      const firstVisit = !old || old.key !== key;
       cursor.current = { key, hour: snapshot.simulatedHour, seen: new Set(snapshot.log.map(item => item.id)) };
-      setQueue(snapshot.simulatedHour <= 1 ? snapshot.log.filter(item => item.simulatedHour === 0).slice(-1) : []);
+      setQueue(firstVisit && snapshot.simulatedHour <= 1 ? snapshot.log.filter(item => item.simulatedHour === 0).slice(-1) : []);
       return;
     }
     const additions = snapshot.log.filter(item => item.simulatedHour >= old.hour && !old.seen.has(item.id));
@@ -49,6 +51,7 @@ export function MilestoneCard({ snapshot, onOpen }: { snapshot: JourneySnapshot;
     <time>Dia {Math.floor(current.simulatedHour / 24)} · {String(current.simulatedHour % 24).padStart(2, '0')}h · {anatomyRegion(current.regionId).shortName}</time>
     <h2>{current.title}</h2><p>{shortExplanation(current)}</p>
     <button className="milestone-open" onClick={() => { onOpen(current); setQueue(previous => previous.slice(1)); }}>Ver este instante no 3D <span>↗</span></button>
+    <a className="milestone-roadmap-link" href="#milestone-roadmap" onClick={() => setQueue(previous => previous.slice(1))}>{localized('View milestone roadmap', 'Ver roteiro de marcos')} <span aria-hidden="true">↓</span></a>
     {queue.length > 1 && <small>{queue.length - 1} {queue.length === 2 ? 'marco seguinte' : 'marcos seguintes'}</small>}
   </aside>;
 }

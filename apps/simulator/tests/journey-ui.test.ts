@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { AdversityEditor } from '../src/components/journey/AdversityEditor';
 import { TimelineControls, type TimelineControlsProps } from '../src/components/journey/TimelineControls';
+import { MilestoneRoadmap, mergeReachedMilestones, roadmapScenarioKey } from '../src/components/journey/MilestoneRoadmap';
 import { ScenarioComparison } from '../src/components/journey/ScenarioComparison';
 import { TrajectoryChart } from '../src/components/journey/TrajectoryChart';
 import { ADVERSITIES } from '../src/engine/journey/config';
@@ -19,6 +20,26 @@ function timelineProps(snapshot: JourneySnapshot): TimelineControlsProps {
 }
 
 describe('journey controls render the real model contract', () => {
+  it('keeps reached milestone cards available after rewinding and separates scenario histories', () => {
+    const model = new JourneySimulation();
+    model.seek(72);
+    const reached = model.getSnapshot();
+    const html = render(createElement(MilestoneRoadmap, { snapshot: reached, onOpen: noop, onNext: noop }));
+    expect((html.match(/class="milestone-roadmap-content"/g) ?? []).length).toBe(reached.log.length);
+    expect(html).toContain('Revisit milestone:');
+    expect(html).toContain(reached.log.at(-1)!.title);
+
+    model.seek(0);
+    const rewound = model.getSnapshot();
+    const history = mergeReachedMilestones(reached.log, rewound.log);
+    expect(history).toHaveLength(reached.log.length);
+    expect(history.at(-1)?.id).toBe(reached.log.at(-1)?.id);
+    expect(roadmapScenarioKey(reached)).toBe(roadmapScenarioKey(rewound));
+
+    model.upsertEvent(event);
+    expect(roadmapScenarioKey(model.getSnapshot('B'))).not.toBe(roadmapScenarioKey(reached));
+  });
+
   it('starts paused at day zero with accessible hourly timeline, replay and day controls', () => {
     const model = new JourneySimulation();
     const html = render(createElement(TimelineControls, timelineProps(model.getSnapshot())));

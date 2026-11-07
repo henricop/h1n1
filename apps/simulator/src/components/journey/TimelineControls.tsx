@@ -4,7 +4,6 @@ import './journey-panels.css';
 
 export interface TimelineControlsProps {
   compact?: boolean;
-  onNextMilestone?: () => void;
   hour: number;
   horizonDays: 14 | 21;
   playing: boolean;
@@ -31,7 +30,7 @@ const eventKindNames: Record<ScenarioEvent['kind'], string> = {
   'prior-protection': 'Proteção prévia', rest: 'Suporte e repouso', 'viral-rate': 'Ritmo viral',
 };
 
-export function TimelineControls({ compact = false, onNextMilestone, hour, horizonDays, playing, speed, log, events, onSeek, onStep, onToggle, onSpeed, onReplay, onHorizon, onShowEvent }: TimelineControlsProps) {
+export function TimelineControls({ compact = false, hour, horizonDays, playing, speed, log, events, onSeek, onStep, onToggle, onSpeed, onReplay, onHorizon, onShowEvent }: TimelineControlsProps) {
   const totalHours = horizonDays * 24;
   const position = (at: number) => `${Math.max(0, Math.min(100, at / totalHours * 100))}%`;
   // Keep one explicit preview; the full event history is available in the Events panel.
@@ -66,7 +65,6 @@ export function TimelineControls({ compact = false, onNextMilestone, hour, horiz
         {milestones.map((entry) => <button type="button" key={entry.id} className="journey-milestone-marker" style={{ left: position(entry.simulatedHour) }} aria-label={`Mostrar o que aconteceu: ${entry.title}, ${formatJourneyHour(entry.simulatedHour)}`} title={`${entry.title} · ${formatJourneyHour(entry.simulatedHour)}`} onClick={() => onShowEvent(entry)}><span aria-hidden="true">●</span></button>)}
       </div>
     </div>
-    {compact&&onNextMilestone&&<div className="journey-milestone-caption" aria-label="Acontecimentos da simulação"><div className="journey-milestone-current"><i className="journey-current-marker"/><span>O que mudou</span><p>{latest[0]?<><time>{formatJourneyHour(latest[0].simulatedHour)}</time>{latest[0].title}</>:'Aguardando o primeiro marco calculado.'}</p></div>{latest[0]&&<button className="journey-milestone-view" onClick={()=>onShowEvent(latest[0]!)}>Rever este instante ↗</button>}<button onClick={onNextMilestone}>Próximo acontecimento →</button></div>}
     {!compact && <div className="journey-timeline-caption"><span><i className="journey-log-key" /> Marcos calculados pela simulação</span><span><i className="journey-event-key" /> Eventos do cenário</span><span>Arraste para revisar; o estado é reconstruído pela mesma seed.</span></div>}
     {!compact && latest.length > 0 && <ol className="journey-recent-log" aria-label="Marcos recentes">{latest.map((entry) => <li key={entry.id}><time>{formatJourneyHour(entry.simulatedHour)}</time><span>{entry.title}</span><button type="button" className="journey-text-button" onClick={() => onShowEvent(entry)} aria-label={`Mostrar o que aconteceu: ${entry.title}`}>Mostrar o que aconteceu <span aria-hidden="true">↗</span></button></li>)}</ol>}
   </section>;

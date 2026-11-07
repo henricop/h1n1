@@ -12,7 +12,7 @@ This is an interactive educational illustration built with React, TypeScript, Vi
 
 - **Five connected scales:** body → respiratory system → lung → tissue → cell. Rotate, pan, zoom, search and select structures without losing your place in time.
 - **A person you can follow:** a persistent status strip shows the simulated body's stage, affected regions, viral activity, tissue integrity and possible symptoms in the illustration. These symptoms are narrative possibilities, not measured or predicted symptoms for a real person.
-- **A living timeline:** pause, replay or move to any hour across 14 or 21 simulated days. Milestone cards appear as the model reaches new thresholds, and each card can take you to that moment in 3D.
+- **A living timeline:** pause, replay or move to any hour across 14 or 21 simulated days. New milestones appear as small notices and collect in a navigable roadmap. Select any reached card to return to its hour and region in 3D.
 - **Your own scenario:** increase the model's viral pace from 1× to 3×, add conditions such as sleep loss or airway irritation, and compare scenario B with the untouched original scenario A.
 - **Full anatomy when you want it:** the default view follows H1N1. You can also open the wider Human Atlas, search its structures, isolate a part or explore its anatomical layers.
 

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { EvolutionGuide } from '../components/journey/EvolutionGuide';
 import { PatientMonitor } from '../components/journey/PatientMonitor';
 import { MilestoneCard } from '../components/journey/MilestoneCard';
+import { MilestoneRoadmap } from '../components/journey/MilestoneRoadmap';
 import { nextCalculatedMilestone } from './nextMilestone';
 import { AtlasExplorer } from '../atlas/AtlasExplorer';
 import { AdversityEditor } from '../components/journey/AdversityEditor';
@@ -78,7 +79,7 @@ export function JourneyApp() {
   };
   const showEvent = (event: JourneyLogEntry) => {
     dialogWasPlaying.current = false;
-    journey.seek(event.simulatedHour); store().publish(); store().selectRegion(event.regionId); store().navigate(event.level); closeSheet();
+    journey.pause(); journey.seek(event.simulatedHour); store().publish(); store().selectRegion(event.regionId); store().navigate(event.level); closeSheet();
     setNotice(`${event.title}. ${localized('Day', 'Dia')} ${Math.floor(event.simulatedHour / 24)}, ${event.simulatedHour % 24} ${localized('hours', 'horas')}.`);
   };
   const reset = (presetId?: string) => {
@@ -93,7 +94,7 @@ export function JourneyApp() {
   const nextMilestone = () => {
     const event = nextCalculatedMilestone(journey.getSnapshot());
     if (!event) { setNotice('Não há novos marcos até o fim deste cenário.'); return; }
-    journey.seek(event.simulatedHour); store().selectRegion(event.regionId); store().publish(); setNotice(event.title);
+    showEvent(event);
   };
   const nextLevel = () => state.navigate(level === 'cell' ? 'tissue' : LEVELS[Math.min(4, levelIndex + 1)]!.id);
   const setViralRate = (rate: number) => {
@@ -152,7 +153,7 @@ export function JourneyApp() {
       <span className="lab-out-of-scale">Representação ilustrativa · fora de escala</span>
     </section><EvolutionGuide onExplain={() => openSheet('state')} /></div>
 
-    <section className="lab-time-dock" id="lab-timeline" aria-label="Tempo da jornada"><TimelineControls compact onNextMilestone={nextMilestone} hour={snapshot.simulatedHour} horizonDays={snapshot.config.horizonDays} playing={playing} speed={speed} log={snapshot.log} events={snapshot.events} onSeek={state.seek} onStep={state.step} onToggle={state.togglePlay} onSpeed={state.setSpeed} onReplay={state.replay} onHorizon={(days)=>{journey.setHorizon(days);store().publish();}} onShowEvent={showEvent} /><div className="lab-experiment-actions"><button className="lab-event-button" aria-label="＋ E se algo mudar? Adicionar evento" onClick={()=>openSheet('event')}>＋ E se algo mudar?<span>Adicionar evento</span></button><button className="lab-text-button" onClick={()=>openSheet('compare')}>Comparar cenários <span aria-hidden="true">⇄</span></button>{snapshot.activeEvents.length>0 && <button className="lab-active-event" onClick={()=>openSheet('event')}>{snapshot.activeEvents.length} {snapshot.activeEvents.length>1?localized('active conditions','condições ativas'):localized('active condition','condição ativa')}</button>}<button className="lab-text-button lab-changes-button" onClick={()=>openSheet('state')}>Ver o que mudou</button></div></section>
+    <section className="lab-time-dock" id="lab-timeline" aria-label="Tempo da jornada"><TimelineControls compact hour={snapshot.simulatedHour} horizonDays={snapshot.config.horizonDays} playing={playing} speed={speed} log={snapshot.log} events={snapshot.events} onSeek={state.seek} onStep={state.step} onToggle={state.togglePlay} onSpeed={state.setSpeed} onReplay={state.replay} onHorizon={(days)=>{journey.setHorizon(days);store().publish();}} onShowEvent={showEvent} /><MilestoneRoadmap snapshot={snapshot} onOpen={showEvent} onNext={nextMilestone} /><div className="lab-experiment-actions"><button className="lab-event-button" aria-label="＋ E se algo mudar? Adicionar evento" onClick={()=>openSheet('event')}>＋ E se algo mudar?<span>Adicionar evento</span></button><button className="lab-text-button" onClick={()=>openSheet('compare')}>Comparar cenários <span aria-hidden="true">⇄</span></button>{snapshot.activeEvents.length>0 && <button className="lab-active-event" onClick={()=>openSheet('event')}>{snapshot.activeEvents.length} {snapshot.activeEvents.length>1?localized('active conditions','condições ativas'):localized('active condition','condição ativa')}</button>}<button className="lab-text-button lab-changes-button" onClick={()=>openSheet('state')}>Ver o que mudou</button></div></section>
     <footer className="lab-footer"><p>Simulação educacional. Não é uma previsão clínica.</p><div><button onClick={()=>openSheet('graphs')}>Trajetória</button><button onClick={()=>openSheet('log')}>Marcos</button><a href="/models/ATTRIBUTION.md" target="_blank" rel="noreferrer">Créditos 3D ↗</a><details className="lab-diagnostics"><summary>Desempenho</summary><div><strong data-testid="journey-renderer-status">{info?`${info.backend} · ${info.fps} fps`:'Preparando 3D'}</strong>{info && <dl><div><dt>Geometrias</dt><dd data-testid="gpu-geometries">{info.geometries}</dd></div><div><dt>Texturas</dt><dd>{info.textures}</dd></div><div><dt>Desenhos</dt><dd>{info.drawCalls}</dd></div><div><dt>Triângulos</dt><dd>{info.triangles}</dd></div><div><dt>Qualidade</dt><dd>{info.quality}</dd></div></dl>}</div></details></div></footer>
     <span className="sr-only" data-testid="simulated-hour">{snapshot.simulatedHour}</span><span className="sr-only" data-testid="active-scenario">{snapshot.scenarioId}</span><span className="sr-only" data-testid="current-seed">{snapshot.config.seed}</span>
     {!sheet && <MilestoneCard snapshot={snapshot} onOpen={showEvent} />}
