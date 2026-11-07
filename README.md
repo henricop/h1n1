@@ -6,7 +6,7 @@
 
 This is an interactive educational illustration built with React, TypeScript, Vite and Three.js. It runs entirely in your browser using local 3D assets. No account, API, database or remote runtime service is required.
 
-**Try the live simulation:** [h1n1-henrico-ps-projects.vercel.app](https://h1n1-henrico-ps-projects.vercel.app/)
+**Try the live simulation:** [h1n1.com.br](https://h1n1.com.br/)
 
 ## What you can explore
 
