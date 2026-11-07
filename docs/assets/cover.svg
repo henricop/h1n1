@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1600 620" role="img" aria-labelledby="title description">
+  <title id="title">H1N1 Infection Journey</title>
+  <desc id="description">A clean anatomical illustration connects a human respiratory system to a magnified epithelial cell. Magenta particles trace a path from the nose into the airways.</desc>
+  <defs>
+    <linearGradient id="paper" x2="1" y2="1"><stop stop-color="#fbfcfc"/><stop offset="1" stop-color="#e8f0f1"/></linearGradient>
+    <radialGradient id="wash"><stop stop-color="#d7e7e5" stop-opacity=".8"/><stop offset="1" stop-color="#d7e7e5" stop-opacity="0"/></radialGradient>
+    <linearGradient id="glass" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".94"/><stop offset="1" stop-color="#e3eeef" stop-opacity=".7"/></linearGradient>
+    <linearGradient id="lung" x2="1" y2="1"><stop stop-color="#a5d3d0" stop-opacity=".85"/><stop offset="1" stop-color="#4d9d99" stop-opacity=".66"/></linearGradient>
+    <linearGradient id="airway" x2="1" y2="1"><stop stop-color="#1b817a"/><stop offset="1" stop-color="#75bcb8"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="20" stdDeviation="28" flood-color="#3b6870" flood-opacity=".12"/></filter>
+    <clipPath id="lens"><circle cx="1330" cy="307" r="153"/></clipPath>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.2" fill="#abc8cb" opacity=".28"/></pattern>
+  </defs>
+
+  <rect width="1600" height="620" rx="28" fill="url(#paper)"/>
+  <rect width="1600" height="620" rx="28" fill="url(#dots)"/>
+  <circle cx="1040" cy="295" r="425" fill="url(#wash)"/>
+  <path d="M60 520H1540" stroke="#d2e0e2" stroke-width="1.5"/>
+
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" fill="#243d46">
+    <text x="79" y="102" font-size="16" font-weight="700" letter-spacing="5" fill="#197d72">AN INTERACTIVE ANATOMY ATLAS</text>
+    <text x="72" y="254" font-size="146" font-weight="650" letter-spacing="-11">H1N1</text>
+    <text x="79" y="314" font-size="39" font-weight="450" letter-spacing="-1.5">Infection Journey</text>
+    <text x="80" y="372" font-size="21" fill="#607984">Follow one simulated moment</text>
+    <text x="80" y="405" font-size="21" fill="#607984">from the body to a single cell.</text>
+  </g>
+
+  <g fill="none" stroke="#bdcfd2" stroke-width="2">
+    <path d="M840 460c-44-40-62-89-66-156-1-40-17-80-36-107-14-19-12-42 6-53 25-17 45 8 60 32 25 33 64 30 101 41 20 6 27 20 36 36"/>
+    <path d="M1163 460c44-40 62-89 66-156 1-40 17-80 36-107 14-19 12-42-6-53-25-17-45 8-60 32-25 33-64 30-101 41-20 6-27 20-36 36"/>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M950 183c-8 11-22 20-52 25-26 5-49 20-56 49-16 67-18 134-2 207 6 29 31 47 58 48l205-1c28-1 52-19 58-47 16-73 14-140-2-207-7-29-30-44-56-49-30-5-44-14-52-25l-17-16h-67z" fill="url(#glass)" stroke="#b7cbd0" stroke-width="2"/>
+    <path d="M967 161c-21-11-34-32-34-56 0-39 30-70 68-70s68 31 68 70c0 24-13 45-34 56l-12 25h-44z" fill="url(#glass)" stroke="#b7cbd0" stroke-width="2"/>
+    <path d="M981 138h38l9 45h-56z" fill="#e0eced" opacity=".7"/>
+  </g>
+
+  <path d="M982 229c-35 1-67 25-79 64-14 46-16 99-6 136 4 16 21 26 38 17 22-12 43-33 60-63l6-31-4-78z" fill="url(#lung)" stroke="#438e8c" stroke-opacity=".55" stroke-width="2"/>
+  <path d="M1018 229c35 1 67 25 79 64 14 46 16 99 6 136-4 16-21 26-38 17-22-12-43-33-60-63l-6-31 4-78z" fill="url(#lung)" stroke="#438e8c" stroke-opacity=".55" stroke-width="2"/>
+  <path d="M973 97c22-15 49-4 54 18-12 0-23 5-27 16v109" fill="none" stroke="url(#airway)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M1000 240v34m0 0c-16 11-39 30-56 55m56-55c16 11 39 30 56 55" fill="none" stroke="url(#airway)" stroke-width="11" stroke-linecap="round"/>
+  <path d="M944 329l-21 31m21-31 3 36m109-36 21 31m-21-31-3 36" fill="none" stroke="#197d72" stroke-width="6" stroke-linecap="round"/>
+  <path d="M923 360l-16 31m16-31 14 27m140-27 16 31m-16-31-14 27" fill="none" stroke="#4b9f99" stroke-width="3.5" stroke-linecap="round"/>
+
+  <g fill="#d25f82" stroke="#fff" stroke-width="3">
+    <circle cx="981" cy="105" r="8"/><circle cx="997" cy="150" r="6"/><circle cx="1000" cy="211" r="7"/>
+    <circle cx="976" cy="292" r="7"/><circle cx="948" cy="326" r="5"/><circle cx="935" cy="373" r="5"/>
+  </g>
+  <path d="M1087 358c45-26 89-31 122-25" fill="none" stroke="#c57991" stroke-width="2" stroke-dasharray="5 8"/>
+
+  <circle cx="1330" cy="307" r="162" fill="#fff" stroke="#d4e2e4" stroke-width="4" filter="url(#shadow)"/>
+  <g clip-path="url(#lens)">
+    <rect x="1177" y="154" width="306" height="306" fill="#e7f1f0"/>
+    <path d="M1170 228c44-18 77-16 111 2 35 19 66 23 99 7 42-21 74-19 112 2" fill="none" stroke="#78b8b2" stroke-width="12" stroke-linecap="round"/>
+    <path d="M1170 261c44-18 77-16 111 2 35 19 66 23 99 7 42-21 74-19 112 2" fill="none" stroke="#b4d6d2" stroke-width="3"/>
+    <path d="M1174 293c38-22 65-12 90 3 24 14 50 10 69-5 31-24 60-22 82-7 20 14 42 21 76 2v180h-317z" fill="#fff" stroke="#a9c9c6" stroke-width="3"/>
+    <path d="M1237 292v168m97-170v170m82-176v176" stroke="#c3d9d7" stroke-width="3"/>
+    <ellipse cx="1220" cy="350" rx="19" ry="13" fill="#c8e4df"/><ellipse cx="1291" cy="365" rx="21" ry="15" fill="#c8e4df"/><ellipse cx="1369" cy="350" rx="20" ry="13" fill="#c8e4df"/><ellipse cx="1451" cy="355" rx="17" ry="12" fill="#c8e4df"/>
+    <path d="M1284 187l-5 24m20-29-2 27m18-19 7 20" stroke="#9bc8c4" stroke-width="4" stroke-linecap="round"/>
+    <g fill="#d25f82"><circle cx="1288" cy="208" r="10"/><circle cx="1337" cy="219" r="8"/><circle cx="1375" cy="197" r="7"/><circle cx="1309" cy="255" r="6"/></g>
+    <g fill="none" stroke="#edb5c6" stroke-width="2"><circle cx="1288" cy="208" r="17"/><circle cx="1337" cy="219" r="14"/><circle cx="1375" cy="197" r="13"/></g>
+  </g>
+  <circle cx="1330" cy="307" r="153" fill="none" stroke="#fff" stroke-width="7"/>
+
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" font-weight="650" letter-spacing="2.5" fill="#5d7b83">
+    <text x="80" y="564">BODY</text><text x="222" y="564">AIRWAYS</text><text x="420" y="564">LUNG</text><text x="565" y="564">TISSUE</text><text x="738" y="564">CELL</text>
+  </g>
+  <g fill="#197d72"><circle cx="190" cy="559" r="4"/><circle cx="385" cy="559" r="4"/><circle cx="530" cy="559" r="4"/><circle cx="700" cy="559" r="4"/></g>
+  <text x="1413" y="565" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600" letter-spacing="2" fill="#6b828b">EXPLORE WITHIN ↗</text>
+</svg>

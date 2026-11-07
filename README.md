@@ -1,3 +1,5 @@
+![H1N1 Infection Journey cover: the respiratory route from a human body into a cell](docs/assets/cover.svg)
+
 # H1N1 · Infection Journey
 
 **Step inside an infection.** Explore a human anatomy atlas, follow H1N1 through the respiratory system, and zoom all the way into a single cell. Time is already moving when the page opens; every scale shows the same moment in the same simulated story.
@@ -61,10 +63,16 @@ pnpm build
 
 Browser interaction during project validation uses the authorized Codex browser extension. The browser auditor in `apps/simulator/scripts/validate-atlas-browser.mjs` accepts that integration's browser handles; it does not start or attach a separate browser.
 
+## Contribute
+
+Ideas, bug reports and focused pull requests are welcome. Read the [contribution guide](CONTRIBUTING.md) for setup, project conventions, bilingual copy and the checks expected before review.
+
+The project's original code and documentation are available under the [MIT License](LICENSE). Anatomical models and adapted third-party code retain their own terms; see the [third-party notices](THIRD_PARTY_NOTICES.md).
+
 ## Anatomy credits and project scope
 
 The macroscopic atlas adapts the open source [Human Atlas](apps/simulator/public/models/atlas/ATTRIBUTION.md) and includes BodyParts3D anatomy. The respiratory view also uses local lung structures from the Human Reference Atlas. Licenses, sources and adaptation notes are in [Anatomy assets](docs/ANATOMY_ASSETS.md) and the [distributed model credits](apps/simulator/public/models/ATTRIBUTION.md).
 
-`apps/simulator` is the active product. The older Next.js site, API, data packages and first microscopic prototype remain in the repository as historical source; root development commands target the simulator. Project work and previews stay local. This repository is not registered with or hosted on OpenAI cloud, ChatGPT Sites or related services.
+`apps/simulator` is the active product. The older Next.js site, API, data packages and first microscopic prototype remain in the repository as historical source; root development commands target the simulator. Development and local previews require no cloud service. This repository is not registered with or hosted on OpenAI cloud, ChatGPT Sites or related services.
 
 For implementation details, see the [design system](docs/DESIGN_SYSTEM.md) and [validation notes](docs/SIMULATOR_VALIDATION.md).

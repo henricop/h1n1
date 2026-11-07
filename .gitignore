@@ -13,5 +13,6 @@ data/pglite/
 *.tsbuildinfo
 .turbo/
 .qa/
+.vercel/
 apps/simulator/playwright-report/
 apps/simulator/test-results/
