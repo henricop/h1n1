@@ -1,5 +1,9 @@
-/** Contadores do HUD a partir do globo (/v1/globe) para uma semana. Puro e testável. */
+/**
+ * Contadores da semana a partir do globo (/v1/globe): soma, países reportando, Brasil. Puro e testável.
+ * (O arquivo mantém o nome `hud.ts` por compatibilidade com os testes; nada aqui é interface de HUD.)
+ */
 import type { GlobeCountry } from './api';
+import { parseWeek } from './timeline';
 
 export interface HudWeek {
   /** Soma das detecções publicadas no mundo na semana (países com valor nulo não entram). */
@@ -10,7 +14,7 @@ export interface HudWeek {
   brazil: number | null;
   /** Posição do Brasil entre os países que reportaram (1 = maior); null se não reportou ou reportou zero. */
   brazilRank: number | null;
-  /** Ranking completo da semana (valor > 0), decrescente. */
+  /** Ordem completa da semana (valor > 0), decrescente. */
   ranking: Array<{ iso3: string; name: string; value: number }>;
 }
 
@@ -37,4 +41,10 @@ export function globalMax(countries: GlobeCountry[]): number {
   let m = 0;
   for (const c of countries) for (const v of c.values) if (v !== null && v > m) m = v;
   return m;
+}
+
+/** Rótulo da semana em caixa normal para a tela: '2009-W17' → 'Semana ISO 17 · 2009' (caixa alta só em Big Shoulders). */
+export function weekTitle(id: string): string {
+  const p = parseWeek(id);
+  return p ? `Semana ISO ${p.week} · ${p.year}` : id;
 }

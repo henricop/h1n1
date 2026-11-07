@@ -1,57 +1,70 @@
-# H1N1 · informação clara, dados oficiais, análise independente
+# H1N1 · Infection Journey
 
-Plataforma pública de orientação, monitoramento e pesquisa sobre influenza A(H1N1), feita para pessoas comuns com rigor suficiente para ser citada por jornalistas, pesquisadores e profissionais de saúde. **Não é um blog.**
+**Step inside an infection.** Explore a human anatomy atlas, follow H1N1 through the respiratory system, and zoom all the way into a single cell. Time is already moving when the page opens; every scale shows the same moment in the same simulated story.
 
-Documentos de origem: [`h1n1_plano_estrategico_site.md`](./h1n1_plano_estrategico_site.md) (estratégia) e [`h1n1_catalogo_oficial.md`](./h1n1_catalogo_oficial.md) (65 fontes oficiais). Plano técnico: [`docs/PLANO_EXECUCAO.md`](./docs/PLANO_EXECUCAO.md). Demais documentos em [`docs/`](./docs/).
+This is an interactive educational illustration built with React, TypeScript, Vite and Three.js. It runs entirely in your browser using local 3D assets. No account, API, database or remote runtime service is required.
 
-## Estrutura
+## What you can explore
 
-| Pasta | O que é |
-|---|---|
-| `data/sources.json` | Catálogo estruturado das 65 fontes (gerado do markdown) |
-| `data/snapshots/` | Originais baixados, com hash e licença (não versionado) |
-| `packages/core` | Tipos, ontologia de indicadores, semanas epidemiológicas, supressão de células pequenas |
-| `packages/db` | Esquema PostgreSQL (PGlite em dev), migrações, seed, consultas de publicação |
-| `packages/connectors` | Conectores de ingestão (FluNet, SIVEP-Gripe, IBGE, Banco Mundial, UKHSA) e CLI |
-| `apps/api` | API pública `/v1` (Fastify + OpenAPI) |
-| `apps/web` | Site Next.js: páginas de referência, observatório, catálogo de fontes, metodologia |
-| `apps/web/content` | Conteúdo editorial em MDX com frontmatter de revisão e registro de fatos citados |
-| `docs/` | PRD, contrato de API, dicionário de indicadores, políticas, pesquisa de demanda, ADRs |
+- **Five connected scales:** body → respiratory system → lung → tissue → cell. Rotate, pan, zoom, search and select structures without losing your place in time.
+- **A person you can follow:** a persistent status strip shows the simulated body's stage, affected regions, viral activity, tissue integrity and possible symptoms in the illustration. These symptoms are narrative possibilities, not measured or predicted symptoms for a real person.
+- **A living timeline:** pause, replay or move to any hour across 14 or 21 simulated days. Milestone cards appear as the model reaches new thresholds, and each card can take you to that moment in 3D.
+- **Your own scenario:** increase the model's viral pace from 1× to 3×, add conditions such as sleep loss or airway irritation, and compare scenario B with the untouched original scenario A.
+- **Full anatomy when you want it:** the default view follows H1N1. You can also open the wider Human Atlas, search its structures, isolate a part or explore its anatomical layers.
 
-## Como rodar
+The simulation uses seeded, deterministic rules over five connected respiratory regions. It tracks cellular exposure, infection, defense, damage, removal and replacement. Its indices and particles are illustrative model outputs, **not clinical measurements or forecasts**.
 
-```bash
+## Run it locally
+
+You need **Node.js 22 or newer** and **pnpm 12.6.0**. From the repository root:
+
+```sh
 pnpm install
-pnpm build                       # compila packages e apps
-pnpm test                        # testes de todos os pacotes
-pnpm db:seed                     # cria o banco (PGlite em ./data/pglite) e carrega fontes/indicadores
-pnpm ingest flunet --country BRA # ingestão real do FluNet (OMS)
-pnpm ingest sivep --year 2026    # ingestão real do SIVEP-Gripe (arquivo de ~260 MB)
-pnpm ingest status               # frescor por indicador
-pnpm api                         # http://localhost:3001 (docs em /docs)
-pnpm web                         # http://localhost:3000
+pnpm dev
 ```
 
-Para usar PostgreSQL real, defina `DATABASE_URL`. Variáveis em `.env.example`.
+Open **http://127.0.0.1:3000**. To serve the optimized production build locally:
 
-## Regras de integridade (não negociáveis)
+```sh
+pnpm build
+pnpm start
+```
 
-1. H1N1 confirmado **não é** influenza A não subtipada.
-2. Casos graves registrados **não são** total de infectados.
-3. Óbitos codificados por influenza **não são automaticamente** óbitos confirmados por H1N1.
-4. Proporções de testes positivos dependem da estratégia de coleta e da cobertura.
-5. Não somar painéis derivados aos registros primários da mesma origem.
-6. Exibir explicitamente períodos, revisões, atraso e população de referência.
-7. Não inferir risco individual usando apenas dados populacionais.
-8. Não usar interesse no Google Trends como substituto de vigilância epidemiológica.
-9. Não divulgar células pequenas ou cruzamentos que aumentem risco de reidentificação.
-10. Bloquear publicação de indicadores com falha de validação, mantendo versão anterior claramente datada.
+The build is written to `apps/simulator/dist`. The preview uses port 3000 and stays on your computer. No environment variables are needed.
 
-Cada número publicado sai de uma snapshot versionada de fonte oficial e é acompanhado do texto de universo do indicador. Conteúdo clínico nasce como "em revisão clínica" e sem indexação até revisão por profissional habilitado; a única exceção explícita é a página de sinais de alerta (`index_policy: index`), que cita literalmente a orientação oficial e exibe o banner de revisão.
+## English and Portuguese
 
-## Licenças dos dados
+The interface follows your browser's primary language. A browser set to Portuguese displays **Português**; every other language uses **English**. English is the default. The page title, accessible labels, controls, explanations, atlas panels and simulation messages follow the same setting.
 
-- SIVEP-Gripe, SINAN, SIM, PNI: CC-BY, Ministério da Saúde (dadosabertos.saude.gov.br).
-- FluNet: OMS, conforme política de dados da OMS.
-- IBGE e Banco Mundial: dados abertos, conforme termos de cada órgão.
-- Demais fontes: verificar por fonte (`data/sources.json`, campo `license`).
+For a local language check, add `?lang=en` or `?lang=pt` to the preview URL. This explicit URL choice overrides the browser language for that visit. It does not change the simulation's seed or outcomes.
+
+## How it works
+
+| Area | Responsibility |
+| --- | --- |
+| `apps/simulator/src/engine/journey/` | Seeded hourly simulation, regional state, events, snapshots and A/B branches |
+| `apps/simulator/src/atlas/` | Human Atlas anatomy, structure search, H1N1 path and 3D camera controls |
+| `apps/simulator/src/graphics/journey/` | Tissue and cell scenes, animation and graphics resource cleanup |
+| `apps/simulator/src/journey/` | Shared timeline, anatomy registry and simulated-person narrative |
+| `apps/simulator/src/components/journey/` | Controls, status, milestones, comparisons and charts |
+| `apps/simulator/src/i18n.ts` | Browser language selection and English/Portuguese presentation |
+
+One shared clock drives the atlas and microscopic scenes. Biological changes come from the model, while animations use the same simulated hour so pause and replay return to the same visual state. The app bounds representative particles and releases graphics resources when changing scales.
+
+## Verify a change
+
+```sh
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Browser interaction during project validation uses the authorized Codex browser extension. The browser auditor in `apps/simulator/scripts/validate-atlas-browser.mjs` accepts that integration's browser handles; it does not start or attach a separate browser.
+
+## Anatomy credits and project scope
+
+The macroscopic atlas adapts the open source [Human Atlas](apps/simulator/public/models/atlas/ATTRIBUTION.md) and includes BodyParts3D anatomy. The respiratory view also uses local lung structures from the Human Reference Atlas. Licenses, sources and adaptation notes are in [Anatomy assets](docs/ANATOMY_ASSETS.md) and the [distributed model credits](apps/simulator/public/models/ATTRIBUTION.md).
+
+`apps/simulator` is the active product. The older Next.js site, API, data packages and first microscopic prototype remain in the repository as historical source; root development commands target the simulator. Project work and previews stay local. This repository is not registered with or hosted on OpenAI cloud, ChatGPT Sites or related services.
+
+For implementation details, see the [design system](docs/DESIGN_SYSTEM.md) and [validation notes](docs/SIMULATOR_VALIDATION.md).

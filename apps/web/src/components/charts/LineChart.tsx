@@ -1,6 +1,8 @@
 import type { SeriesObservation } from '@/lib/api';
+import { CHART_COLORS, SERIES_COLORS } from '@/lib/echarts-theme';
 import { formatNumberBR, formatPeriod, shortPeriod } from '@/lib/format';
 import { publishedValue } from '@/lib/series';
+import { NOTE } from './ui';
 
 interface Props {
   obs: SeriesObservation[];
@@ -10,8 +12,9 @@ interface Props {
 }
 
 /**
- * Gráfico de linhas em SVG puro: eixos, rótulos de semana, semanas provisórias em tracejado, legenda.
- * Equivalente acessível: tabela referenciada por aria-describedby.
+ * Gráfico de linhas em SVG puro (renderiza no servidor): eixos, rótulos de semana, cauda provisória tracejada em
+ * âmbar escuro com faixa rotulada, lacunas para valores suprimidos, legenda em texto.
+ * Equivalente acessível: tabela referenciada por aria-describedby. Fundo transparente (papel).
  */
 export function LineChart({ obs, title, unit, tableId }: Props) {
   const W = 760;
@@ -55,7 +58,7 @@ export function LineChart({ obs, title, unit, tableId }: Props) {
   const bandX = firstProv > 0 ? x(firstProv) - step / 2 : m.left;
 
   return (
-    <figure className="card p-4">
+    <figure className="m-0">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
@@ -66,44 +69,60 @@ export function LineChart({ obs, title, unit, tableId }: Props) {
       >
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={m.left} x2={W - m.right} y1={y(t)} y2={y(t)} stroke="var(--color-line)" strokeWidth={1} />
-            <text x={m.left - 8} y={y(t) + 4} textAnchor="end" fontSize={12} fill="var(--color-muted)">
+            <line x1={m.left} x2={W - m.right} y1={y(t)} y2={y(t)} stroke={CHART_COLORS.line} strokeWidth={1} />
+            <text x={m.left - 8} y={y(t) + 4} textAnchor="end" fontSize={12} fill={CHART_COLORS.muted} className="font-mono">
               {formatNumberBR(t, unit)}
             </text>
           </g>
         ))}
-        {firstProv >= 0 && <rect x={bandX} y={m.top} width={W - m.right - bandX} height={ih} fill="var(--color-attention-100)" opacity={0.7} />}
-        <line x1={m.left} x2={W - m.right} y1={m.top + ih} y2={m.top + ih} stroke="var(--color-muted)" strokeWidth={1} />
+        {firstProv >= 0 && (
+          <g>
+            <rect x={bandX} y={m.top} width={W - m.right - bandX} height={ih} fill={SERIES_COLORS.provisional} opacity={0.12} />
+            <text x={bandX + 6} y={m.top + 14} fontSize={12} fill={CHART_COLORS.attention} className="font-mono">
+              provisória
+            </text>
+          </g>
+        )}
+        <line x1={m.left} x2={W - m.right} y1={m.top + ih} y2={m.top + ih} stroke={CHART_COLORS.lineStrong} strokeWidth={1} />
         {obs.map((o, i) =>
           i % labelEvery === 0 || i === obs.length - 1 ? (
-            <text key={o.period} x={x(i)} y={m.top + ih + 18} textAnchor="middle" fontSize={11} fill="var(--color-muted)">
+            <text key={o.period} x={x(i)} y={m.top + ih + 18} textAnchor="middle" fontSize={12} fill={CHART_COLORS.muted} className="font-mono">
               {shortPeriod(o.period)}
             </text>
           ) : null,
         )}
-        <text x={m.left + iw / 2} y={H - 6} textAnchor="middle" fontSize={12} fill="var(--color-muted)">
+        <text x={m.left + iw / 2} y={H - 6} textAnchor="middle" fontSize={12} fill={CHART_COLORS.muted} className="font-mono">
           Semana ({formatPeriod(obs[0]!.period)} a {formatPeriod(obs[obs.length - 1]!.period)})
         </text>
         {segments.map((s, i) => (
-          <polyline key={i} points={s.pts} fill="none" stroke="var(--color-primary-600)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.provisional ? '6 4' : undefined} />
+          <polyline
+            key={i}
+            points={s.pts}
+            fill="none"
+            stroke={s.provisional ? SERIES_COLORS.provisional : SERIES_COLORS.final}
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            strokeDasharray={s.provisional ? '6 4' : undefined}
+          />
         ))}
         {obs.map((o, i) => {
           const v = publishedValue(o);
-          return v !== null ? (
-            <circle key={o.period} cx={x(i)} cy={y(v)} r={2.5} fill={o.update_status === 'provisional' ? 'var(--color-card)' : 'var(--color-primary-600)'} stroke="var(--color-primary-600)" strokeWidth={1.5} />
-          ) : null;
+          const prov = o.update_status === 'provisional';
+          const color = prov ? SERIES_COLORS.provisional : SERIES_COLORS.final;
+          return v !== null ? <circle key={o.period} cx={x(i)} cy={y(v)} r={2.5} fill={prov ? CHART_COLORS.card : color} stroke={color} strokeWidth={1.5} /> : null;
         })}
       </svg>
-      <figcaption className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
+      <figcaption className={`mt-3 flex flex-wrap gap-x-6 gap-y-2 ${NOTE}`}>
         <span className="inline-flex items-center gap-2">
           <svg width="28" height="8" aria-hidden="true">
-            <line x1="0" y1="4" x2="28" y2="4" stroke="var(--color-primary-600)" strokeWidth="2.5" />
+            <line x1="0" y1="4" x2="28" y2="4" stroke={SERIES_COLORS.final} strokeWidth="2.5" />
           </svg>
           Semana consolidada
         </span>
         <span className="inline-flex items-center gap-2">
           <svg width="28" height="8" aria-hidden="true">
-            <line x1="0" y1="4" x2="28" y2="4" stroke="var(--color-primary-600)" strokeWidth="2.5" strokeDasharray="6 4" />
+            <line x1="0" y1="4" x2="28" y2="4" stroke={SERIES_COLORS.provisional} strokeWidth="2.5" strokeDasharray="6 4" />
           </svg>
           Semana provisória (sujeita a revisão)
         </span>

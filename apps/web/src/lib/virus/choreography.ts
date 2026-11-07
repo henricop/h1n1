@@ -27,7 +27,13 @@ export const CARRY_RIGHT = { x: MOUTH_RIGHT.x - 0.45, y: MOUTH_RIGHT.y } as cons
 /** Escala do grupo micro quando visto "de longe" (capítulo 4). */
 export const FAR_SCALE = 0.32;
 
-type Ease = 'smooth' | 'linear';
+/**
+ * Curvas de uma batida (todas valem 0 em 0 e 1 em 1, então a continuidade `sceneAt(i + 1) === POSES[i]` não
+ * depende da curva): `smooth` = smoothstep (C1); `smoother` = smootherstep de Perlin (C2: aceleração nula nas
+ * pontas, para aberturas e encaixes "orgânicos", sem tranco); `linear` só onde outra peça precisa acompanhar
+ * exatamente o mesmo ritmo.
+ */
+export type Ease = 'smooth' | 'smoother' | 'linear';
 /** Janela: a chave vai da pose anterior à pose do capítulo entre `w[0]` e `w[1]` (progresso local). */
 interface Window {
   w: readonly [number, number];
@@ -41,21 +47,27 @@ interface Keyframes {
 export type Beat = Window | Keyframes;
 export type ChapterBeats = Partial<Record<SceneKey, Beat>>;
 
-/** Pose no início de tudo (p = 0): vírion um pouco mais longe, girando rápido. */
-export const START: Readonly<SceneState> = Object.freeze({ ...REST, camZ: 6.4, spin: 1 });
+/**
+ * Pose de abertura (p = 0, ato 0): o vírion atravessa o título gigante, girando devagar. Com `fov` 36° a
+ * câmera em z = 6,9 enquadra o vírion inteiro (Ø ≈ 2,7 com os espinhos) em ≈ 60 % da altura no desktop
+ * (`openingFill`); a frente B desloca o quadro com `viewShift.x ≈ 0,18`. O capítulo 1 aproxima até REST.
+ */
+export const START: Readonly<SceneState> = Object.freeze({ ...REST, camZ: 6.9, spin: 0.4 });
 
 /** Poses assentadas, uma por capítulo. */
 export const POSES: ReadonlyArray<Readonly<SceneState>> = [
   // 1 · O que é: vírion inteiro, perto, girando devagar
   Object.freeze({ ...REST }),
-  // 2 · Por dentro: vista explodida completa, rótulos ligados
-  Object.freeze({ ...REST, camY: 0.35, camZ: 7.8, spin: 0.15, openEnv: 1, openSpikes: 1, openM1: 1, openRnp: 1, labels: 1 }),
+  // 2 · Por dentro: vista explodida completa, rótulos ligados. v4: palco em tela inteira (paisagem, o fov
+  // vertical manda): a explosão (meia-altura ≈ 2,7) cabe em ~90 % da altura com a câmera em 9,2
+  Object.freeze({ ...REST, camY: 0.35, camZ: 9.2, spin: 0.15, openEnv: 1, openSpikes: 1, openM1: 1, openRnp: 1, labels: 1 }),
   // 3 · Como entra: encaixado, engolido, aberto; RNPs liberadas rumo ao núcleo
   Object.freeze({ ...REST, camX: 0.35, camY: 0.2, camZ: 7.2, lookX: 0.35, virusX: 0.35, spin: 0, membrane: 1, dock: 1, engulf: 1, uncoat: 1, release: 1 }),
   // 4 · Como se espalha: visto de longe; o vírion pegou carona numa gotícula até a boca da silhueta direita
   Object.freeze({ ...REST, camY: 0.3, camZ: 12.5, lookY: 0.3, virusX: CARRY_RIGHT.x, virusY: CARRY_RIGHT.y, virusScale: FAR_SCALE, spin: 0, people: 1, droplets: 1 }),
   // 5 · Vacina: de perto outra vez, coberto de anticorpos; membrana à direita onde ele não encaixou
-  Object.freeze({ ...REST, camX: CARRY_RIGHT.x, camY: CARRY_RIGHT.y + 0.15, camZ: 5.8, lookX: CARRY_RIGHT.x, lookY: CARRY_RIGHT.y, virusX: CARRY_RIGHT.x, virusY: CARRY_RIGHT.y, spin: 0.25, membrane: 1, antibodies: 1, block: 1, drift: 1, rebind: 1 }),
+  // (v4: câmera um pouco mais longe para os anticorpos não encostarem nas bordas do palco em tela inteira)
+  Object.freeze({ ...REST, camX: CARRY_RIGHT.x, camY: CARRY_RIGHT.y + 0.15, camZ: 6.4, lookX: CARRY_RIGHT.x, lookY: CARRY_RIGHT.y, virusX: CARRY_RIGHT.x, virusY: CARRY_RIGHT.y, spin: 0.25, membrane: 1, antibodies: 1, block: 1, drift: 1, rebind: 1 }),
 ];
 
 /**
@@ -65,7 +77,7 @@ export const POSES: ReadonlyArray<Readonly<SceneState>> = [
 export const BEATS: ReadonlyArray<ChapterBeats> = [
   // 1 · 3 passos (0.333 cada)
   {
-    camZ: { w: [0, 0.3] },
+    camZ: { w: [0, 0.3], ease: 'smoother' },
     spin: { w: [0.15, 0.45] },
     hlHa: { k: [[0.36, 0], [0.44, 1], [0.6, 1], [0.68, 0]] },
     hlNa: { k: [[0.7, 0], [0.78, 1], [0.9, 1], [0.97, 0]] },
@@ -73,12 +85,12 @@ export const BEATS: ReadonlyArray<ChapterBeats> = [
   // 2 · 5 passos (0.2 cada): envelope → espinhos → M1/M2 → RNPs + rótulos → assentado (hover)
   {
     spin: { w: [0, 0.15] },
-    camZ: { w: [0, 0.7] },
-    camY: { w: [0, 0.7] },
-    openEnv: { w: [0.02, 0.1] },
-    openSpikes: { w: [0.22, 0.31] },
-    openM1: { w: [0.42, 0.5] },
-    openRnp: { w: [0.62, 0.72] },
+    camZ: { w: [0, 0.7], ease: 'smoother' },
+    camY: { w: [0, 0.7], ease: 'smoother' },
+    openEnv: { w: [0.02, 0.1], ease: 'smoother' },
+    openSpikes: { w: [0.22, 0.31], ease: 'smoother' },
+    openM1: { w: [0.42, 0.5], ease: 'smoother' },
+    openRnp: { w: [0.62, 0.72], ease: 'smoother' },
     labels: { w: [0.67, 0.75] },
   },
   // 3 · 5 passos: remonta + membrana entra → encaixe → engole → abre (M2) → RNPs saem
@@ -95,25 +107,25 @@ export const BEATS: ReadonlyArray<ChapterBeats> = [
     lookX: { k: [[0.02, 0], [0.2, 1.0], [0.42, 1.0], [0.56, 0.35]] },
     virusX: { w: [0.02, 0.2] },
     spin: { w: [0.2, 0.3] },
-    dock: { w: [0.24, 0.34] },
-    engulf: { w: [0.42, 0.52] },
-    uncoat: { w: [0.62, 0.71] },
-    release: { w: [0.82, 0.93] },
+    dock: { w: [0.24, 0.34], ease: 'smoother' },
+    engulf: { w: [0.42, 0.52], ease: 'smoother' },
+    uncoat: { w: [0.62, 0.71], ease: 'smoother' },
+    release: { w: [0.82, 0.93], ease: 'smoother' },
   },
   // 4 · 4 passos: brota → afasta (pessoas aparecem) → gotículas (o vírion viaja) → assentado
   {
-    bud: { k: [[0.02, 0], [0.12, 1], [0.38, 1], [0.48, 0]] },
+    bud: { k: [[0.02, 0], [0.12, 1], [0.38, 1], [0.48, 0]], ease: 'smoother' },
     membrane: { w: [0.3, 0.45] },
     dock: { w: [0.3, 0.45] },
     engulf: { w: [0.3, 0.45] },
     uncoat: { w: [0.3, 0.45] },
     release: { w: [0.3, 0.45] },
-    camX: { w: [0.27, 0.48] },
-    camY: { w: [0.27, 0.48] },
-    camZ: { w: [0.27, 0.48] },
-    lookX: { w: [0.27, 0.48] },
-    lookY: { w: [0.27, 0.48] },
-    virusScale: { w: [0.27, 0.48] },
+    camX: { w: [0.27, 0.48], ease: 'smoother' },
+    camY: { w: [0.27, 0.48], ease: 'smoother' },
+    camZ: { w: [0.27, 0.48], ease: 'smoother' },
+    lookX: { w: [0.27, 0.48], ease: 'smoother' },
+    lookY: { w: [0.27, 0.48], ease: 'smoother' },
+    virusScale: { w: [0.27, 0.48], ease: 'smoother' },
     people: { w: [0.33, 0.5] },
     virusX: { k: [[0.27, 0.35], [0.48, CARRY_LEFT.x], [0.52, CARRY_LEFT.x], [0.72, CARRY_RIGHT.x]] },
     virusY: { k: [[0.27, 0], [0.48, CARRY_LEFT.y], [0.52, CARRY_LEFT.y], [0.62, CARRY_LEFT.y + 0.7], [0.72, CARRY_RIGHT.y]] },
@@ -123,24 +135,32 @@ export const BEATS: ReadonlyArray<ChapterBeats> = [
   {
     droplets: { w: [0, 0.1] },
     people: { w: [0.06, 0.18] },
-    camX: { w: [0.02, 0.18] },
-    camY: { w: [0.02, 0.18] },
-    camZ: { w: [0.02, 0.18] },
-    lookX: { w: [0.02, 0.18] },
-    lookY: { w: [0.02, 0.18] },
-    virusScale: { w: [0.02, 0.18] },
+    camX: { w: [0.02, 0.18], ease: 'smoother' },
+    camY: { w: [0.02, 0.18], ease: 'smoother' },
+    camZ: { w: [0.02, 0.18], ease: 'smoother' },
+    lookX: { w: [0.02, 0.18], ease: 'smoother' },
+    lookY: { w: [0.02, 0.18], ease: 'smoother' },
+    virusScale: { w: [0.02, 0.18], ease: 'smoother' },
     spin: { w: [0.1, 0.2] },
-    antibodies: { w: [0.22, 0.34] },
+    antibodies: { w: [0.22, 0.34], ease: 'smoother' },
     membrane: { w: [0.4, 0.46] },
-    block: { w: [0.44, 0.56] },
-    drift: { w: [0.62, 0.74] },
-    rebind: { w: [0.82, 0.92] },
+    block: { w: [0.44, 0.56], ease: 'smoother' },
+    drift: { w: [0.62, 0.74], ease: 'smoother' },
+    rebind: { w: [0.82, 0.92], ease: 'smoother' },
   },
 ];
 
-function ease(kind: Ease | undefined, t: number): number {
+/** Smootherstep de Perlin: 6x⁵ − 15x⁴ + 10x³ (C2; inclinação máxima 1,875). */
+export function smootherstep01(t: number): number {
   const x = clamp01(t);
-  return kind === 'linear' ? x : smoothstep(0, 1, x);
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
+export function ease(kind: Ease | undefined, t: number): number {
+  const x = clamp01(t);
+  if (kind === 'linear') return x;
+  if (kind === 'smoother') return smootherstep01(x);
+  return smoothstep(0, 1, x);
 }
 
 function poseBefore(i: number): Readonly<SceneState> {
@@ -216,6 +236,20 @@ export function progressFromSteps(refY: number, steps: readonly StepRect[], step
   return stepsPerChapter.length - 1e-6;
 }
 
+/** Campo de visão vertical da câmera do palco (graus). */
+export const CAMERA_FOV = 36;
+/** Raio aparente do vírion inteiro (envelope + NA, a mais alta) em unidades de cena. */
+export const VIRION_EXTENT = 1.36;
+
+/**
+ * Fração da ALTURA do quadro ocupada pelo vírion inteiro com a câmera a `distance` do centro (sem
+ * `viewShift`, que só desloca a janela). Usada para calibrar a pose de abertura.
+ */
+export function openingFill(distance: number, fovDeg: number = CAMERA_FOV): number {
+  if (!(distance > 0)) return 1;
+  return (2 * VIRION_EXTENT) / (2 * distance * Math.tan(((fovDeg / 2) * Math.PI) / 180));
+}
+
 /** Fator para afastar a câmera em telas estreitas (mantém o vírion inteiro no quadro). */
 export function fitDistance(aspect: number): number {
   if (!Number.isFinite(aspect) || aspect <= 0) return 1;
@@ -227,9 +261,14 @@ export interface Ambient {
   breath: number;
   /** oscilação lenta auxiliar (−1..1) */
   wobble: number;
-  /** piscar dos canais M2 durante `uncoat` (0..1) */
+  /** piscar dos canais M2 durante `uncoat` (0..1), a BLINK_HZ (≤ 1 Hz: contrato v4 §6) */
   blink: number;
 }
+
+/** Frequência do "pisca" dos canais M2 (Hz). O contrato v4 limita qualquer piscar a 1 Hz. */
+export const BLINK_HZ = 0.8;
+/** Frequência do realce pulsante de HA/NA no capítulo 1 (Hz; também ≤ 1 Hz). */
+export const PULSE_HZ = 0.75;
 
 /** Movimento ambiente, função pura do tempo (s); o `yaw` é integrado pelo driver a partir de `spin`. */
 export function ambient(t: number): Ambient {
@@ -237,12 +276,26 @@ export function ambient(t: number): Ambient {
   return {
     breath: Math.sin(tt * Math.PI * 2 * 0.25),
     wobble: Math.sin(tt * Math.PI * 2 * 0.17 + 1.3),
-    blink: 0.5 + 0.5 * Math.sin(tt * Math.PI * 2 * 1.6),
+    blink: 0.5 + 0.5 * Math.sin(tt * Math.PI * 2 * BLINK_HZ),
   };
 }
 
 /** Velocidade angular (rad/s) do giro ambiente quando `spin` = 1. */
 export const SPIN_RATE = 0.22;
+
+/**
+ * Deriva ambiente do vírion livre (função pura do tempo; o driver multiplica por `free` ∈ [0, 1], que zera no
+ * encaixe e em reduced-motion): leve precessão (inclinação em x/z) e flutuação vertical, em frequências
+ * incomensuráveis para o movimento não parecer um laço. Amplitudes pequenas: rad e unidades de cena.
+ */
+export function drift(t: number): { tiltX: number; tiltZ: number; floatY: number } {
+  const tt = Number.isFinite(t) ? t : 0;
+  return {
+    tiltX: 0.075 * Math.sin(tt * Math.PI * 2 * 0.071 + 0.4),
+    tiltZ: 0.05 * Math.sin(tt * Math.PI * 2 * 0.113 + 2.1),
+    floatY: 0.04 * Math.sin(tt * Math.PI * 2 * 0.089 + 1.2),
+  };
+}
 
 /** Núcleo sugerido da célula (quadro micro): destino das RNPs em `release`. */
 export const NUCLEUS = { x: 2.7, y: -0.35, z: -1.5 } as const;

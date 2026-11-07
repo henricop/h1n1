@@ -48,3 +48,14 @@ export function lastPublished(obs: SeriesObservation[]): SeriesObservation | nul
 export function allSuppressed(obs: SeriesObservation[]): boolean {
   return obs.length > 0 && obs.every((o) => o.suppressed);
 }
+
+/**
+ * Observação que o número gigante deve mostrar: a ÚLTIMA semana publicada, mesmo suprimida ("<5" estático).
+ * Só quando a última semana não tem valor nem supressão (não publicada) recua para a última com valor.
+ */
+export function headObservation(obs: SeriesObservation[]): SeriesObservation | null {
+  const head = obs[obs.length - 1];
+  if (!head) return null;
+  if (head.suppressed || head.value !== null) return head;
+  return lastPublished(obs);
+}

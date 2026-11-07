@@ -1,6 +1,6 @@
 'use client';
 /**
- * Hero do globo em /sala/ com carga preguiçosa do histórico (achado m):
+ * Bloco do globo em /sala/ com carga preguiçosa do histórico (achado m):
  * o servidor envia só a janela recente (últimas GLOBE_WINDOW_WEEKS semanas) no payload RSC; o eixo do scrubber
  * continua completo (2009-W01 → hoje). Quando o usuário leva o scrubber para antes da janela (replay de 2009,
  * reprodução desde o início), buscamos o dataset completo em /api/globe (proxy do /v1/globe da API) uma única vez.
@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { GlobeCountry, GlobeResult } from '@/lib/api';
 import { GLOBE_WINDOW_WEEKS } from '@/lib/timeline';
 import { GlobePanel } from './GlobePanel';
-import { HudCounters } from './HudCounters';
+import { DataCounters } from './DataCounters';
 import { useTimeline } from './TimelineContext';
 
 interface Props {
@@ -62,9 +62,9 @@ export function GlobeHero({ indicator, countries, offset, axisStart, max, dataAs
         <GlobePanel countries={win.countries} offset={win.offset} loadingHistory={loading} max={max} dataAsOf={dataAsOf} universeNote={universeNote} poster={poster} />
       </div>
       <div className="grid content-start gap-4 lg:col-span-5">
-        <HudCounters countries={win.countries} offset={win.offset} dataAsOf={dataAsOf} />
+        <DataCounters countries={win.countries} offset={win.offset} dataAsOf={dataAsOf} />
         {failed && needsHistory && (
-          <p role="status" className="rounded-2xl border border-attention-700/20 bg-attention-100 px-4 py-2 text-[13px] text-attention-700">
+          <p role="status" className="rounded-2xl border border-attention-700/30 bg-attention-100 px-4 py-3 text-[14px] text-attention-700">
             Histórico anterior a {t.weeks[win.offset]} indisponível no momento; o globo mostra só as últimas {GLOBE_WINDOW_WEEKS} semanas.
           </p>
         )}

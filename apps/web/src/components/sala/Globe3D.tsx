@@ -37,7 +37,7 @@ interface Point { iso3: string; name: string; lat: number; lng: number; value: n
 
 const nf = new Intl.NumberFormat('pt-BR');
 
-/** Globo WebGL (react-globe.gl) em fundo claro: esfera cinza-azulada fosca, hexágonos cobalto para o Brasil, pontos rosa ∝ √detecções. */
+/** Globo WebGL (react-globe.gl) sobre papel: esfera de papel fosca, hexágonos cobalto para o Brasil, pontos rosa ∝ √detecções. Malhas locais (public/geo). */
 export default function Globe3D({ countries, weekIndex, week, max, reducedMotion, playing, dataAsOf, onReady }: Props) {
   const ref = useRef<GlobeMethods | undefined>(undefined);
   const box = useRef<HTMLDivElement>(null);
@@ -72,8 +72,8 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
     return () => ro.disconnect();
   }, []);
 
-  // Esfera cinza-azulada clara e fosca (sem emissivo, sem brilho): "luz de estúdio" do DESIGN.md.
-  const material = useMemo(() => new MeshPhongMaterial({ color: '#dfe6f2', emissive: '#f5f7fb', emissiveIntensity: 0.35, shininess: 2 }), []);
+  // Esfera de papel quente, fosca (sem emissivo forte, sem brilho): "luz de estúdio" do DESIGN.md.
+  const material = useMemo(() => new MeshPhongMaterial({ color: '#e7e1d3', emissive: '#f4f1ea', emissiveIntensity: 0.35, shininess: 2 }), []);
 
   const points = useMemo<Point[]>(() => {
     const out: Point[] = [];
@@ -122,14 +122,14 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
         globeImageUrl={null}
         globeMaterial={material}
         showAtmosphere
-        atmosphereColor="#9db7ff"
+        atmosphereColor="#cfc4a9"
         atmosphereAltitude={0.12}
         hexPolygonsData={land}
         hexPolygonResolution={3}
         hexPolygonMargin={0.55}
         hexPolygonUseDots
         hexPolygonAltitude={0.004}
-        hexPolygonColor={(d: object) => ((d as Feature).id === '076' ? '#2451d6' : '#b9c6dc')}
+        hexPolygonColor={(d: object) => ((d as Feature).id === '076' ? '#2451d6' : '#a79f8b')}
         hexPolygonsTransitionDuration={0}
         pointsData={points}
         pointLat="lat"
@@ -141,7 +141,7 @@ export default function Globe3D({ countries, weekIndex, week, max, reducedMotion
         pointsTransitionDuration={reducedMotion ? 0 : 220}
         pointLabel={(d: object) => {
           const p = d as Point;
-          return `<div style="font-family:Inter,system-ui,sans-serif;font-size:13px;background:#ffffff;border:1px solid #e3e8f0;padding:8px 10px;border-radius:12px;color:#0b1220;box-shadow:0 8px 30px -12px rgba(11,18,32,.18)"><strong>${escapeHtml(p.name)}</strong><br/>${nf.format(p.value)} detecções A(H1N1)pdm09<br/><span style="color:#4a5568">${safeWeek} · FluNet · OMS · base de ${safeAsOf}</span></div>`;
+          return `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:14px;line-height:1.45;background:#fbfaf7;border:1px solid #dcd7cb;padding:10px 12px;border-radius:14px;color:#14130f;box-shadow:0 10px 40px -16px rgba(20,19,15,.22)"><strong>${escapeHtml(p.name)}</strong><br/>${nf.format(p.value)} detecções A(H1N1)pdm09<br/><span style="color:#4d4a42">${safeWeek} · FluNet · OMS · base de ${safeAsOf}</span></div>`;
         }}
         ringsData={rings}
         ringLat="lat"

@@ -218,7 +218,8 @@ export function Cell({ stateRef, ambientRef, quality }: { stateRef: StateRef; am
     const receptor = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.55, metalness: 0 });
     const budBody = new THREE.MeshPhysicalMaterial({ color: PART_COLORS.envelope, roughness: 0.5, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.5, sheen: 0.4, sheenColor: new THREE.Color('#ffffff') });
     const budSpike = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.48, metalness: 0.05 });
-    const ring = new THREE.MeshBasicMaterial({ color: PART_COLORS.h1n1, transparent: true, opacity: 0.45, depthWrite: false });
+    // anel de soltura iluminado e fosco (MeshBasic sobre o azul profundo leria como luz própria)
+    const ring = new THREE.MeshStandardMaterial({ color: PART_COLORS.h1n1, roughness: 0.55, metalness: 0, transparent: true, opacity: 0.55, depthWrite: false });
     return { wallM, vesicleM, lumenM, nucleusM, nucleolusM, receptor, budBody, budSpike, ring };
   }, []);
   useEffect(

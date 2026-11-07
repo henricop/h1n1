@@ -2,23 +2,29 @@
 /**
  * Rótulos das peças: os 6 cartões são DOM comum, montados pelo explainer sobre o palco (sem drei <Html>, que
  * perdia cartões com React 19 em modo estrito). Aqui, a cada quadro (prioridade -1, depois do driver), o ponto
- * 3D de cada peça é projetado para a tela, o centro do cartão é limitado ao retângulo útil do palco e o estilo
- * (transform/opacity/visibility) é escrito direto no elemento; uma linha-guia fina vai da peça ao cartão.
+ * 3D de cada peça é projetado para a tela, o centro do cartão é limitado ao retângulo útil do palco — e, em v4, à
+ * região livre de texto (`labelRegion`, frações do canvas) — e o estilo (transform/opacity/visibility) é escrito
+ * direto no elemento; uma linha-guia fina vai da peça ao cartão, na cor `line-strong` do tema vivo.
  * Opacidade amortecida por ref (expDamp) a partir de `stateRef.current.labels` (4 principais) ou de hover/seleção.
+ *
+ * A projeção usa `camera.projectionMatrix`/`unproject`, que já incluem o `setViewOffset` do driver: o cartão
+ * cai sobre a peça com qualquer `viewShift`.
  */
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
 import { expDamp } from '@/lib/virus/damping';
-import { LABEL_IDS, LABEL_POINTER_THRESHOLD, clampToStage, compactStage, labelPosition, labelTarget, spreadLabels } from '@/lib/virus/explainer';
+import { LABEL_CARD, LABEL_IDS, LABEL_PAD, LABEL_POINTER_THRESHOLD, clampToStage, compactStage, labelPosition, labelTarget, spreadLabels, type LabelRegion } from '@/lib/virus/explainer';
 import type { PartId } from '@/lib/virus/parts';
 import { partAnchor, type SpikeLayout } from '@/lib/virus/pose';
-import type { StateRef } from './shared';
+import { setSrgb, type LookRef, type StateRef } from './shared';
 
 export type LabelCards = MutableRefObject<Record<PartId, HTMLButtonElement | null>>;
+/** Região livre de texto lida por quadro (a frente B pode trocar o objeto a qualquer render). */
+export type LabelRegionRef = MutableRefObject<LabelRegion | null | undefined>;
 
-/** Token line-strong de globals.css (linha-guia). */
-const LINE_STRONG = '#c7d0de';
+/** Token line-strong do papel (#8a8475, ≥ 3:1 sobre papel e creme); no escuro a cor vem de `look.guideColor`. */
+const LINE_STRONG = '#8a8475';
 
 function makeLine(): THREE.Line {
   const geom = new THREE.BufferGeometry();
@@ -31,7 +37,23 @@ function makeLine(): THREE.Line {
   return line;
 }
 
-export function Labels({ stateRef, layout, hovered, selected, cards }: { stateRef: StateRef; layout: SpikeLayout; hovered: PartId | null; selected: PartId | null; cards: LabelCards }) {
+export function Labels({
+  stateRef,
+  lookRef,
+  layout,
+  hovered,
+  selected,
+  cards,
+  regionRef,
+}: {
+  stateRef: StateRef;
+  lookRef: LookRef;
+  layout: SpikeLayout;
+  hovered: PartId | null;
+  selected: PartId | null;
+  cards: LabelCards;
+  regionRef: LabelRegionRef;
+}) {
   const root = useRef<THREE.Group>(null);
   const lines = useMemo(() => {
     const out = {} as Record<PartId, THREE.Line>;
@@ -86,6 +108,8 @@ export function Labels({ stateRef, layout, hovered, selected, cards }: { stateRe
     const { hovered: h, selected: sel } = hot.current;
     visible.length = 0;
     const compact = compactStage(size.width, size.height);
+    const region = regionRef.current;
+    const look = lookRef.current;
     for (const id of LABEL_IDS) {
       const target = labelTarget(id, compact ? 0 : s.labels, h, sel);
       const op = expDamp(opacity.current[id], target, dt, 0.12);
@@ -98,14 +122,14 @@ export function Labels({ stateRef, layout, hovered, selected, cards }: { stateRe
       // peça → mundo → tela; centro do cartão limitado ao palco
       tmp.v.set(p.x, p.y, p.z).applyMatrix4(g.matrixWorld);
       tmp.n.copy(tmp.v).project(camera);
-      const c = clampToStage(((tmp.n.x + 1) / 2) * size.width, ((1 - tmp.n.y) / 2) * size.height, size.width, size.height);
+      const c = clampToStage(((tmp.n.x + 1) / 2) * size.width, ((1 - tmp.n.y) / 2) * size.height, size.width, size.height, LABEL_CARD, LABEL_PAD, region);
       sc.x = c.x;
       sc.y = c.y;
       sc.z = tmp.n.z;
       visible.push(sc);
     }
     // cartões empurrados para a mesma borda não podem se cobrir
-    spreadLabels(visible, size.width, size.height);
+    spreadLabels(visible, size.width, size.height, LABEL_CARD, LABEL_PAD, 6, region);
     for (const id of LABEL_IDS) {
       const op = opacity.current[id];
       const line = lines[id];
@@ -135,7 +159,9 @@ export function Labels({ stateRef, layout, hovered, selected, cards }: { stateRe
       pos.setXYZ(1, tmp.n.x, tmp.n.y, tmp.n.z);
       pos.needsUpdate = true;
       line.visible = true;
-      (line.material as THREE.LineBasicMaterial).opacity = op * 0.9;
+      const lm = line.material as THREE.LineBasicMaterial;
+      lm.opacity = op * look.guideOpacity;
+      setSrgb(lm.color, look.guideColor);
     }
   }, -1);
 

@@ -64,15 +64,22 @@ describe('parede de membrana', () => {
   it('é contínua ao longo da rolagem (sem saltos) e esmaece no retorno do brotamento', () => {
     const h = 0.0001;
     let prev = wallNearX(sceneAt(0));
+    let worst = 0;
+    let at = 0;
     for (let p = h; p < 5; p += h) {
       const x = wallNearX(sceneAt(p));
-      expect(Math.abs(x - prev)).toBeLessThan(0.025);
+      const d = Math.abs(x - prev);
+      if (!(d <= worst)) {
+        worst = d;
+        at = p;
+      }
       prev = x;
     }
+    expect(worst, `maior salto da parede perto de p = ${at.toFixed(4)}`).toBeLessThan(0.025);
     expect(wallFade(0)).toBe(1);
     expect(wallFade(1)).toBeCloseTo(1, 9);
     expect(Math.min(...[0.05, 0.1, 0.15, 0.2].map(wallFade))).toBeCloseTo(1, 9);
-  });
+  }, 30000);
 });
 
 describe('receptores', () => {
@@ -127,6 +134,7 @@ describe('receptores', () => {
   it('nunca aparecem dentro do vírion ao longo da rolagem', () => {
     const out = emptyPlacement();
     const dirs = receptorDirs(44);
+    let closest = Infinity;
     for (let p = 2; p < 5; p += 0.002) {
       const s = sceneAt(p);
       if (s.membrane <= 0.01) continue;
@@ -134,10 +142,14 @@ describe('receptores', () => {
       const pres = vesiclePresence(s);
       for (const d of dirs) {
         placeReceptor(d, cx, pres, out);
-        if (out.vis > 0) expect(Math.hypot(out.x, out.y, out.z)).toBeGreaterThan(1.05);
+        if (out.vis > 0) {
+          const r = Math.hypot(out.x, out.y, out.z);
+          if (r < closest) closest = r;
+        }
       }
     }
-  });
+    expect(closest).toBeGreaterThan(1.05);
+  }, 30000);
 });
 
 describe('brotos', () => {

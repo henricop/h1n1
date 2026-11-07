@@ -1,0 +1,15 @@
+BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International
+
+Source: BodyParts3D release 4.0, FJ2810.obj / BP10155 / FMA7163 (skin), from the official PART-OF polygon archive:
+https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/partof_BP3D_4.0_obj_99.zip
+
+Current official database license, updated 2025-02-27:
+https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html
+https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/README_e.html
+The older 2013 OBJ header refers to the former CC BY-SA 2.1 Japan license. The current official database license explicitly specifies CC BY 4.0, including redistribution and adaptation of part or all of the database.
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+Summary: https://creativecommons.org/licenses/by/4.0/
+Legal code: https://creativecommons.org/licenses/by/4.0/legalcode.en
+
+Adaptation: welded positions, error-bounded simplification, new smooth normals and a millimetre-to-atlas coordinate transform. Natural anatomical stance retained; 24-ray small-radius geometric ambient occlusion baked into vertex colors. No original textures/materials distributed. See ATTRIBUTION.md. No endorsement by DBCLS is implied.

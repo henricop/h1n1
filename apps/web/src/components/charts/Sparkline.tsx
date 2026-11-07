@@ -1,11 +1,15 @@
 import type { SeriesObservation } from '@/lib/api';
+import { CHART_COLORS, SERIES_COLORS } from '@/lib/echarts-theme';
 import { formatPeriod } from '@/lib/format';
 import { publishedValue } from '@/lib/series';
 
-/** Sparkline SVG simples; pontos provisórios em tracejado; células suprimidas ou sem valor deixam lacuna. */
+/**
+ * Sparkline SVG simples: semanas consolidadas em linha cheia (cobalto), provisórias tracejadas (âmbar escuro);
+ * células suprimidas ou sem valor deixam lacuna.
+ */
 export function Sparkline({ obs, label, width = 240, height = 56 }: { obs: SeriesObservation[]; label: string; width?: number; height?: number }) {
   const values = obs.map(publishedValue).filter((v): v is number => v !== null);
-  if (values.length < 2) return <p className="text-sm text-muted">Série insuficiente para desenhar tendência.</p>;
+  if (values.length < 2) return <p className="text-[14px] text-muted">Série insuficiente para desenhar tendência.</p>;
   const max = Math.max(...values);
   const min = Math.min(0, ...values);
   const pad = 4;
@@ -44,12 +48,13 @@ export function Sparkline({ obs, label, width = 240, height = 56 }: { obs: Serie
       aria-label={`${label}: tendência de ${formatPeriod(first.period)} a ${formatPeriod(last.period)}; valores na tabela abaixo`}
       className="max-w-[320px]"
     >
+      <line x1={pad} x2={width - pad} y1={height - pad} y2={height - pad} stroke={CHART_COLORS.line} strokeWidth={1} />
       {segments.map((s, i) => (
         <polyline
           key={i}
           points={s.d}
           fill="none"
-          stroke="var(--color-primary-600)"
+          stroke={s.provisional ? SERIES_COLORS.provisional : SERIES_COLORS.final}
           strokeWidth={2}
           strokeLinejoin="round"
           strokeLinecap="round"

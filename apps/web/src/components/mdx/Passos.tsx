@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
+import styles from './editorial.module.css';
+import { markVirus } from './mark';
 
-/** Lista numerada de passos com destaque; filhos devem ser <li> ou um <ol>. */
+/** Lista numerada de passos: numerais em condensada grande, filetes entre itens. Filhos: um <ol> (markdown). */
 export function Passos({ titulo, children }: { titulo?: string; children: ReactNode }) {
   return (
-    <section className="card my-6 p-5">
-      {titulo && <h3 className="mb-2 font-display text-lg font-bold text-ink">{titulo}</h3>}
-      <div className="[&>ol]:list-decimal [&>ol]:pl-6 [&>ol>li]:my-2 [&>ol>li]:pl-1 [&>ol>li::marker]:font-semibold [&>ol>li::marker]:text-primary-600">{children}</div>
-    </section>
+    <div className={styles.passos} role="group" aria-label={titulo ?? 'Passos'}>
+      {titulo && <h3 className={`${styles.serif} mb-4! mt-0! font-display text-[1.75rem] leading-[1.1] tracking-[-0.01em] text-ink md:text-3xl`}>{markVirus(titulo)}</h3>}
+      {children}
+    </div>
   );
 }

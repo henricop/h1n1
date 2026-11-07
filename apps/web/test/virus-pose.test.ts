@@ -12,8 +12,11 @@ import {
   RNP_COUNT,
   RNP_STAGGER,
   SPIKE_COUNTS,
+  SPIKE_JITTER,
+  SPIKE_LIFT,
   SPIKE_MIN_SEP,
   SPIKE_SINK,
+  SPIKE_WAVE,
   driftMask,
   envelopeRadius,
   hemisphere,
@@ -25,7 +28,9 @@ import {
   rnpRestCenter,
   spikeBase,
   spikeBaseInto,
+  spikeJitter,
   spikeLayout,
+  spikeLift,
   spikeTop,
   type Quality,
   type SpikeKind,
@@ -194,6 +199,56 @@ describe('spikeBase / spikeTop: ninguém abaixo do envelope; acompanham o hemisf
     expect(length(spikeBase('na', d, { openSpikes: 0.1, openEnv: 0 }))).toBeCloseTo(length(spikeBase('na', d, REST)), 9);
     expect(length(spikeBase('ha', d, { openSpikes: 0.1, openEnv: 0 }))).toBeGreaterThan(length(spikeBase('ha', d, REST)));
     expect(length(spikeBase('na', d, { openSpikes: 1, openEnv: 0 }))).toBeGreaterThan(length(spikeBase('ha', d, { openSpikes: 1, openEnv: 0 })));
+  });
+});
+
+describe('v4 · onda de abertura e micro-variação dos espinhos', () => {
+  it('a abertura corre em onda de cima para baixo, monótona, e todos chegam à elevação total em openSpikes = 1', () => {
+    const top = { x: 0, y: 1, z: 0 };
+    const bottom = { x: 0, y: -1, z: 0 };
+    for (const kind of KINDS) {
+      const full = spikeLift(kind, 1);
+      expect(spikeLift(kind, 1, top)).toBeCloseTo(full, 9);
+      expect(spikeLift(kind, 1, bottom)).toBeCloseTo(full, 9);
+      expect(spikeLift(kind, 0, bottom)).toBe(0);
+      // o de cima sai antes (ou junto) do de baixo em qualquer instante
+      let pt = 0;
+      let pb = 0;
+      for (let o = 0; o <= 1.0001; o += 0.02) {
+        const t = spikeLift(kind, o, top);
+        const b = spikeLift(kind, o, bottom);
+        expect(t).toBeGreaterThanOrEqual(b - 1e-12);
+        expect(t).toBeGreaterThanOrEqual(pt - 1e-12);
+        expect(b).toBeGreaterThanOrEqual(pb - 1e-12);
+        pt = t;
+        pb = b;
+      }
+    }
+    // atraso real no polo de baixo: com pouca abertura ainda não saiu
+    expect(spikeLift('ha', SPIKE_WAVE * 0.9, bottom)).toBe(0);
+    expect(spikeLift('ha', SPIKE_WAVE * 0.9, top)).toBeGreaterThan(0);
+    expect(spikeLift('ha', 1, top)).toBeCloseTo(SPIKE_LIFT, 9);
+  });
+
+  it('spikeJitter é determinística e limitada (inclinação ≤ 4°, altura/largura/tom pequenos)', () => {
+    const a = spikeJitter(140, 31);
+    const b = spikeJitter(140, 31);
+    expect(Array.from(a.tilt)).toEqual(Array.from(b.tilt));
+    expect(Array.from(a.height)).toEqual(Array.from(b.height));
+    for (let i = 0; i < 140; i++) {
+      expect(a.tilt[i]!).toBeGreaterThanOrEqual(0);
+      expect(a.tilt[i]!).toBeLessThanOrEqual(SPIKE_JITTER.tilt + 1e-7);
+      expect(Math.abs(a.height[i]! - 1)).toBeLessThanOrEqual(SPIKE_JITTER.height + 1e-6);
+      expect(Math.abs(a.width[i]! - 1)).toBeLessThanOrEqual(SPIKE_JITTER.width + 1e-6);
+      expect(Math.abs(a.tone[i]!)).toBeLessThanOrEqual(SPIKE_JITTER.tone + 1e-6);
+    }
+    // não é uniforme (há variação de fato)
+    const hs = Array.from(a.height);
+    expect(Math.max(...hs) - Math.min(...hs)).toBeGreaterThan(SPIKE_JITTER.height);
+    expect(SPIKE_JITTER.tilt).toBeLessThanOrEqual((4.1 * Math.PI) / 180);
+    // a cabeça inclinada desloca-se menos que a folga lateral do "V" do anticorpo (±0,1)
+    expect(Math.sin(SPIKE_JITTER.tilt) * HA_HEIGHT * (1 + SPIKE_JITTER.height)).toBeLessThan(0.05);
+    expect(spikeJitter(0, 1).tilt).toHaveLength(0);
   });
 });
 

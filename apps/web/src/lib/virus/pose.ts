@@ -189,16 +189,32 @@ export function hemisphere(dir: Vec3): 1 | -1 {
   return dir.y >= 0 ? 1 : -1;
 }
 
-/** Elevação radial de cada família ao abrir (HA primeiro; NA e M2 com atraso, NA vai mais longe). */
-export function spikeLift(kind: SpikeKind, openSpikes: number): number {
-  if (kind === 'na') return clamp01((openSpikes - 0.2) / 0.8) * SPIKE_LIFT * 1.15;
-  if (kind === 'm2') return clamp01((openSpikes - 0.1) / 0.9) * SPIKE_LIFT * 0.8;
-  return clamp01(openSpikes / 0.85) * SPIKE_LIFT;
+/**
+ * Atraso máximo da "onda" de abertura dos espinhos, do polo de cima (sem atraso) ao de baixo: cada espinho
+ * se solta um pouco depois do vizinho de cima, como uma flor abrindo, em vez de todos de uma vez.
+ */
+export const SPIKE_WAVE = 0.15;
+
+function smooth01(x: number): number {
+  const t = clamp01(x);
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Elevação radial de cada família ao abrir (HA primeiro; NA e M2 com atraso, NA vai mais longe). Com `dir`, cada
+ * espinho tem o seu atraso (onda de cima para baixo, até SPIKE_WAVE) e acelera/assenta suave; todos chegam à
+ * elevação total em openSpikes = 1 e a função é monótona em `openSpikes`.
+ */
+export function spikeLift(kind: SpikeKind, openSpikes: number, dir?: Vec3): number {
+  const delay = dir ? SPIKE_WAVE * clamp01((1 - dir.y) / 2) : 0;
+  if (kind === 'na') return smooth01((openSpikes - 0.2 - delay) / (0.8 - SPIKE_WAVE)) * SPIKE_LIFT * 1.15;
+  if (kind === 'm2') return smooth01((openSpikes - 0.1 - delay) / (0.9 - SPIKE_WAVE)) * SPIKE_LIFT * 0.8;
+  return smooth01((openSpikes - delay) / (1 - SPIKE_WAVE)) * SPIKE_LIFT;
 }
 
 /** Versão sem alocação de `spikeBase` (escreve em `out`). */
 export function spikeBaseInto(kind: SpikeKind, dir: Vec3, s: Pick<SceneState, 'openSpikes' | 'openEnv'>, out: Vec3): Vec3 {
-  const r = envelopeRadius(dir) - SPIKE_SINK + spikeLift(kind, s.openSpikes);
+  const r = envelopeRadius(dir) - SPIKE_SINK + spikeLift(kind, s.openSpikes, dir);
   const lift = hemisphere(dir) * s.openEnv * HALF_SHIFT;
   out.x = dir.x * r;
   out.y = dir.y * r + lift;
@@ -220,6 +236,59 @@ export function spikeTop(kind: SpikeKind, dir: Vec3, s: Pick<SceneState, 'openSp
   const b = spikeBase(kind, dir, s);
   const h = spikeHeight(kind);
   return { x: b.x + dir.x * h, y: b.y + dir.y * h, z: b.z + dir.z * h };
+}
+
+/** Micro-variação por instância (proteínas reais não são clones): limites usados pelos testes. */
+export const SPIKE_JITTER = {
+  /** inclinação máxima do eixo do espinho em relação à normal (rad, ≈ 4°) */
+  tilt: 0.07,
+  /** altura relativa: 1 ± height */
+  height: 0.07,
+  /** largura relativa: 1 ± width */
+  width: 0.04,
+  /** variação de claridade do albedo: ± tone */
+  tone: 0.05,
+} as const;
+
+export interface SpikeJitter {
+  /** giro em torno do próprio eixo (rad) */
+  roll: Float32Array;
+  /** inclinação (rad) e azimute dessa inclinação (rad) */
+  tilt: Float32Array;
+  tiltDir: Float32Array;
+  height: Float32Array;
+  width: Float32Array;
+  /** deslocamento de claridade do albedo (−tone..tone) */
+  tone: Float32Array;
+}
+
+/**
+ * Micro-variação determinística de `count` espinhos: giro próprio, leve inclinação, altura e largura ±, tom do
+ * albedo ±. A posição da BASE continua sendo `spikeBase` (nenhum espinho flutua ou afunda); a cabeça só se
+ * desloca alguns centésimos — dentro do "V" dos anticorpos e da folga dos rótulos.
+ */
+export function spikeJitter(count: number, seed: number): SpikeJitter {
+  const n = Math.max(0, Math.floor(count));
+  const rnd = seededRandom(seed);
+  const out: SpikeJitter = {
+    roll: new Float32Array(n),
+    tilt: new Float32Array(n),
+    tiltDir: new Float32Array(n),
+    height: new Float32Array(n),
+    width: new Float32Array(n),
+    tone: new Float32Array(n),
+  };
+  for (let i = 0; i < n; i++) {
+    out.roll[i] = rnd() * Math.PI * 2;
+    // distribuição concentrada perto de 0 (a maioria quase reta, poucos mais tortos)
+    const u = rnd();
+    out.tilt[i] = SPIKE_JITTER.tilt * u * u;
+    out.tiltDir[i] = rnd() * Math.PI * 2;
+    out.height[i] = 1 + (rnd() * 2 - 1) * SPIKE_JITTER.height;
+    out.width[i] = 1 + (rnd() * 2 - 1) * SPIKE_JITTER.width;
+    out.tone[i] = (rnd() * 2 - 1) * SPIKE_JITTER.tone;
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------------------------------------

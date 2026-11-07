@@ -33,8 +33,10 @@ export const PART_COLORS = {
   cell: '#eef3ff',
   cellEdge: '#dbe5ff',
   droplet: '#9db5f5',
-  person: '#c7d0de',
-  ink: '#0b1220',
+  /** silhuetas: cinza quente entre `line` (#dcd7cb) e `line-strong` do papel v3 */
+  person: '#c6c1b6',
+  /** tinta v3 (#14130f) */
+  ink: '#14130f',
 } as const;
 
 export const VIRUS_PARTS: readonly VirusPart[] = [

@@ -1,15 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import { AlertSigns } from '@/components/AlertSigns';
+import { FRAME, FRAME_TOP, KICKER } from '@/components/mdx/frame';
 
 export default function RouteError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <section className="mx-auto max-w-2xl py-20 md:py-28">
-      <p className="kicker">Erro</p>
-      <h1 className="mt-1 font-display text-4xl font-extrabold tracking-[-0.02em] text-ink md:text-5xl">Algo deu errado</h1>
-      <p className="mt-4 text-muted">Não foi possível montar esta página agora. Nenhum dado antigo é exibido como atual.</p>
-      {error.digest && <p className="mt-2 font-mono text-xs text-faint">Referência: {error.digest}</p>}
-      <div className="mt-8 flex flex-wrap gap-3">
+    <section className={`${FRAME} ${FRAME_TOP} pb-24 md:pb-32`}>
+      <p className={`${KICKER} mt-8 md:mt-12`}>
+        <span aria-hidden="true">[ </span>erro<span aria-hidden="true"> ]</span>
+      </p>
+      <h1 className="display-xl mt-6 text-balance">Algo deu errado.</h1>
+      <p className="lead mt-10 max-w-2xl md:mt-14">Não foi possível montar esta página agora. Nenhum dado antigo é exibido como atual.</p>
+      {error.digest && <p className="mt-6 font-mono text-[14px] text-muted">Referência: {error.digest}</p>}
+      <div className="mt-12 flex flex-wrap gap-3">
         <button type="button" onClick={reset} className="btn btn-primary">
           Tentar novamente
         </button>
@@ -17,6 +21,9 @@ export default function RouteError({ error, reset }: { error: Error & { digest?:
           Voltar ao início
         </Link>
       </div>
+      <p className="mt-12 max-w-2xl border-l-2 border-ink pl-4 text-[15px] leading-snug text-ink md:text-base">
+        <AlertSigns />
+      </p>
     </section>
   );
 }

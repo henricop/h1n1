@@ -54,6 +54,19 @@ describe('frameloop: política por visibilidade, reduced-motion e qualidade', ()
     }
     expect(rendered).toBe(6);
   });
+  it('DPR do palco segue a qualidade atual (≤ 1,5 high, ≤ 1,25 low) e o fator de desempenho', async () => {
+    const { stageDpr, MAX_DPR } = await import('@/lib/virus/explainer');
+    expect(MAX_DPR.high).toBe(1.5);
+    expect(MAX_DPR.low).toBe(1.25);
+    expect(stageDpr(2, 'high')).toBe(1.5);
+    expect(stageDpr(2, 'low')).toBe(1.25);
+    expect(stageDpr(3, 'low', 0.6)).toBeCloseTo(0.75, 9);
+    expect(stageDpr(1, 'high')).toBe(1);
+    expect(stageDpr(0.5, 'high')).toBe(1);
+    expect(stageDpr(Number.NaN, 'low')).toBe(1);
+    expect(stageDpr(2, 'high', Number.NaN)).toBe(1.5);
+    expect(stageDpr(2, 'high', 5)).toBe(1.5);
+  });
   it('escala de transmissão: 0,5 em high e 0,35 em low', () => {
     expect(transmissionScale('high')).toBe(0.5);
     expect(transmissionScale('low')).toBe(0.35);
@@ -190,5 +203,158 @@ describe('rótulos DOM: limite dentro do palco', () => {
     const { compactStage } = await import('@/lib/virus/explainer');
     expect(compactStage(466, 341)).toBe(true);
     expect(compactStage(625, 689)).toBe(false);
+  });
+});
+
+describe('v4 · palco: fundo, enquadramento, região dos rótulos e ponteiro', () => {
+  it('fundo inicial do canvas = papel v3 (#f4f1ea), igual ao THEME_BG.paper do shell', async () => {
+    const { CANVAS_BACKGROUND } = await import('@/lib/virus/explainer');
+    const { THEME_BG, hexToRgb } = await import('@/lib/motion/theme');
+    expect(CANVAS_BACKGROUND).toBe('#f4f1ea');
+    expect(hexToRgb(CANVAS_BACKGROUND)).toEqual(THEME_BG.paper);
+  });
+
+  it('viewOffsetFor: px de setViewOffset com o sinal certo (+x conteúdo à direita, +y para cima) e null sem deslocamento', async () => {
+    const { viewOffsetFor, VIEW_SHIFT_MAX } = await import('@/lib/virus/explainer');
+    expect(viewOffsetFor({ x: 0.18, y: 0 }, 1440, 900)).toEqual({ x: -259, y: 0 });
+    expect(viewOffsetFor({ x: 0, y: 0.25 }, 390, 844)).toEqual({ x: 0, y: 211 });
+    expect(viewOffsetFor({ x: -0.1, y: -0.1 }, 1000, 500)).toEqual({ x: 100, y: -50 });
+    expect(viewOffsetFor({ x: 0, y: 0 }, 1440, 900)).toBeNull();
+    expect(viewOffsetFor({ x: 0.0001, y: 0 }, 1440, 900)).toBeNull(); // arredonda a 0 px
+    expect(viewOffsetFor(undefined, 1440, 900)).toBeNull();
+    expect(viewOffsetFor({ x: 0.2, y: 0 }, 0, 900)).toBeNull();
+    expect(viewOffsetFor({ x: Number.NaN, y: Infinity }, 1000, 1000)).toBeNull();
+    expect(viewOffsetFor({ x: 3, y: -3 }, 1000, 1000)).toEqual({ x: Math.round(-VIEW_SHIFT_MAX * 1000), y: Math.round(-VIEW_SHIFT_MAX * 1000) });
+    // sem −0
+    expect(Object.is(viewOffsetFor({ x: 0, y: 0.1 }, 100, 100)!.x, 0)).toBe(true);
+  });
+
+  it('viewOffsetFor é coerente com a projeção real do three (o centro do quadro anda shift·tamanho; unproject volta ao ponto)', async () => {
+    const { viewOffsetFor } = await import('@/lib/virus/explainer');
+    const THREE = await import('three');
+    for (const [sx, sy, w, h] of [
+      [0.18, 0, 1440, 900],
+      [0, 0.25, 390, 844],
+      [-0.07, 0.12, 1280, 720],
+    ] as const) {
+      const cam = new THREE.PerspectiveCamera(36, w / h, 0.1, 60);
+      cam.position.set(0, 0.15, 6.9);
+      cam.lookAt(0, 0, 0);
+      cam.updateMatrixWorld();
+      const off = viewOffsetFor({ x: sx, y: sy }, w, h)!;
+      cam.setViewOffset(w, h, off.x, off.y, w, h);
+      const p = new THREE.Vector3(0, 0, 0).project(cam);
+      const screenX = ((p.x + 1) / 2) * w;
+      const screenY = ((1 - p.y) / 2) * h;
+      // o alvo do lookAt (centro do vírion) cai em (0,5 + sx; 0,5 − sy) da viewport
+      expect(screenX / w).toBeCloseTo(0.5 + sx, 2);
+      expect(screenY / h).toBeCloseTo(0.5 - sy, 2);
+      // picking/rótulos: unproject do ponto de tela devolve o raio que passa pelo alvo
+      const back = new THREE.Vector3(p.x, p.y, p.z).unproject(cam);
+      expect(back.distanceTo(new THREE.Vector3(0, 0, 0))).toBeLessThan(1e-6);
+    }
+  });
+
+  it('labelBounds/clampToStage: com `labelRegion`, o cartão inteiro fica na região livre de texto (e nas margens do palco)', async () => {
+    const { clampToStage, labelBounds, LABEL_CARD, LABEL_PAD } = await import('@/lib/virus/explainer');
+    const W = 1440;
+    const H = 900;
+    const region = { left: 0.44, top: 0.08, right: 0.98, bottom: 0.88 };
+    const b = labelBounds(W, H, region);
+    expect(b.minX).toBeCloseTo(0.44 * W + LABEL_CARD.w / 2);
+    expect(b.maxX).toBeCloseTo(Math.min(0.98 * W, W - LABEL_PAD.side) - LABEL_CARD.w / 2);
+    expect(b.minY).toBeCloseTo(Math.max(0.08 * H, LABEL_PAD.top) + LABEL_CARD.h / 2);
+    expect(b.maxY).toBeCloseTo(Math.min(0.88 * H, H - LABEL_PAD.bottom) - LABEL_CARD.h / 2);
+    // peça à esquerda (sob o texto) → cartão empurrado para a borda esquerda da região
+    const left = clampToStage(100, 450, W, H, LABEL_CARD, LABEL_PAD, region);
+    expect(left.x - LABEL_CARD.w / 2).toBeGreaterThanOrEqual(0.44 * W - 1e-9);
+    for (const [x, y] of [
+      [-100, -100],
+      [5000, 5000],
+      [700, 450],
+      [Number.NaN, Number.NaN],
+    ]) {
+      const c = clampToStage(x!, y!, W, H, LABEL_CARD, LABEL_PAD, region);
+      expect(c.x - LABEL_CARD.w / 2).toBeGreaterThanOrEqual(0.44 * W - 1e-9);
+      expect(c.x + LABEL_CARD.w / 2).toBeLessThanOrEqual(0.98 * W + 1e-9);
+      expect(c.y - LABEL_CARD.h / 2).toBeGreaterThanOrEqual(0.08 * H - 1e-9);
+      expect(c.y + LABEL_CARD.h / 2).toBeLessThanOrEqual(0.88 * H + 1e-9);
+    }
+    // sem região = comportamento antigo (palco inteiro com LABEL_PAD)
+    expect(labelBounds(W, H)).toEqual(labelBounds(W, H, null));
+    expect(clampToStage(-50, -50, 800, 600)).toEqual(clampToStage(-50, -50, 800, 600, LABEL_CARD, LABEL_PAD, undefined));
+    // região inválida (vazia/invertida) cai no palco inteiro; região menor que um cartão colapsa no centro dela
+    expect(labelBounds(W, H, { left: 0.8, top: 0.5, right: 0.2, bottom: 0.1 })).toEqual(labelBounds(W, H));
+    const tiny = labelBounds(W, H, { left: 0.5, top: 0.5, right: 0.55, bottom: 0.52 });
+    expect(tiny.minX).toBe(tiny.maxX);
+    expect(tiny.minX).toBeCloseTo(0.525 * W);
+    expect(tiny.minY).toBe(tiny.maxY);
+  });
+
+  it('spreadLabels respeita a região (os cartões separados continuam dentro dela)', async () => {
+    const { spreadLabels, LABEL_CARD, LABEL_PAD } = await import('@/lib/virus/explainer');
+    const W = 1440;
+    const H = 900;
+    const region = { left: 0.44, top: 0.08, right: 0.98, bottom: 0.88 };
+    const pts = [
+      { x: 0.44 * W + 92, y: 300 },
+      { x: 0.44 * W + 95, y: 305 },
+      { x: 0.44 * W + 98, y: 310 },
+      { x: 0.44 * W + 92, y: 312 },
+    ];
+    spreadLabels(pts, W, H, LABEL_CARD, LABEL_PAD, 6, region);
+    for (const p of pts) {
+      expect(p.x - LABEL_CARD.w / 2).toBeGreaterThanOrEqual(0.44 * W - 1e-9);
+      expect(p.x + LABEL_CARD.w / 2).toBeLessThanOrEqual(0.98 * W + 1e-9);
+      expect(p.y - LABEL_CARD.h / 2).toBeGreaterThanOrEqual(0.08 * H - 1e-9);
+      expect(p.y + LABEL_CARD.h / 2).toBeLessThanOrEqual(0.88 * H + 1e-9);
+    }
+    for (let i = 0; i < pts.length; i++)
+      for (let j = i + 1; j < pts.length; j++) {
+        const overlap = Math.abs(pts[i]!.x - pts[j]!.x) < LABEL_CARD.w && Math.abs(pts[i]!.y - pts[j]!.y) < LABEL_CARD.h;
+        expect(overlap, `${i} × ${j}`).toBe(false);
+      }
+  });
+
+  it('isDomControl: botões, links, diálogos e `data-canvas-ignore` bloqueiam a cena; o próprio canvas e texto comum não', async () => {
+    const { isDomControl, DOM_CONTROL_SELECTOR } = await import('@/lib/virus/explainer');
+    // elemento falso: `closest` procura por tag/atributo numa cadeia de ancestrais
+    type Fake = { tagName: string; attrs?: Record<string, string>; parent?: Fake | null; closest?: (sel: string) => Fake | null };
+    const matches = (el: Fake, sel: string) =>
+      sel.split(',').some((raw) => {
+        const s = raw.trim();
+        const attr = /^\[([a-z-]+)(?:="([^"]*)")?\]$/.exec(s);
+        if (attr) return attr[2] === undefined ? attr[1]! in (el.attrs ?? {}) : el.attrs?.[attr[1]!] === attr[2];
+        return el.tagName.toLowerCase() === s;
+      });
+    const make = (tagName: string, attrs?: Record<string, string>, parent: Fake | null = null): Fake => {
+      const el: Fake = { tagName, attrs, parent };
+      el.closest = (sel: string) => {
+        for (let n: Fake | null | undefined = el; n; n = n.parent) if (matches(n, sel)) return n;
+        return null;
+      };
+      return el;
+    };
+    const film = make('DIV');
+    const button = make('BUTTON', {}, film);
+    const span = make('SPAN', {}, button);
+    const p = make('P', {}, film);
+    const link = make('A', { href: '/x' }, film);
+    const panel = make('ASIDE', { 'data-canvas-ignore': '' }, film);
+    const inPanel = make('P', {}, panel);
+    const roleBtn = make('DIV', { role: 'button' }, film);
+    const canvas = make('CANVAS', {}, film);
+    expect(isDomControl(span)).toBe(true);
+    expect(isDomControl(button)).toBe(true);
+    expect(isDomControl(link)).toBe(true);
+    expect(isDomControl(inPanel)).toBe(true);
+    expect(isDomControl(roleBtn)).toBe(true);
+    expect(isDomControl(p)).toBe(false);
+    expect(isDomControl(film)).toBe(false);
+    expect(isDomControl(canvas)).toBe(false);
+    expect(isDomControl(null)).toBe(false);
+    expect(isDomControl({})).toBe(false);
+    expect(isDomControl({ closest: () => { throw new Error('x'); } })).toBe(false);
+    expect(DOM_CONTROL_SELECTOR).toContain('[data-canvas-ignore]');
   });
 });

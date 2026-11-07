@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadFacts } from '@/lib/content';
 import { CHAPTERS, progressFromLayout } from '@/lib/virus/chapters';
-import { BEATS, CARRY_LEFT, CARRY_RIGHT, CHAPTER_COUNT, POSES, START, STEPS_PER_CHAPTER, ambient, chapterFromProgress, fitDistance, progressFromSteps, sceneAt, settledProgress } from '@/lib/virus/choreography';
+import { BEATS, BLINK_HZ, CARRY_LEFT, CARRY_RIGHT, CHAPTER_COUNT, POSES, PULSE_HZ, START, STEPS_PER_CHAPTER, ambient, chapterFromProgress, drift, ease, fitDistance, openingFill, progressFromSteps, sceneAt, settledProgress, smootherstep01 } from '@/lib/virus/choreography';
 import { dampTo, expDamp } from '@/lib/virus/damping';
 import { BOUNDS, REST, SCENE_KEYS, UNIT_KEYS } from '@/lib/virus/scenestate';
 import { CHAPTER_COPY, HOME_FACT_IDS, allFreeText, copyForChapter } from '@/lib/virus/copy';
@@ -98,27 +98,27 @@ describe('coreografia: rolagem → estado da cena (função pura)', () => {
   });
 
   it('limites por chave e continuidade (Lipschitz) ao longo de toda a rolagem', () => {
+    // violações acumuladas e conferidas uma vez (milhares de `expect` por passo ficam lentos em máquina carregada)
     const dp = 0.002;
+    const problems: string[] = [];
     let prev = sceneAt(0);
     for (let p = dp; p <= CHAPTER_COUNT + 0.01; p += dp) {
       const s = sceneAt(p);
       for (const k of SCENE_KEYS) {
         const [lo, hi] = BOUNDS[k];
-        expect(s[k], `${k} em ${p.toFixed(3)} fora de [${lo}, ${hi}]`).toBeGreaterThanOrEqual(lo - 1e-9);
-        expect(s[k], `${k} em ${p.toFixed(3)}`).toBeLessThanOrEqual(hi + 1e-9);
-        if (UNIT_KEYS.includes(k)) {
-          expect(s[k]).toBeGreaterThanOrEqual(-1e-9);
-          expect(s[k]).toBeLessThanOrEqual(1 + 1e-9);
-        }
+        const v = s[k];
+        if (!(v >= lo - 1e-9 && v <= hi + 1e-9)) problems.push(`${k} em ${p.toFixed(3)} = ${v} fora de [${lo}, ${hi}]`);
+        if (UNIT_KEYS.includes(k) && !(v >= -1e-9 && v <= 1 + 1e-9)) problems.push(`${k} em ${p.toFixed(3)} = ${v} fora de [0, 1]`);
         // nenhuma chave salta mais que ~8% do seu intervalo por passo de 0,002 (transições de ≥ 0,05 de largura)
-        const span = hi - lo;
-        expect(Math.abs(s[k] - prev[k]), `salto em '${k}' perto de ${p.toFixed(3)}`).toBeLessThan(span * 0.08);
+        if (!(Math.abs(v - prev[k]) < (hi - lo) * 0.08)) problems.push(`salto em '${k}' perto de ${p.toFixed(3)}: ${prev[k]} → ${v}`);
+        if (problems.length > 20) break;
       }
       prev = s;
     }
+    expect(problems).toEqual([]);
     expect(sceneAt(99)).toBeDefined();
     expect(sceneAt(Number.NaN)).toEqual(sceneAt(0));
-  });
+  }, 30000);
 
   it('batidas-chave acontecem onde o texto está: assentadas antes do fim do passo correspondente', () => {
     // cap. 2: desmontagem escalonada na ordem envelope → espinhos → M1 → RNPs → rótulos
@@ -247,6 +247,86 @@ describe('coreografia: rolagem → estado da cena (função pura)', () => {
   });
 });
 
+describe('v4 · abertura, curvas orgânicas e movimento ambiente', () => {
+  it('pose de abertura: vírion inteiro em ~55–65 % da altura no desktop, girando devagar, e o capítulo 1 aproxima', () => {
+    const fill = openingFill(Math.hypot(START.camY - START.lookY, START.camZ * fitDistance(1440 / 900)));
+    expect(fill).toBeGreaterThanOrEqual(0.55);
+    expect(fill).toBeLessThanOrEqual(0.65);
+    expect(START.spin).toBeGreaterThan(0);
+    expect(START.spin).toBeLessThanOrEqual(0.5);
+    expect(START.camZ).toBeGreaterThan(POSES[0]!.camZ);
+    // sem deslocamentos de cena na abertura: o enquadramento lateral é só `viewShift` (frente B)
+    expect(START.virusX).toBe(0);
+    expect(START.lookX).toBe(0);
+  });
+
+  it('palco em tela inteira (paisagem 16:9): vista explodida e vacina cabem na altura do quadro', () => {
+    const fit = fitDistance(16 / 9);
+    // meia-altura da explosão: envelope + metade aberta + espinho elevado + NA
+    const exploded = 1 + 0.78 + 0.55 + 0.36;
+    const h2 = 2 * POSES[1]!.camZ * fit * Math.tan((18 * Math.PI) / 180);
+    expect((2 * exploded) / h2).toBeLessThanOrEqual(0.95);
+    // vacina: vírion + anticorpos (≈ +0,4)
+    const h5 = 2 * POSES[4]!.camZ * fit * Math.tan((18 * Math.PI) / 180);
+    expect((2 * (1.36 + 0.4)) / h5).toBeLessThanOrEqual(0.9);
+  });
+
+  it('curvas: todas valem 0 e 1 nas pontas (continuidade independe da curva); smootherstep é C2 e monótona', () => {
+    for (const k of ['smooth', 'smoother', 'linear'] as const) {
+      expect(ease(k, 0)).toBe(0);
+      expect(ease(k, 1)).toBe(1);
+      expect(ease(k, -3)).toBe(0);
+      expect(ease(k, 7)).toBe(1);
+      let prev = -1;
+      for (let x = 0; x <= 1.0001; x += 0.01) {
+        const v = ease(k, x);
+        expect(v).toBeGreaterThanOrEqual(prev - 1e-12);
+        prev = v;
+      }
+    }
+    expect(smootherstep01(0.5)).toBeCloseTo(0.5, 12);
+    // derivada nula nas pontas (sem tranco ao começar/assentar)
+    const h = 1e-4;
+    expect(smootherstep01(h) / h).toBeLessThan(1e-6);
+    expect((1 - smootherstep01(1 - h)) / h).toBeLessThan(1e-6);
+    // batidas orgânicas declaradas onde o contrato pede (abrir espinhos, engolir, brotar)
+    expect(BEATS[1]!.openSpikes!.ease).toBe('smoother');
+    expect(BEATS[2]!.engulf!.ease).toBe('smoother');
+    expect(BEATS[3]!.bud!.ease).toBe('smoother');
+  });
+
+  it('"pisca" e pulso ≤ 1 Hz (contrato v4 §6); blink fica em [0, 1]', () => {
+    expect(BLINK_HZ).toBeLessThanOrEqual(1);
+    expect(PULSE_HZ).toBeLessThanOrEqual(1);
+    // período medido: dois máximos consecutivos de blink a ≥ 1 s de distância
+    const peaks: number[] = [];
+    let a = ambient(0).blink;
+    let b = ambient(0.01).blink;
+    for (let t = 0.02; t < 6; t += 0.01) {
+      const c = ambient(t).blink;
+      expect(c).toBeGreaterThanOrEqual(0);
+      expect(c).toBeLessThanOrEqual(1);
+      if (b > a && b >= c) peaks.push(t - 0.01);
+      a = b;
+      b = c;
+    }
+    for (let i = 1; i < peaks.length; i++) expect(peaks[i]! - peaks[i - 1]!).toBeGreaterThanOrEqual(1 - 0.02);
+  });
+
+  it('deriva ambiente: pequena, contínua e finita', () => {
+    let prev = drift(0);
+    for (let t = 0; t < 60; t += 0.05) {
+      const d = drift(t);
+      expect(Math.abs(d.tiltX)).toBeLessThanOrEqual(0.08);
+      expect(Math.abs(d.tiltZ)).toBeLessThanOrEqual(0.08);
+      expect(Math.abs(d.floatY)).toBeLessThanOrEqual(0.05);
+      expect(Math.abs(d.tiltX - prev.tiltX)).toBeLessThan(0.01);
+      prev = d;
+    }
+    expect(drift(Number.NaN)).toEqual(drift(0));
+  });
+});
+
 describe('peças e fatos', () => {
   const facts = loadFacts();
 
@@ -305,10 +385,25 @@ describe('peças e fatos', () => {
     expect(PART_BY_ID.get('envelope')!.label).toContain('Envelope');
   });
 
-  it('texto livre não traz números soltos de dias, horas, semanas ou percentuais (ficam só nos <Fato>)', () => {
-    const re = /\d+\s*(%|por cento|dias?|horas?|h\b|semanas?|meses|mês|anos?|nm|µm|°C)\b/i;
-    for (const t of allFreeText()) expect(t, t).not.toMatch(re);
-    for (const t of allFreeText()) expect(t.toLowerCase(), t).not.toContain('tempo real');
+  it('texto livre não traz números soltos de dias, horas, semanas, percentuais ou nanômetros (ficam só nos <Fato>); cobre kickers, títulos de ato, abertura e índice', () => {
+    const re = /\d+\s*(%|por cento|dias?|horas?|h\b|semanas?|meses|mês|anos?|nm|nan[oô]metros?|µm|micr[oô]metros?|°C)\b/i;
+    const all = allFreeText();
+    for (const t of all) expect(t, t).not.toMatch(re);
+    for (const t of all) expect(t.toLowerCase(), t).not.toContain('tempo real');
+    // o detector reconhece as formas por extenso
+    expect('mede 100 nanômetros').toMatch(re);
+    expect('filamentos de 20 micrômetros').toMatch(re);
+    // cobertura: kickers e títulos dos sete atos, abertura e índice final
+    for (const c of CHAPTERS) {
+      expect(all).toContain(c.kicker);
+      expect(all).toContain(c.title);
+    }
+    expect(all).toContain('No Brasil');
+    expect(all).toContain('Continue daqui');
+    expect(all).toContain('E agora?');
+    expect(all.some((t) => t.startsWith('Um dos vírus da gripe, visto de perto'))).toBe(true);
+    expect(all).toContain('Sinais de alerta');
+    expect(all).toContain('Fontes e metodologia');
   });
 
   it('pôster SVG existe com as cores dos tokens', () => {

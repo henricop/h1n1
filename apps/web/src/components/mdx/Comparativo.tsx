@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import styles from './editorial.module.css';
+import { markVirus } from './mark';
 
 interface Props {
   titulo?: string;
@@ -9,21 +11,25 @@ interface Props {
   children?: ReactNode;
 }
 
-/** Tabela comparativa responsiva com cabeçalho acessível (rolagem horizontal em telas estreitas). */
+/**
+ * Tabela comparativa editorial: cabeçalho em mono, filetes finos, rolagem horizontal focável em telas estreitas
+ * (região rotulada, para o teclado e o leitor de tela alcançarem). Estilos em editorial.module.css.
+ */
 export function Comparativo({ titulo, colunas = [], linhas, nota, children }: Props) {
+  const label = titulo ?? 'Tabela comparativa';
   if (!linhas) {
     return (
-      <div className="my-6 overflow-x-auto [&>table]:data-table [&_th]:text-left [&_td]:align-top">
-        {titulo && <p className="font-medium text-ink">{titulo}</p>}
+      <div className={styles.tabela} role="region" aria-label={label} tabIndex={0}>
+        {titulo && <p className={`${styles.serif} mb-3! mt-0! font-display text-[1.75rem] leading-[1.1] text-ink`}>{markVirus(titulo)}</p>}
         {children}
-        {nota && <p className="mt-2 text-xs text-muted">{nota}</p>}
+        {nota && <p className="mt-3 font-mono text-[14px] text-muted">{nota}</p>}
       </div>
     );
   }
   return (
-    <div className="my-6 overflow-x-auto">
-      <table className="data-table">
-        <caption className="font-medium text-ink">{titulo}</caption>
+    <div className={styles.tabela} role="region" aria-label={label} tabIndex={0}>
+      <table>
+        {titulo && <caption>{markVirus(titulo)}</caption>}
         <thead>
           <tr>
             <th scope="col">Aspecto</th>
@@ -37,9 +43,7 @@ export function Comparativo({ titulo, colunas = [], linhas, nota, children }: Pr
         <tbody>
           {linhas.map((l) => (
             <tr key={l.rotulo}>
-              <th scope="row" className="font-medium">
-                {l.rotulo}
-              </th>
+              <th scope="row">{l.rotulo}</th>
               {l.valores.map((v, i) => (
                 <td key={i}>{v}</td>
               ))}
@@ -47,7 +51,7 @@ export function Comparativo({ titulo, colunas = [], linhas, nota, children }: Pr
           ))}
         </tbody>
       </table>
-      {nota && <p className="mt-2 text-xs text-muted">{nota}</p>}
+      {nota && <p className="mt-3 font-mono text-[14px] text-muted">{nota}</p>}
     </div>
   );
 }

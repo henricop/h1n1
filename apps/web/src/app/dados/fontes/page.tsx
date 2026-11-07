@@ -7,6 +7,8 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { JsonLd } from '@/components/JsonLd';
 import { DataUnavailable } from '@/components/Notices';
 import { SourceCard } from '@/components/SourceCard';
+import { FRAME, FRAME_TOP, KICKER } from '@/components/mdx/frame';
+import { markVirus } from '@/components/mdx/mark';
 
 /**
  * Dinâmica por exigência dos searchParams (prioridade, acesso). O cache de fetch da API continua com
@@ -52,22 +54,24 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
   });
 
   return (
-    <>
+    <div className={`${FRAME} ${FRAME_TOP} pb-24 md:pb-32`}>
       <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Dados', href: null }, { label: 'Fontes oficiais', href: '/dados/fontes/' }]} />
-      <header className="mt-2">
-        <p className="kicker">Catálogo</p>
-        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.02em] text-ink md:text-5xl">Fontes oficiais</h1>
-        <p className="mt-3 max-w-2xl text-muted">
-          Catálogo das fontes de dados consultadas pelo projeto, com o recorte que cada uma oferece sobre H1N1. Fontes do mesmo grupo espelhado reapresentam os mesmos registros e nunca são somadas.
+      <header className="mt-8 md:mt-12">
+        <p className={KICKER}>
+          <span aria-hidden="true">[ </span>catálogo<span aria-hidden="true"> ]</span>
+        </p>
+        <h1 className="display-lg mt-5 text-balance">Fontes oficiais</h1>
+        <p className="lead mt-8 max-w-3xl md:mt-10">
+          {markVirus('De onde vem cada número: o órgão, o recorte sobre H1N1, a cadência e a licença de cada fonte consultada. Fontes do mesmo grupo espelhado reapresentam os mesmos registros e nunca são somadas.')}
         </p>
       </header>
 
-      <form method="get" action="/dados/fontes/" className="card mt-8 flex flex-wrap items-end gap-4 p-5" aria-label="Filtros do catálogo">
+      <form method="get" action="/dados/fontes/" className="mt-14 flex flex-wrap items-end gap-x-6 gap-y-5 border-y border-line py-6 md:mt-20" aria-label="Filtros do catálogo">
         <div>
-          <label htmlFor="prioridade" className="block text-sm font-medium text-ink">
+          <label htmlFor="prioridade" className="block text-[15px] font-medium text-ink">
             Prioridade
           </label>
-          <select id="prioridade" name="prioridade" defaultValue={prioridade} className="select-field mt-1">
+          <select id="prioridade" name="prioridade" defaultValue={prioridade} className="select-field mt-1.5">
             <option value="">Todas</option>
             {PRIORITIES.map((p) => (
               <option key={p} value={p}>
@@ -77,10 +81,10 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
           </select>
         </div>
         <div>
-          <label htmlFor="acesso" className="block text-sm font-medium text-ink">
+          <label htmlFor="acesso" className="block text-[15px] font-medium text-ink">
             Tipo de acesso
           </label>
-          <select id="acesso" name="acesso" defaultValue={acesso} className="select-field mt-1">
+          <select id="acesso" name="acesso" defaultValue={acesso} className="select-field mt-1.5">
             <option value="">Todos</option>
             {ACCESS.map((a) => (
               <option key={a.key} value={a.key}>
@@ -93,14 +97,14 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
           Filtrar
         </button>
         {(prioridade || acesso) && (
-          <Link href="/dados/fontes/" className="touch inline-flex items-center px-2 text-sm">
+          <Link href="/dados/fontes/" className="touch inline-flex items-center px-2 text-[15px]">
             Limpar filtros
           </Link>
         )}
       </form>
 
       {!res.ok ? (
-        <div className="mt-6">
+        <div className="mt-10">
           <DataUnavailable attemptedAt={res.attemptedAt} detail={res.error} />
         </div>
       ) : (
@@ -123,15 +127,18 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
               })),
             }}
           />
-          <p className="mt-4 text-sm text-muted" role="status">
-            {res.data.data.length} fonte{res.data.data.length === 1 ? '' : 's'} {prioridade || acesso ? 'com os filtros aplicados' : 'catalogadas'}.
+          <p className={`${KICKER} mt-6`} role="status">
+            {res.data.data.length} fonte{res.data.data.length === 1 ? '' : 's'} {prioridade || acesso ? 'com os filtros aplicados' : 'catalogadas'}
           </p>
           {regions.map((region) => (
-            <section key={region} aria-labelledby={`regiao-${slugify(region)}`} className="mt-12">
-              <h2 id={`regiao-${slugify(region)}`} className="font-display text-2xl font-bold tracking-[-0.02em] text-ink">
-                {region} <span className="text-sm font-normal text-muted">({groups.get(region)!.length})</span>
+            <section key={region} aria-labelledby={`regiao-${slugify(region)}`} className="mt-16 md:mt-24">
+              <h2 id={`regiao-${slugify(region)}`} className="display-md mb-8 flex flex-wrap items-baseline gap-x-4">
+                {region}
+                <span className="font-mono text-[14px] font-normal tracking-normal text-muted">
+                  {groups.get(region)!.length} {groups.get(region)!.length === 1 ? 'fonte' : 'fontes'}
+                </span>
               </h2>
-              <ul className="mt-3 grid gap-3 md:grid-cols-2">
+              <ul>
                 {groups.get(region)!.map((s) => (
                   <li key={s.id}>
                     <SourceCard source={s} />
@@ -142,6 +149,6 @@ export default async function FontesPage({ searchParams }: { searchParams: Promi
           ))}
         </>
       )}
-    </>
+    </div>
   );
 }

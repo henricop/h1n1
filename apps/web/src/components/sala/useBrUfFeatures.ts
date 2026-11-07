@@ -8,12 +8,15 @@ import type { UfFeatureProps } from '@/lib/geo-assets';
 let cached: FeatureCollection<Geometry, UfFeatureProps> | null = null;
 let inflight: Promise<FeatureCollection<Geometry, UfFeatureProps> | null> | null = null;
 
-/** Malha de UFs (IBGE, servida de public/geo) carregada uma vez no cliente; `codarea` → sigla/nome via BR_STATES. */
-export function useBrUfFeatures(): { features: FeatureCollection<Geometry, UfFeatureProps> | null; failed: boolean } {
+/**
+ * Malha de UFs (IBGE, servida de public/geo) carregada uma vez no cliente; `codarea` → sigla/nome via BR_STATES.
+ * `enabled = false` (caminhos já vindos do servidor) não busca nada.
+ */
+export function useBrUfFeatures(enabled = true): { features: FeatureCollection<Geometry, UfFeatureProps> | null; failed: boolean } {
   const [features, setFeatures] = useState(cached);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
-    if (cached) return;
+    if (!enabled || cached) return;
     inflight ??= fetch(BR_UF_GEOJSON_URL)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((fc: FeatureCollection<Geometry, { codarea: string }>) => {
@@ -37,6 +40,6 @@ export function useBrUfFeatures(): { features: FeatureCollection<Geometry, UfFea
     return () => {
       alive = false;
     };
-  }, []);
+  }, [enabled]);
   return { features, failed };
 }

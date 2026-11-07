@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * Pôster estático do globo (SVG renderizado no servidor, projeção ortográfica voltada para o Brasil), em tema claro:
+ * Pôster estático do globo (SVG renderizado no servidor, projeção ortográfica voltada para o Brasil), sobre papel:
  * fallback em telas pequenas, dispositivos sem WebGL e enquanto o globo 3D carrega. Sem rede em runtime.
  */
 export async function GlobePoster({ countries, weekIndex, week, max, dataAsOf, indicatorName }: Props) {
@@ -44,31 +44,31 @@ export async function GlobePoster({ countries, weekIndex, week, max, dataAsOf, i
       <svg viewBox={`0 0 ${size} ${size}`} className="h-auto w-full" role="img" aria-label={`${indicatorName} por país na semana ${week}, pôster estático do globo voltado para o Brasil; valores na tabela abaixo.`}>
         <defs>
           <radialGradient id="poster-sphere" cx="38%" cy="32%" r="75%">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="70%" stopColor="#e9eef7" />
-            <stop offset="100%" stopColor="#d5dde9" />
+            <stop offset="0%" stopColor="#fbfaf7" />
+            <stop offset="70%" stopColor="#ece8df" />
+            <stop offset="100%" stopColor="#ddd6c6" />
           </radialGradient>
           <radialGradient id="poster-atmo" cx="50%" cy="50%" r="50%">
-            <stop offset="86%" stopColor="#9db7ff" stopOpacity="0" />
-            <stop offset="100%" stopColor="#9db7ff" stopOpacity="0.35" />
+            <stop offset="86%" stopColor="#cfc4a9" stopOpacity="0" />
+            <stop offset="100%" stopColor="#cfc4a9" stopOpacity="0.45" />
           </radialGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={size / 2 - 2} fill="url(#poster-atmo)" />
-        <path d={sphere} fill="url(#poster-sphere)" stroke="#c7d0de" strokeWidth={1} />
-        <path d={graticule} fill="none" stroke="#e3e8f0" strokeWidth={0.5} />
+        <path d={sphere} fill="url(#poster-sphere)" stroke="#b9b3a4" strokeWidth={1} />
+        <path d={graticule} fill="none" stroke="#e2dccd" strokeWidth={0.5} />
         {land.map((f) => (
-          <path key={f.id} d={f.d} fill={f.id === '076' ? '#2451d6' : '#c3cfe0'} fillOpacity={f.id === '076' ? 0.85 : 1} stroke="#ffffff" strokeWidth={0.5} />
+          <path key={f.id} d={f.d} fill={f.id === '076' ? '#2451d6' : '#c9c1ac'} fillOpacity={f.id === '076' ? 0.85 : 1} stroke="#fbfaf7" strokeWidth={0.5} />
         ))}
         {dots.map((d) => (
           <g key={d.iso3}>
             <circle cx={d.x} cy={d.y} r={d.r * 1.8} fill="#d6007f" fillOpacity={0.1} />
-            <circle cx={d.x} cy={d.y} r={d.r} fill="#d6007f" fillOpacity={0.75} stroke="#ffffff" strokeWidth={0.8}>
+            <circle cx={d.x} cy={d.y} r={d.r} fill="#d6007f" fillOpacity={0.75} stroke="#fbfaf7" strokeWidth={0.8}>
               <title>{`${d.name}: ${new Intl.NumberFormat('pt-BR').format(d.v)} detecções na semana ${week}`}</title>
             </circle>
           </g>
         ))}
       </svg>
-      <figcaption className="mt-2 text-[12px] text-faint">
+      <figcaption className="mt-3 font-mono text-[14px] text-muted">
         Pôster estático · {week} · raio ∝ √detecções · FluNet · OMS · base de {formatDateBR(dataAsOf)}
       </figcaption>
     </figure>

@@ -7,6 +7,8 @@
  *  - gotícula portadora: uma bolha translúcida que envolve o vírion e refaz o MESMO arco dele (keyframes
  *    virusX/virusY do capítulo 4, local 0,55–0,8), reconstruído a partir de `droplets`.
  * Base: CDC/OMS/Krammer 2018 (docs/pesquisa/explicador-3d-ciclo-transmissao.md): gotículas e aerossóis.
+ * v4: em `quality: 'high'` as gotículas e a portadora têm leve refração (transmissão física, IOR da água); em
+ * 'low' continuam translúcidas simples (sem passe de transmissão extra).
  *
  * Fase do trajeto: no capítulo 4 `droplets` sobe 0→1 junto com o vírion; no capítulo 5 `droplets` volta a 0 com o
  * vírion JÁ na boca da direita. Para nada "voar de volta", o trajeto é max(droplets, posição do vírion no arco)
@@ -320,12 +322,25 @@ export function Droplets({ stateRef, ambientRef, quality }: { stateRef: StateRef
   }, [quality]);
   const mat = useMemo(() => {
     const aerosolColor = new THREE.Color(PART_COLORS.droplet).lerp(new THREE.Color('#ffffff'), 0.32);
+    const hi = quality === 'high';
+    // água: IOR 1,33; transmissão parcial para a gotícula continuar azulada e visível sobre o papel
+    const water = hi ? { transmission: 0.55, thickness: 0.35, ior: 1.33, attenuationColor: new THREE.Color(PART_COLORS.droplet), attenuationDistance: 0.6 } : {};
     return {
-      big: new THREE.MeshPhysicalMaterial({ color: PART_COLORS.droplet, roughness: 0.18, metalness: 0, clearcoat: 0.8, clearcoatRoughness: 0.15, transparent: true, opacity: 0.85, depthWrite: false }),
+      big: new THREE.MeshPhysicalMaterial({ color: PART_COLORS.droplet, roughness: hi ? 0.1 : 0.18, metalness: 0, clearcoat: 0.8, clearcoatRoughness: 0.12, specularIntensity: 0.9, ...water, transparent: true, opacity: 0.85, depthWrite: false }),
       fine: new THREE.MeshStandardMaterial({ color: aerosolColor, roughness: 0.5, metalness: 0, transparent: true, opacity: 0.6, depthWrite: false }),
-      carrier: new THREE.MeshPhysicalMaterial({ color: PART_COLORS.droplet, roughness: 0.06, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.08, transparent: true, opacity: 0.26, depthWrite: false }),
+      carrier: new THREE.MeshPhysicalMaterial({
+        color: PART_COLORS.droplet,
+        roughness: 0.06,
+        metalness: 0,
+        clearcoat: 1,
+        clearcoatRoughness: 0.08,
+        ...(hi ? { transmission: 0.35, thickness: 0.5, ior: 1.33, attenuationColor: new THREE.Color('#dfe8ff'), attenuationDistance: 2.5 } : {}),
+        transparent: true,
+        opacity: 0.26,
+        depthWrite: false,
+      }),
     };
-  }, []);
+  }, [quality]);
   useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo]);
   useEffect(() => () => Object.values(mat).forEach((m) => m.dispose()), [mat]);
 
@@ -400,7 +415,7 @@ export function Droplets({ stateRef, ambientRef, quality }: { stateRef: StateRef
     <group ref={group} visible={false}>
       <instancedMesh key={`big-${quality}`} ref={bigRef} args={[geo.big, mat.big, big.length]} frustumCulled={false} renderOrder={1} />
       <instancedMesh key={`fine-${quality}`} ref={fineRef} args={[geo.fine, mat.fine, fine.length]} frustumCulled={false} renderOrder={1} />
-      <mesh ref={carrierRef} geometry={geo.carrier} material={mat.carrier} renderOrder={2} />
+      <mesh key={`car-${quality}`} ref={carrierRef} geometry={geo.carrier} material={mat.carrier} renderOrder={2} />
     </group>
   );
 }

@@ -1,10 +1,17 @@
 /**
- * Temas por seção (DESIGN.md v3 / docs/reformulacao-v4.md §7). Módulo puro no servidor; no cliente guarda a
- * cor VIVA do fundo (`live`), lida por quadro pelo palco 3D, e permite assinar mudanças.
+ * Temas por seção (DESIGN.md v3 / docs/reformulacao-v4.md §6 e §7). Funções puras (testáveis em node) + estado
+ * vivo no cliente: `live` guarda a cor ATUAL do fundo (lida por quadro pelo palco 3D) e `subscribeTheme` notifica.
  *
- * Esqueleto compartilhado (núcleo): a frente A substitui `setTheme` por uma versão interpolada com GSAP
- * (sRGB, tinta trocando de uma vez quando a luminância do fundo cruza 0,18) e mantém esta API.
+ * `setTheme(name)` interpola com GSAP (sRGB, `gsap.utils.interpolate`) só as variáveis que diferem, como estilo
+ * inline no `<html>` (vence `@layer theme` e `html[data-theme-current]`). O campo (fundo, faixas, cartão, véu)
+ * interpola; a tinta e o que depende de contraste (muted, faint, primary, linhas, tint) TROCAM DE UMA VEZ quando a
+ * luminância relativa do fundo cruza `INK_SWITCH_LUMINANCE` (nunca interpolar tinta junto com fundo: a 50 % o
+ * contraste cairia a ~1:1). No fim: `data-theme-current`, `<meta name="theme-color">` e remoção do inline (os
+ * valores estáticos do CSS assumem, idênticos). Reduced-motion ou "Versão simples": troca instantânea.
  */
+import gsap from 'gsap';
+import { isMotionReduced } from './prefs';
+
 export type ThemeName = 'paper' | 'deep' | 'warm';
 
 export interface ThemeRGB {
@@ -13,7 +20,7 @@ export interface ThemeRGB {
   b: number;
 }
 
-/** Variáveis que diferem do tema `paper` (valores idênticos aos de globals.css; test/shell.test.ts compara). */
+/** Variáveis que diferem entre temas (valores idênticos aos de globals.css; test/shell.test.ts compara). */
 export const THEMES: Readonly<Record<ThemeName, Readonly<Record<string, string>>>> = {
   paper: {
     '--color-bg': '#f4f1ea',
@@ -71,6 +78,27 @@ export const THEMES: Readonly<Record<ThemeName, Readonly<Record<string, string>>
   },
 };
 
+/** Todas as variáveis controladas pelo tema (mesmas chaves em todos os temas). */
+export const THEME_KEYS: readonly string[] = Object.keys(THEMES.paper);
+
+/**
+ * Variáveis que dependem de contraste com o fundo: trocam DE UMA VEZ no cruzamento do limiar de luminância
+ * (nunca interpolam junto com o fundo). As demais (campo: bg, paper, bg-soft, paper-2, card, véu) interpolam.
+ */
+export const INK_KEYS: readonly string[] = [
+  '--color-ink',
+  '--color-muted',
+  '--color-faint',
+  '--color-primary-700',
+  '--color-primary-600',
+  '--color-primary-100',
+  '--color-primary-50',
+  '--color-bg-tint',
+  '--color-line',
+  '--color-line-strong',
+];
+const INK_SET: ReadonlySet<string> = new Set(INK_KEYS);
+
 /** Cor de fundo (sRGB 0–255) de cada tema; o palco 3D lê `live` por quadro. */
 export const THEME_BG: Readonly<Record<ThemeName, Readonly<ThemeRGB>>> = {
   paper: { r: 244, g: 241, b: 234 },
@@ -80,6 +108,9 @@ export const THEME_BG: Readonly<Record<ThemeName, Readonly<ThemeRGB>>> = {
 
 /** `<meta name="theme-color">` por tema. */
 export const THEME_META: Readonly<Record<ThemeName, string>> = { paper: '#f4f1ea', deep: '#0b1a2e', warm: '#f7e8d5' };
+
+/** Duração da interpolação entre temas (s). */
+export const THEME_TWEEN_DURATION = 0.7;
 
 export function isThemeName(x: unknown): x is ThemeName {
   return x === 'paper' || x === 'deep' || x === 'warm';
@@ -108,6 +139,45 @@ export function inkFor(bg: ThemeRGB): 'light' | 'dark' {
   return relativeLuminance(bg) < INK_SWITCH_LUMINANCE ? 'light' : 'dark';
 }
 
+/** Um quadro da interpolação: variáveis a escrever no `<html>`, cor do fundo e lado da tinta. */
+export interface ThemeFrame {
+  vars: Record<string, string>;
+  bg: ThemeRGB;
+  ink: 'light' | 'dark';
+}
+
+/**
+ * Função pura de mistura entre o estado atual (`from`, valores em vigor de TODAS as variáveis; `fromBg`, fundo
+ * atual) e o tema `to`. Devolve `(t) => ThemeFrame` com t ∈ [0, 1]. Só as variáveis que diferem entram em `vars`.
+ * Se o fundo cruza o limiar de luminância, as `INK_KEYS` trocam de uma vez pelo lado do fundo interpolado; se não
+ * cruza (paper ↔ warm), interpolam normalmente.
+ */
+export function createThemeMix(from: Readonly<Record<string, string>>, fromBg: Readonly<ThemeRGB>, to: ThemeName): (t: number) => ThemeFrame {
+  const target = THEMES[to];
+  const toBg = THEME_BG[to];
+  const toSide = inkFor(toBg);
+  const crossing = inkFor(fromBg) !== toSide;
+  const keys = THEME_KEYS.filter((k) => from[k] !== target[k]);
+  const lerps = new Map<string, (t: number) => string>();
+  for (const k of keys) {
+    if (crossing && INK_SET.has(k)) continue;
+    lerps.set(k, gsap.utils.interpolate(from[k] ?? target[k]!, target[k]!));
+  }
+  const bgLerp = gsap.utils.interpolate<ThemeRGB>({ r: fromBg.r, g: fromBg.g, b: fromBg.b }, { r: toBg.r, g: toBg.g, b: toBg.b });
+  return (t: number) => {
+    const p = Math.min(1, Math.max(0, t));
+    const bg = p >= 1 ? { r: toBg.r, g: toBg.g, b: toBg.b } : bgLerp(p);
+    const ink = inkFor(bg);
+    const vars: Record<string, string> = {};
+    for (const k of keys) {
+      const lerp = lerps.get(k);
+      if (lerp) vars[k] = p >= 1 ? target[k]! : lerp(p);
+      else vars[k] = ink === toSide ? target[k]! : (from[k] ?? target[k]!);
+    }
+    return { vars, bg, ink };
+  };
+}
+
 /* ---------- estado vivo (cliente) ---------- */
 
 const live: ThemeRGB = { ...THEME_BG.paper };
@@ -131,7 +201,7 @@ export function subscribeTheme(cb: (rgb: Readonly<ThemeRGB>, theme: ThemeName) =
   };
 }
 
-/** Escreve `live` e notifica (usado pela interpolação da frente A). */
+/** Escreve `live` e notifica (usado pela interpolação). */
 export function writeLive(rgb: Readonly<ThemeRGB>, theme: ThemeName): void {
   live.r = rgb.r;
   live.g = rgb.g;
@@ -140,16 +210,67 @@ export function writeLive(rgb: Readonly<ThemeRGB>, theme: ThemeName): void {
   for (const cb of subscribers) cb(live, theme);
 }
 
-/**
- * Troca instantânea de tema (esqueleto): marca `data-theme-current`, atualiza `theme-color` e `live`.
- * A frente A substitui por versão interpolada mantendo a assinatura.
- */
-export function setTheme(name: ThemeName): void {
-  if (typeof document === 'undefined') return;
-  const html = document.documentElement;
+/** Tema de destino (o da última chamada a `setTheme`, mesmo durante a interpolação). */
+let target: ThemeName | null = null;
+/** Valores em vigor de todas as variáveis (inline durante a interpolação ou estáticos do CSS). */
+let applied: Record<string, string> = { ...THEMES.paper };
+/** Objeto animado pelo GSAP (t: 0 → 1). */
+const tween = { t: 0 };
+
+export function getTargetTheme(): ThemeName {
+  return target ?? current;
+}
+
+function init(html: HTMLElement): void {
+  if (target !== null) return;
+  // Recarga a quente / estado herdado: parte do tema já marcado no <html>, se houver.
+  const marked = html.getAttribute('data-theme-current');
+  const start: ThemeName = isThemeName(marked) ? marked : 'paper';
+  target = start;
+  applied = { ...THEMES[start] };
+  writeLive(THEME_BG[start], start);
+}
+
+function settle(html: HTMLElement, name: ThemeName): void {
   html.setAttribute('data-theme-current', name);
-  for (const key of Object.keys(THEMES.paper)) html.style.removeProperty(key);
+  for (const k of THEME_KEYS) html.style.removeProperty(k);
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta) meta.content = THEME_META[name];
+  applied = { ...THEMES[name] };
   writeLive(THEME_BG[name], name);
+}
+
+/**
+ * Troca o tema do documento. Interpolada (GSAP, `THEME_TWEEN_DURATION` s) quando há movimento; instantânea com
+ * reduced-motion, "Versão simples" ou `{ immediate: true }`. Chamar de novo com o mesmo destino é no-op.
+ */
+export function setTheme(name: ThemeName, opts: { immediate?: boolean } = {}): void {
+  if (typeof document === 'undefined') return;
+  const html = document.documentElement;
+  init(html);
+  const instant = Boolean(opts.immediate) || isMotionReduced();
+  if (name === target && !opts.immediate) return;
+  gsap.killTweensOf(tween);
+  target = name;
+  if (instant) {
+    settle(html, name);
+    return;
+  }
+  const mix = createThemeMix(applied, live, name);
+  tween.t = 0;
+  gsap.to(tween, {
+    t: 1,
+    duration: THEME_TWEEN_DURATION,
+    ease: 'power1.inOut',
+    onUpdate: () => {
+      const frame = mix(tween.t);
+      for (const k in frame.vars) {
+        const v = frame.vars[k]!;
+        html.style.setProperty(k, v);
+        applied[k] = v;
+      }
+      writeLive(frame.bg, name);
+    },
+    onComplete: () => settle(html, name),
+  });
 }

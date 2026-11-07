@@ -34,7 +34,7 @@ class GlobeBoundary extends Component<{ children: ReactNode; onError: () => void
 }
 
 /**
- * Hero do globo: em telas ≥ 768 px carrega o WebGL sob demanda (o pôster fica por baixo até o canvas estar pronto);
+ * Painel do globo: em telas ≥ 768 px carrega o WebGL sob demanda (o pôster fica por baixo até o canvas estar pronto);
  * em telas menores mostra o pôster com o botão "Ativar globo 3D". Sem autoplay; sem rotação em reduced-motion.
  */
 export function GlobePanel({ countries, offset = 0, loadingHistory = false, max, dataAsOf, universeNote, poster }: Props) {
@@ -58,7 +58,7 @@ export function GlobePanel({ countries, offset = 0, loadingHistory = false, max,
   const showGlobe = mode === 'globe';
   const status = showGlobe ? (ready ? (loadingHistory ? 'Carregando histórico…' : 'Globo 3D') : 'Carregando globo…') : mode === 'failed' ? 'Globo 3D indisponível neste dispositivo' : 'Pôster estático';
   return (
-    <div className="card relative overflow-hidden p-2 md:p-3">
+    <div className="card relative overflow-hidden p-3 md:p-4">
       <div className="relative aspect-square w-full max-h-[640px] md:aspect-[1/1]">
         <div className={`absolute inset-0 transition-opacity duration-700 ${showGlobe && ready ? 'opacity-0' : 'opacity-100'}`}>{poster}</div>
         {showGlobe && (
@@ -66,12 +66,12 @@ export function GlobePanel({ countries, offset = 0, loadingHistory = false, max,
             <Globe3D countries={countries} weekIndex={t.index - offset} week={t.week} max={max} reducedMotion={t.reducedMotion} playing={t.playing} dataAsOf={formatDateBR(dataAsOf)} onReady={() => setReady(true)} />
           </GlobeBoundary>
         )}
-        <p className="pointer-events-none absolute left-3 top-3 rounded-full bg-card/90 px-3 py-1 text-[12px] text-muted" aria-live="polite">
+        <p className="pointer-events-none absolute left-3 top-3 rounded-full border border-line bg-card px-3 py-1 font-mono text-[14px] text-muted" aria-live="polite">
           {status}
         </p>
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
-        <p className="text-[13px] leading-snug text-muted">{universeNote}</p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-1 pb-1">
+        <p className="max-w-xl text-[14px] leading-snug text-muted">{universeNote}</p>
         {!isDesktop && mode === 'poster' && (
           <button type="button" className="btn btn-sm" onClick={() => setMode(hasWebGL() ? 'globe' : 'failed')}>
             Ativar globo 3D

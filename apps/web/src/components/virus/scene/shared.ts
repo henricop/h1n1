@@ -7,8 +7,11 @@ import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SceneState } from '@/lib/virus/scenestate';
 import type { Vec3 } from '@/lib/virus/geometry';
+import type { Rgb, StageLook } from '@/lib/virus/lighting';
 
 export type StateRef = MutableRefObject<Readonly<SceneState>>;
+/** Luz/cores do palco derivadas da cor viva do tema (lib/virus/lighting.ts), escritas a cada quadro em prioridade −11. */
+export type LookRef = MutableRefObject<Readonly<StageLook>>;
 
 /** Movimento ambiente (tempo): yaw integrado do `spin`, respiração, oscilação e piscar. */
 export interface AmbientState {
@@ -39,6 +42,21 @@ export interface PartProps {
   onOver: (e: ThreeEvent<PointerEvent>) => void;
   onOut: () => void;
   onClick: (e: ThreeEvent<MouseEvent>) => void;
+}
+
+/** Copia uma cor sRGB 0–1 (lib/virus/lighting.ts) para um THREE.Color no espaço de trabalho (linear). */
+export function setSrgb(c: THREE.Color, rgb: Readonly<Rgb>): THREE.Color {
+  return c.setRGB(rgb.r, rgb.g, rgb.b, THREE.SRGBColorSpace);
+}
+
+/**
+ * Liga/desliga `transparent` trocando de programa sem engasgo: three só troca o shader (define OPAQUE) com
+ * `needsUpdate`; a variante alternativa é pré-compilada pelo palco (materiais com `userData.altTransparent`).
+ */
+export function setTransparent(m: THREE.Material, on: boolean): void {
+  if (m.transparent === on) return;
+  m.transparent = on;
+  m.needsUpdate = true;
 }
 
 export function toVector(v: Vec3): THREE.Vector3 {

@@ -1,8 +1,10 @@
 'use client';
-import { PANDEMIC_REPLAY, parseWeek, weekLabel } from '@/lib/timeline';
+import { weekTitle } from '@/lib/hud';
+import { PANDEMIC_REPLAY, parseWeek } from '@/lib/timeline';
+import { LABEL } from '@/components/charts/ui';
 import { SPEEDS, useTimeline } from './TimelineContext';
 
-/** Scrubber temporal: rótulo grande da semana ISO, range, reproduzir/pausar, velocidade e replay de 2009. */
+/** Scrubber temporal: semana ISO em serifa, range, reproduzir/pausar, velocidade e replay de 2009. */
 export function TimeScrubber({ compact = false }: { compact?: boolean }) {
   const t = useTimeline();
   const n = t.weeks.length;
@@ -13,12 +15,12 @@ export function TimeScrubber({ compact = false }: { compact?: boolean }) {
   const hasReplay = !!first && !!lastWeek && first <= PANDEMIC_REPLAY.from && lastWeek >= PANDEMIC_REPLAY.to;
 
   return (
-    <div className="card p-4 md:p-5" role="group" aria-label="Linha do tempo semanal">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="card p-5 md:p-6" role="group" aria-label="Linha do tempo semanal">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="label">Semana selecionada</p>
-          <p className={`font-display font-bold tabular-nums tracking-[-0.02em] text-primary-600 ${compact ? 'text-xl' : 'text-2xl md:text-3xl'}`} aria-live="polite" aria-atomic="true">
-            {weekLabel(t.week)}
+          <p className={LABEL}>Semana selecionada</p>
+          <p className={`mt-1 font-display font-normal tabular-nums tracking-[-0.01em] text-ink ${compact ? 'text-[1.75rem]' : 'text-[2rem] md:text-[2.5rem]'}`} aria-live="polite" aria-atomic="true">
+            {weekTitle(t.week)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -46,7 +48,7 @@ export function TimeScrubber({ compact = false }: { compact?: boolean }) {
           </button>
         </div>
       </div>
-      <div className="mt-3">
+      <div className="mt-4">
         <label htmlFor="scrubber" className="sr-only">
           Semana ISO (de {first} a {lastWeek})
         </label>
@@ -63,18 +65,21 @@ export function TimeScrubber({ compact = false }: { compact?: boolean }) {
             t.setIndex(Number(e.target.value));
           }}
           style={{ ['--progress' as string]: `${pct}%` }}
-          aria-valuetext={weekLabel(t.week)}
+          aria-valuetext={weekTitle(t.week)}
         />
-        <div className="relative h-4 text-[11px] text-faint" aria-hidden="true">
+        {/* rótulos de eixo (exceção ao piso de 14 px): anos ímpares no desktop, de 4 em 4 no celular */}
+        <div className="relative h-5 font-mono text-[12px] text-muted" aria-hidden="true">
           {years.map(({ w, i }) => {
-            const y = parseWeek(w)?.year ?? '';
+            const y = parseWeek(w)?.year ?? 0;
             const x = n > 1 ? (i / (n - 1)) * 100 : 0;
-            const show = compact ? Number(y) % 4 === 1 : Number(y) % 2 === 1;
-            return show ? (
-              <span key={w} className="absolute -translate-x-1/2 tabular-nums" style={{ left: `${x}%` }}>
+            const desktop = compact ? y % 4 === 1 : y % 2 === 1;
+            const mobile = y % 4 === 1;
+            if (!desktop && !mobile) return null;
+            return (
+              <span key={w} className={`absolute -translate-x-1/2 tabular-nums ${desktop ? '' : 'md:hidden'} ${mobile ? '' : 'hidden md:inline'}`} style={{ left: `${x}%` }}>
                 {y}
               </span>
-            ) : null;
+            );
           })}
         </div>
       </div>

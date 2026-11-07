@@ -1,0 +1,204 @@
+/*
+ * Estilos editoriais (frente D). Só o que Tailwind não alcança:
+ *  - regras de globals.css SEM @layer (.prose, .display-*, .lead) vencem utilitários do Tailwind (que ficam em
+ *    @layer utilities), então para redefinir elementos dentro de `.prose` usamos seletores mais específicos aqui;
+ *  - contadores CSS, keyframes e o respeito a `prefers-reduced-motion` / `html[data-simple="1"]`.
+ * Tokens (`--color-*`, `--font-*`) vêm de globals.css.
+ */
+
+/* Entrada do cabeçalho: CSS puro (sem JS, sem FOUC). Escalonada por --d. */
+.rise {
+  animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+@media print {
+  .rise {
+    animation: none;
+  }
+  /* linhas de título reveladas por SplitText voltam ao lugar na impressão */
+  .article :global(.reveal-line) {
+    transform: none !important;
+  }
+}
+:global(html[data-simple='1']) .rise {
+  animation: none;
+}
+
+/* <Resposta>: o texto é a pull-quote em serifa itálica; os <Fato> dentro dela voltam à sans, em bloco. */
+.resposta :global(.fato) {
+  display: block;
+  margin-block: 0.875rem;
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  letter-spacing: 0;
+  color: var(--color-ink);
+}
+
+/* <Comparativo>: tabela editorial. `.tabela table th` (0,1,2) vence `.prose th` (0,1,1). */
+.tabela {
+  margin-block: 2.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.tabela table {
+  width: 100%;
+  min-width: 34rem;
+  border-collapse: collapse;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+.tabela table caption {
+  padding-bottom: 0.75rem;
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  color: var(--color-ink);
+}
+.tabela table th,
+.tabela table td {
+  padding: 0.875rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-line);
+}
+.tabela table thead th {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--color-muted);
+  border-bottom: 2px solid var(--color-ink);
+}
+.tabela table tbody th,
+.tabela table tbody td:first-child {
+  min-width: 8rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.tabela:focus-visible {
+  outline: 3px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+/* <Passos>: numerais em condensada grande. Sem grid no <li> (os filhos inline virariam itens de grid). */
+.passos {
+  margin-block: 2.5rem;
+}
+.passos.passos > ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: passo;
+}
+.passos > ol > li {
+  position: relative;
+  margin: 0;
+  padding: 1.25rem 0 1.25rem 4.5rem;
+  counter-increment: passo;
+  border-top: 1px solid var(--color-line-strong);
+}
+.passos > ol > li:last-child {
+  border-bottom: 1px solid var(--color-line-strong);
+}
+.passos > ol > li::before {
+  content: counter(passo);
+  position: absolute;
+  left: 0;
+  top: 0.9rem;
+  font-family: var(--font-condensed);
+  font-weight: 800;
+  font-size: 3.25rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--color-ink);
+}
+
+/* Fontes ao fim do artigo: notas numeradas em mono. */
+.notas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: nota;
+}
+.notas > li {
+  position: relative;
+  padding: 0.875rem 0 0.875rem 3rem;
+  counter-increment: nota;
+  border-top: 1px solid var(--color-line);
+}
+.notas > li::before {
+  content: counter(nota, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0.95rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+/*
+ * "H1N1" em contextos de serifa: o "1" do Instrument Serif se confunde com "l" (HlNl). O token vem envolto em
+ * <span class="mark"> por mark.tsx; só nos contextos de serifa abaixo ele troca para a condensada da marca.
+ * Em corpo de texto (Inter) o span não muda nada.
+ */
+.mark {
+  font-style: inherit;
+}
+.serif .mark,
+.resposta .mark,
+.tabela caption .mark,
+:global(.display-xl) .mark,
+:global(.display-lg) .mark,
+:global(.display-md) .mark,
+:global(.lead) .mark,
+:global(.prose) h2 .mark,
+:global(.prose) h3 .mark {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0.01em;
+}
+
+/*
+ * Citações literais de fontes oficiais (blockquote do corpo): o `.prose blockquote` de globals.css é serifa
+ * itálica de 28 px (pull-quote), pesada demais para trechos longos de documentos. Aqui viram citação legível:
+ * Inter 17-18 px, filete à esquerda. `.article .prose blockquote` (0,2,1) vence `.prose blockquote` (0,1,1).
+ */
+.article :global(.prose) blockquote {
+  margin-block: 2.25rem;
+  padding-left: 1.25rem;
+  border-left: 2px solid var(--color-ink);
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--color-ink);
+}
+.article :global(.prose) blockquote p {
+  margin-block: 0.75rem;
+}
+.article :global(.prose) blockquote p:first-child {
+  margin-top: 0;
+}
+.article :global(.prose) blockquote p:last-child {
+  margin-bottom: 0;
+}

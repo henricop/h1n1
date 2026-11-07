@@ -2,14 +2,19 @@
 /**
  * O vírion A(H1N1): envelope pleomórfico em duas metades (bicamada translúcida), camada M1 opaca e fosca logo
  * abaixo, espinhos HA (trímeros) e NA (tetrâmeros) instanciados com cor por instância, poucos canais M2 e 8 RNPs
- * em contas (7+1). Tudo lê `stateRef`/`ambientRef` dentro de useFrame (sem setState); o pai aplica yaw/posição/
- * escala. Posições vêm de lib/virus/pose.ts (fonte única com rótulos e anticorpos).
+ * em contas (7+1). Tudo lê `stateRef`/`ambientRef`/`lookRef` dentro de useFrame (sem setState); o pai aplica
+ * yaw/posição/escala. Posições vêm de lib/virus/pose.ts (fonte única com rótulos e anticorpos).
+ *
+ * v4: sem emissive em lugar nenhum. "Acende" (hover, seleção, realce do capítulo 1, encaixe) = realce FOSCO de
+ * albedo; "pisca" dos M2 ≤ 1 Hz; no tema escuro as peças coloridas clareiam o albedo (`look.lift`) e o contorno
+ * fresnel do envelope é mistura de albedo (iluminada), não luz própria. Cada espinho tem micro-variação de
+ * inclinação, altura, largura e tom (`spikeJitter`), como proteínas reais.
  */
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useCursor } from '@react-three/drei';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { NUCLEUS } from '@/lib/virus/choreography';
+import { NUCLEUS, PULSE_HZ } from '@/lib/virus/choreography';
 import { clamp01, seededRandom, type Vec3 } from '@/lib/virus/geometry';
 import { PART_COLORS, type PartId } from '@/lib/virus/parts';
 import {
@@ -24,15 +29,18 @@ import {
   rnpReleaseT,
   rnpRestCenter,
   spikeBaseInto,
+  spikeJitter,
   type Quality,
   type SpikeLayout,
 } from '@/lib/virus/pose';
 import { beadGeometry, envelopeHalves, haGeometry, m2Geometry, matrixHalves, naGeometry, seamGeometry } from './geometries';
-import { UP, smooth, type AmbientRef, type StateRef } from './shared';
+import { UP, setSrgb, setTransparent, smooth, type AmbientRef, type LookRef, type StateRef } from './shared';
 
 export interface VirionProps {
   stateRef: StateRef;
   ambientRef: AmbientRef;
+  /** luz/cores do tema vivo (prioridade −11) */
+  lookRef: LookRef;
   quality: Quality;
   /** `spikeLayout(quality)` calculado pelo pai e compartilhado com rótulos e anticorpos. */
   layout: SpikeLayout;
@@ -46,8 +54,13 @@ export interface VirionProps {
 const PRIMARY_500 = '#3b6cf0';
 const ENVELOPE_TINT = '#dde6f3';
 const ENVELOPE_ATTENUATION = '#b3c4ea';
+/** realce fosco (albedo) do envelope e da M1 em hover/seleção: azul-cobalto claro, sem emissão */
+const ENVELOPE_ACTIVE = '#b8cbf6';
+const M1_ACTIVE = '#a3b8ee';
 const WHITE = new THREE.Color('#ffffff');
 const EPS = 1e-3;
+/** quanto o realce fosco puxa o albedo das peças instanciadas */
+const ACTIVE_MIX = 0.45;
 
 interface Pointer {
   over: (e: ThreeEvent<PointerEvent>) => void;
@@ -80,102 +93,131 @@ function useDispose(...items: Array<{ dispose(): void }>): void {
   );
 }
 
-/** Rim fresnel discreto (sem dependência nova): emissivo += tom claro · (1 − |N·V|)³ · uRim. */
-const RIM = { value: 0.24 };
-function withRim(mat: THREE.Material): void {
-  mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uRim = RIM;
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uRim;')
-      .replace(
-        '#include <emissivemap_fragment>',
-        '#include <emissivemap_fragment>\n{ float rimF = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 3.0); totalEmissiveRadiance += vec3(0.62, 0.71, 0.9) * rimF * uRim; }',
-      );
-  };
-  mat.customProgramCacheKey = () => 'virion-rim';
+/** Uniforms do contorno fresnel (por material; atualizados a cada quadro a partir de `look`). */
+interface FresnelUniforms {
+  [key: string]: THREE.IUniform;
+  uFresnel: THREE.IUniform<number>;
+  uFresnelColor: THREE.IUniform<THREE.Color>;
 }
 
-function envelopeMaterial(quality: Quality): THREE.MeshPhysicalMaterial {
-  const mat =
+/**
+ * Contorno fresnel como mistura de ALBEDO (sem dependência nova, sem emissão): a borda puxa a cor difusa para
+ * `uFresnelColor` (fria e média no papel, clara no escuro) e continua sendo iluminada pelas luzes do palco.
+ */
+function withFresnel(mat: THREE.Material, u: FresnelUniforms): void {
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uFresnel;\nuniform vec3 uFresnelColor;')
+      .replace(
+        '#include <emissivemap_fragment>',
+        '#include <emissivemap_fragment>\n{ float frNv = abs( dot( normal, normalize( vViewPosition ) ) ); float frK = clamp( pow( 1.0 - frNv, 2.5 ) * uFresnel * 1.8, 0.0, 0.85 ); diffuseColor.rgb = mix( diffuseColor.rgb, uFresnelColor, frK ); }',
+      );
+  };
+  // mesmo código injetado em todas as variantes → programas compartilhados por parâmetros
+  mat.customProgramCacheKey = () => 'virion-fresnel-v4';
+}
+
+function envelopeMaterial(quality: Quality): { material: THREE.MeshPhysicalMaterial; u: FresnelUniforms } {
+  const u: FresnelUniforms = { uFresnel: { value: 0.22 }, uFresnelColor: { value: new THREE.Color(0.68, 0.75, 0.9) } };
+  const material =
     quality === 'high'
       ? new THREE.MeshPhysicalMaterial({
           color: ENVELOPE_TINT,
-          roughness: 0.42,
+          roughness: 0.38,
           metalness: 0,
           transmission: 0.75,
           thickness: 0.6,
           ior: 1.38,
           attenuationColor: new THREE.Color(ENVELOPE_ATTENUATION),
           attenuationDistance: 1.6,
-          sheen: 0.5,
+          // bicamada lipídica: brilho aveludado (sheen) + película fina (iridescência leve) + verniz fosco
+          sheen: 0.55,
           sheenColor: WHITE,
-          sheenRoughness: 0.7,
-          clearcoat: 0.35,
-          clearcoatRoughness: 0.4,
+          sheenRoughness: 0.6,
+          clearcoat: 0.4,
+          clearcoatRoughness: 0.32,
           specularIntensity: 0.7,
-          iridescence: 0.12,
+          iridescence: 0.14,
+          iridescenceIOR: 1.35,
+          // transparente desde o início (sem define OPAQUE): o esmaecimento do `uncoat` funciona sem trocar de shader
+          transparent: true,
           side: THREE.DoubleSide,
-          emissive: new THREE.Color(PART_COLORS.primary),
-          emissiveIntensity: 0,
         })
       : new THREE.MeshPhysicalMaterial({
           color: ENVELOPE_TINT,
           roughness: 0.5,
           metalness: 0,
-          clearcoat: 0.2,
-          clearcoatRoughness: 0.5,
-          sheen: 0.3,
+          clearcoat: 0.25,
+          clearcoatRoughness: 0.45,
+          sheen: 0.35,
           sheenColor: WHITE,
           transparent: true,
           opacity: 0.7,
           depthWrite: false,
           side: THREE.DoubleSide,
-          emissive: new THREE.Color(PART_COLORS.primary),
-          emissiveIntensity: 0,
         });
-  withRim(mat);
-  return mat;
+  withFresnel(material, u);
+  return { material, u };
 }
 
-function spikeMaterial(base: string): THREE.MeshPhysicalMaterial {
+/** Material dos espinhos: proteína fosca com leve verniz; HA um pouco mais lisa que a NA (cabeça compacta). */
+function spikeMaterial(kind: 'ha' | 'na'): THREE.MeshPhysicalMaterial {
   return new THREE.MeshPhysicalMaterial({
     color: WHITE,
     vertexColors: true,
-    roughness: 0.45,
+    roughness: kind === 'ha' ? 0.46 : 0.52,
     metalness: 0,
-    clearcoat: 0.2,
-    clearcoatRoughness: 0.45,
-    sheen: 0.3,
+    clearcoat: kind === 'ha' ? 0.25 : 0.18,
+    clearcoatRoughness: 0.42,
+    sheen: 0.35,
     sheenColor: WHITE,
-    sheenRoughness: 0.6,
-    emissive: new THREE.Color(base),
-    emissiveIntensity: 0,
+    sheenRoughness: 0.55,
   });
 }
 
 // ---------------------------------------------------------------------------------------------------------
 
+/**
+ * Realce fosco amortecido (hover/seleção, ~0,12 s): avança `k` rumo a 0/1 e pede quadro enquanto não assenta
+ * (no modo `demand` do reduced-motion só há quadro quando alguém pede).
+ */
+function stepHighlight(k: number, active: boolean, delta: number, invalidate: () => void): number {
+  const target = active ? 1 : 0;
+  const next = k + (target - k) * (1 - Math.exp(-Math.min(0.05, Math.max(0, delta)) / 0.12));
+  if (Math.abs(next - target) < 1e-3) return target;
+  invalidate();
+  return next;
+}
+
 /** Envelope lipídico pleomórfico em dois hemisférios + anel fino na costura (opacidade = openEnv). */
-function Envelope({ stateRef, quality, active, pointer }: { stateRef: StateRef; quality: Quality; active: boolean; pointer: Pointer }) {
+function Envelope({ stateRef, lookRef, quality, active, pointer }: { stateRef: StateRef; lookRef: LookRef; quality: Quality; active: boolean; pointer: Pointer }) {
   const halves = useMemo(() => envelopeHalves(quality), [quality]);
   const seam = useMemo(() => seamGeometry(quality), [quality]);
-  const material = useMemo(() => envelopeMaterial(quality), [quality]);
-  const seamMat = useMemo(() => new THREE.MeshBasicMaterial({ color: PART_COLORS.envelopeEdge, transparent: true, opacity: 0, depthWrite: false }), []);
+  const { material, u } = useMemo(() => envelopeMaterial(quality), [quality]);
+  // costura iluminada (fosca), não "linha de luz"
+  const seamMat = useMemo(() => new THREE.MeshStandardMaterial({ color: PART_COLORS.envelopeEdge, roughness: 0.7, metalness: 0, transparent: true, opacity: 0, depthWrite: false }), []);
+  const tint = useMemo(() => ({ base: new THREE.Color(ENVELOPE_TINT), hot: new THREE.Color(ENVELOPE_ACTIVE), k: 0 }), []);
+  const invalidate = useThree((st) => st.invalidate);
   useDispose(halves.top, halves.bottom, seam, material, seamMat);
   const top = useRef<THREE.Mesh>(null);
   const bottom = useRef<THREE.Mesh>(null);
   const ringTop = useRef<THREE.Mesh>(null);
   const ringBottom = useRef<THREE.Mesh>(null);
   const baseOpacity = quality === 'high' ? 1 : 0.7;
-  useFrame(() => {
+  useFrame((_, delta) => {
     const s = stateRef.current;
+    const look = lookRef.current;
     const y = s.openEnv * HALF_SHIFT;
     if (top.current) top.current.position.y = y;
     if (bottom.current) bottom.current.position.y = -y;
     const fade = 1 - 0.75 * s.uncoat;
     material.opacity = baseOpacity * fade;
-    material.transparent = quality === 'low' || s.uncoat > 0.005;
-    material.emissiveIntensity = active ? 0.14 : 0;
+    // realce fosco amortecido (hover/seleção): só muda o albedo
+    tint.k = stepHighlight(tint.k, active, delta, invalidate);
+    material.color.copy(tint.base).lerp(tint.hot, 0.6 * tint.k);
+    u.uFresnel.value = look.fresnel;
+    setSrgb(u.uFresnelColor.value, look.fresnelColor);
     const ring = s.openEnv > 0.005;
     seamMat.opacity = s.openEnv * fade;
     if (ringTop.current) {
@@ -197,32 +239,37 @@ function Envelope({ stateRef, quality, active, pointer }: { stateRef: StateRef; 
   );
 }
 
-/** Camada M1: opaca (aparece através da transmissão do envelope), fosca, com lacunas sutis; abre com openM1. */
+/** Camada M1: opaca (aparece através da transmissão do envelope), fosca e aveludada, com lacunas sutis; abre com openM1. */
 function Matrix({ stateRef, quality, active, pointer }: { stateRef: StateRef; quality: Quality; active: boolean; pointer: Pointer }) {
   const halves = useMemo(() => matrixHalves(quality), [quality]);
-  const material = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: PART_COLORS.m1,
-        roughness: 0.92,
-        metalness: 0,
-        side: THREE.DoubleSide,
-        emissive: new THREE.Color(PART_COLORS.primary),
-        emissiveIntensity: 0,
-      }),
-    [],
-  );
+  const material = useMemo(() => {
+    const m = new THREE.MeshPhysicalMaterial({
+      color: PART_COLORS.m1,
+      roughness: 0.9,
+      metalness: 0,
+      sheen: 0.35,
+      sheenColor: WHITE,
+      sheenRoughness: 0.8,
+      side: THREE.DoubleSide,
+    });
+    // opaca no resto da história, transparente no `uncoat`: o palco pré-compila as duas variantes
+    m.userData.altTransparent = true;
+    return m;
+  }, []);
+  const tint = useMemo(() => ({ base: new THREE.Color(PART_COLORS.m1), hot: new THREE.Color(M1_ACTIVE), k: 0 }), []);
+  const invalidate = useThree((st) => st.invalidate);
   useDispose(halves.top, halves.bottom, material);
   const top = useRef<THREE.Mesh>(null);
   const bottom = useRef<THREE.Mesh>(null);
-  useFrame(() => {
+  useFrame((_, delta) => {
     const s = stateRef.current;
     const y = s.openM1 * M1_SHIFT;
     if (top.current) top.current.position.y = y;
     if (bottom.current) bottom.current.position.y = -y;
     material.opacity = 1 - 0.75 * s.uncoat;
-    material.transparent = s.uncoat > 0.005;
-    material.emissiveIntensity = active ? 0.16 : 0;
+    setTransparent(material, s.uncoat > 0.005);
+    tint.k = stepHighlight(tint.k, active, delta, invalidate);
+    material.color.copy(tint.base).lerp(tint.hot, 0.65 * tint.k);
   });
   return (
     <>
@@ -232,18 +279,43 @@ function Matrix({ stateRef, quality, active, pointer }: { stateRef: StateRef; qu
   );
 }
 
-/** Variação determinística por instância (giro em torno do próprio eixo e tamanho ±5 %). */
-function useInstanceJitter(dirs: readonly Vec3[], seed: number): { roll: Float32Array; size: Float32Array } {
+/**
+ * Orientação e escala FIXAS de cada espinho (a direção não muda; só a base anda com openSpikes/openEnv):
+ * eixo levemente inclinado em torno da normal, giro próprio, altura/largura e tom de `spikeJitter`.
+ */
+function useInstanceJitter(dirs: readonly Vec3[], seed: number): { q: THREE.Quaternion[]; scale: THREE.Vector3[]; tone: Float32Array } {
   return useMemo(() => {
-    const rnd = seededRandom(seed);
-    const roll = new Float32Array(dirs.length);
-    const size = new Float32Array(dirs.length);
+    const j = spikeJitter(dirs.length, seed);
+    const n = new THREE.Vector3();
+    const t1 = new THREE.Vector3();
+    const t2 = new THREE.Vector3();
+    const axis = new THREE.Vector3();
+    const roll = new THREE.Quaternion();
+    const q: THREE.Quaternion[] = [];
+    const scale: THREE.Vector3[] = [];
     for (let i = 0; i < dirs.length; i++) {
-      roll[i] = rnd() * Math.PI * 2;
-      size[i] = 0.95 + rnd() * 0.1;
+      const d = dirs[i]!;
+      n.set(d.x, d.y, d.z).normalize();
+      t1.set(Math.abs(n.y) < 0.9 ? 0 : 1, Math.abs(n.y) < 0.9 ? 1 : 0, 0).cross(n).normalize();
+      t2.crossVectors(n, t1);
+      const a = j.tiltDir[i]!;
+      const tl = j.tilt[i]!;
+      axis
+        .copy(n)
+        .multiplyScalar(Math.cos(tl))
+        .addScaledVector(t1, Math.sin(tl) * Math.cos(a))
+        .addScaledVector(t2, Math.sin(tl) * Math.sin(a))
+        .normalize();
+      q.push(new THREE.Quaternion().setFromUnitVectors(UP, axis).multiply(roll.setFromAxisAngle(UP, j.roll[i]!)));
+      scale.push(new THREE.Vector3(j.width[i]!, j.height[i]!, j.width[i]!));
     }
-    return { roll, size };
+    return { q, scale, tone: j.tone };
   }, [dirs, seed]);
+}
+
+/** Cache dos últimos valores aplicados aos espinhos (−1 = nunca aplicado). */
+function freshSpikeCache() {
+  return { openSpikes: -1, openEnv: -1, pulse: -1, drift: -1, dock: -1, active: -1, lift: -1, colored: false };
 }
 
 /** Espinhos HA ou NA instanciados: pose por `spikeBaseInto`, cor por instância (realce, deriva, hover). */
@@ -252,6 +324,7 @@ function Spikes({
   dirs,
   stateRef,
   ambientRef,
+  lookRef,
   quality,
   active,
   pointer,
@@ -260,6 +333,7 @@ function Spikes({
   dirs: readonly Vec3[];
   stateRef: StateRef;
   ambientRef: AmbientRef;
+  lookRef: LookRef;
   quality: Quality;
   active: boolean;
   pointer: Pointer;
@@ -267,14 +341,13 @@ function Spikes({
   const mesh = useRef<THREE.InstancedMesh>(null);
   const geom = useMemo(() => (kind === 'ha' ? haGeometry(quality) : naGeometry(quality)), [kind, quality]);
   const baseHex = kind === 'ha' ? PART_COLORS.primary : PART_COLORS.h1n1;
-  const material = useMemo(() => spikeMaterial(baseHex), [baseHex]);
+  const material = useMemo(() => spikeMaterial(kind), [kind]);
   useDispose(geom, material);
   const jitter = useInstanceJitter(dirs, kind === 'ha' ? 31 : 37);
   const drift = useMemo(() => (kind === 'ha' ? driftMask(dirs.length) : null), [kind, dirs.length]);
   const scratch = useMemo(
     () => ({
       dummy: new THREE.Object3D(),
-      dir: new THREE.Vector3(),
       base: { x: 0, y: 0, z: 0 } as Vec3,
       c: new THREE.Color(),
       baseC: new THREE.Color(baseHex),
@@ -283,31 +356,35 @@ function Spikes({
     }),
     [baseHex, kind],
   );
-  const applied = useRef({ openSpikes: -1, openEnv: -1, pulse: -1, drift: -1, dock: -1, active: false, colored: false });
-  // caches `applied` resetados quando layout/qualidade mudam (a malha é remontada pela `key`)
-  useEffect(() => {
-    applied.current = { openSpikes: -1, openEnv: -1, pulse: -1, drift: -1, dock: -1, active: false, colored: false };
-  }, [dirs, geom]);
+  const applied = useRef(freshSpikeCache());
+  // cores por instância já na montagem: o programa nasce com USE_INSTANCING_COLOR e a pré-compilação vale
+  useLayoutEffect(() => {
+    applied.current = freshSpikeCache();
+    const m = mesh.current;
+    if (!m) return;
+    for (let i = 0; i < dirs.length; i++) m.setColorAt(i, scratch.baseC);
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }, [dirs, geom, scratch]);
+  // realce fosco amortecido (sem saltos de cor no hover)
+  const hot = useRef(0);
+  const invalidate = useThree((st) => st.invalidate);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const m = mesh.current;
     if (!m) return;
     const s = stateRef.current;
     const a = ambientRef.current;
     const ap = applied.current;
-    const { dummy, dir, base, c, baseC, hiC, driftC } = scratch;
+    const { dummy, base, c, baseC, hiC, driftC } = scratch;
 
     if (Math.abs(s.openSpikes - ap.openSpikes) > EPS * 0.1 || Math.abs(s.openEnv - ap.openEnv) > EPS * 0.1) {
       ap.openSpikes = s.openSpikes;
       ap.openEnv = s.openEnv;
       for (let i = 0; i < dirs.length; i++) {
-        const d = dirs[i]!;
-        spikeBaseInto(kind, d, s, base);
-        dir.set(d.x, d.y, d.z);
+        spikeBaseInto(kind, dirs[i]!, s, base);
         dummy.position.set(base.x, base.y, base.z);
-        dummy.quaternion.setFromUnitVectors(UP, dir);
-        dummy.rotateY(jitter.roll[i]!);
-        dummy.scale.setScalar(jitter.size[i]!);
+        dummy.quaternion.copy(jitter.q[i]!);
+        dummy.scale.copy(jitter.scale[i]!);
         dummy.updateMatrix();
         m.setMatrixAt(i, dummy.matrix);
       }
@@ -317,29 +394,36 @@ function Spikes({
     }
 
     const hl = kind === 'ha' ? s.hlHa : s.hlNa;
-    const pulse = hl > 0.001 ? hl * (0.72 + 0.28 * Math.sin(a.t * 7 + (kind === 'ha' ? 0 : 1.1))) : 0;
+    // pulso do capítulo 1 a PULSE_HZ (≤ 1 Hz), só no albedo
+    const pulse = hl > 0.001 ? hl * (0.7 + 0.3 * Math.sin(a.t * Math.PI * 2 * PULSE_HZ + (kind === 'ha' ? 0 : 1.1))) : 0;
     const driftK = kind === 'ha' ? s.drift : 0;
     // encaixe (capítulo 3): as HAs voltadas para a membrana (+x no quadro micro; yaw já assentado) acendem
     const dockK = kind === 'ha' ? s.dock * (1 - s.engulf) : 0;
-    if (!ap.colored || Math.abs(pulse - ap.pulse) > EPS || Math.abs(driftK - ap.drift) > EPS || Math.abs(dockK - ap.dock) > EPS || active !== ap.active) {
+    hot.current = stepHighlight(hot.current, active, delta, invalidate);
+    const act = hot.current;
+    const lift = lookRef.current.lift;
+    if (!ap.colored || Math.abs(pulse - ap.pulse) > EPS || Math.abs(driftK - ap.drift) > EPS || Math.abs(dockK - ap.dock) > EPS || Math.abs(act - ap.active) > EPS || Math.abs(lift - ap.lift) > EPS) {
       ap.pulse = pulse;
       ap.drift = driftK;
       ap.dock = dockK;
-      ap.active = active;
+      ap.active = act;
+      ap.lift = lift;
       ap.colored = true;
       for (let i = 0; i < dirs.length; i++) {
         c.copy(baseC);
         if (drift && drift[i]) c.lerp(driftC, driftK);
+        // no escuro, cobalto/rosa mais claros (albedo), nunca brilho próprio
+        if (lift > 0) c.lerp(hiC, Math.min(1, lift * 2.5));
         if (pulse > 0) c.lerp(hiC, pulse);
         if (dockK > 0) {
           const facing = (dirs[i]!.x - 0.78) / 0.22;
           if (facing > 0) c.lerp(hiC, Math.min(1, facing) * dockK * 0.9);
         }
-        if (active) c.lerp(WHITE, 0.14);
+        if (act > 0) c.lerp(hiC, ACTIVE_MIX * act).lerp(WHITE, 0.1 * act);
+        c.multiplyScalar(1 + jitter.tone[i]!);
         m.setColorAt(i, c);
       }
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
-      material.emissiveIntensity = (active ? 0.22 : 0) + pulse * 0.12;
     }
   });
 
@@ -381,14 +465,14 @@ function Channels({
         roughness: 0.6,
         metalness: 0,
         clearcoat: 0.15,
-        emissive: new THREE.Color(PART_COLORS.primary),
-        emissiveIntensity: 0,
+        sheen: 0.2,
+        sheenColor: WHITE,
       }),
     [],
   );
   useDispose(geom, material);
   const jitter = useInstanceJitter(dirs, 43);
-  const scratch = useMemo(() => ({ dummy: new THREE.Object3D(), dir: new THREE.Vector3(), base: { x: 0, y: 0, z: 0 } as Vec3, baseC: new THREE.Color(PART_COLORS.m2), hiC: new THREE.Color(PART_COLORS.primary) }), []);
+  const scratch = useMemo(() => ({ dummy: new THREE.Object3D(), base: { x: 0, y: 0, z: 0 } as Vec3, baseC: new THREE.Color(PART_COLORS.m2), hiC: new THREE.Color(PART_COLORS.primary), activeC: new THREE.Color(PRIMARY_500) }), []);
   const applied = useRef({ openSpikes: -1, openEnv: -1 });
   useEffect(() => {
     applied.current = { openSpikes: -1, openEnv: -1 };
@@ -399,26 +483,25 @@ function Channels({
     const s = stateRef.current;
     const a = ambientRef.current;
     const ap = applied.current;
-    const { dummy, dir, base, baseC, hiC } = scratch;
+    const { dummy, base, baseC, hiC, activeC } = scratch;
     if (Math.abs(s.openSpikes - ap.openSpikes) > EPS * 0.1 || Math.abs(s.openEnv - ap.openEnv) > EPS * 0.1) {
       ap.openSpikes = s.openSpikes;
       ap.openEnv = s.openEnv;
       for (let i = 0; i < dirs.length; i++) {
-        const d = dirs[i]!;
-        spikeBaseInto('m2', d, s, base);
-        dir.set(d.x, d.y, d.z);
+        spikeBaseInto('m2', dirs[i]!, s, base);
         dummy.position.set(base.x, base.y, base.z);
-        dummy.quaternion.setFromUnitVectors(UP, dir);
-        dummy.scale.setScalar(jitter.size[i]!);
+        dummy.quaternion.copy(jitter.q[i]!);
+        dummy.scale.copy(jitter.scale[i]!);
         dummy.updateMatrix();
         m.setMatrixAt(i, dummy.matrix);
       }
       m.instanceMatrix.needsUpdate = true;
       m.boundingSphere = null;
     }
+    // "pisca" do uncoat a BLINK_HZ (≤ 1 Hz) e realce do hover: só albedo
     const blink = s.uncoat * a.blink;
     material.color.copy(baseC).lerp(hiC, blink * 0.85);
-    material.emissiveIntensity = blink * 0.35 + (active ? 0.3 : 0);
+    if (active) material.color.lerp(activeC, ACTIVE_MIX);
   });
   return (
     <instancedMesh
@@ -508,7 +591,7 @@ function buildRnpBeads(quality: Quality): RnpBeads {
 }
 
 /** 8 RNPs em contas instanciadas: leque escalonado (openRnp) e saída em fila rumo ao núcleo (release). */
-function Rnps({ stateRef, quality, active, pointer }: { stateRef: StateRef; quality: Quality; active: boolean; pointer: Pointer }) {
+function Rnps({ stateRef, lookRef, quality, active, pointer }: { stateRef: StateRef; lookRef: LookRef; quality: Quality; active: boolean; pointer: Pointer }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const geom = useMemo(() => beadGeometry(quality), [quality]);
   const beads = useMemo(() => buildRnpBeads(quality), [quality]);
@@ -516,13 +599,12 @@ function Rnps({ stateRef, quality, active, pointer }: { stateRef: StateRef; qual
     () =>
       new THREE.MeshPhysicalMaterial({
         color: WHITE,
-        roughness: 0.5,
+        roughness: 0.55,
         metalness: 0,
-        clearcoat: 0.15,
-        sheen: 0.2,
+        clearcoat: 0.12,
+        sheen: 0.4,
         sheenColor: WHITE,
-        emissive: new THREE.Color(PART_COLORS.infb),
-        emissiveIntensity: 0,
+        sheenRoughness: 0.6,
       }),
     [],
   );
@@ -539,9 +621,14 @@ function Rnps({ stateRef, quality, active, pointer }: { stateRef: StateRef; qual
     }),
     [],
   );
-  const applied = useRef({ openRnp: -1, release: -1, active: false });
-  useEffect(() => {
-    applied.current = { openRnp: -1, release: -1, active: false };
+  const applied = useRef({ openRnp: -1, release: -1, active: false, lift: -1 });
+  // cores por instância já na montagem (programa com USE_INSTANCING_COLOR desde a pré-compilação)
+  useLayoutEffect(() => {
+    applied.current = { openRnp: -1, release: -1, active: false, lift: -1 };
+    const m = mesh.current;
+    if (!m) return;
+    for (let i = 0; i < beads.count; i++) m.setColorAt(i, beads.color[i]!);
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [beads, geom]);
 
   useFrame(() => {
@@ -549,10 +636,12 @@ function Rnps({ stateRef, quality, active, pointer }: { stateRef: StateRef; qual
     if (!m) return;
     const s = stateRef.current;
     const ap = applied.current;
-    if (Math.abs(s.openRnp - ap.openRnp) < EPS * 0.1 && Math.abs(s.release - ap.release) < EPS * 0.1 && active === ap.active) return;
+    const lift = lookRef.current.lift;
+    if (Math.abs(s.openRnp - ap.openRnp) < EPS * 0.1 && Math.abs(s.release - ap.release) < EPS * 0.1 && active === ap.active && Math.abs(lift - ap.lift) < EPS) return;
     ap.openRnp = s.openRnp;
     ap.release = s.release;
     ap.active = active;
+    ap.lift = lift;
     const { obj, m: tmp, c, fadeC, rnpM, fade } = scratch;
     for (let k = 0; k < RNP_COUNT; k++) {
       const t = rnpOpenT(s.openRnp, k);
@@ -576,15 +665,15 @@ function Rnps({ stateRef, quality, active, pointer }: { stateRef: StateRef; qual
       tmp.multiplyMatrices(rnpM[k]!, beads.local[i]!);
       m.setMatrixAt(i, tmp);
       c.copy(beads.color[i]!);
+      if (lift > 0) c.lerp(WHITE, lift);
       const f = fade[k]!;
       if (f > 0) c.lerp(fadeC, f);
-      if (active) c.lerp(WHITE, 0.16);
+      if (active) c.lerp(WHITE, 0.22);
       m.setColorAt(i, c);
     }
     m.instanceMatrix.needsUpdate = true;
     m.boundingSphere = null;
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
-    material.emissiveIntensity = active ? 0.2 : 0;
   });
 
   return (
@@ -603,7 +692,7 @@ function Rnps({ stateRef, quality, active, pointer }: { stateRef: StateRef; qual
 // ---------------------------------------------------------------------------------------------------------
 
 /** Todas as peças do vírion, dentro do grupo que gira (o pai aplica yaw/posição/escala). */
-export function Virion({ stateRef, ambientRef, quality, layout, hovered, selected, onHover, onSelect }: VirionProps) {
+export function Virion({ stateRef, ambientRef, lookRef, quality, layout, hovered, selected, onHover, onSelect }: VirionProps) {
   useCursor(hovered !== null);
   const breath = useRef<THREE.Group>(null);
   const isActive = (id: PartId) => hovered === id || selected === id;
@@ -614,24 +703,25 @@ export function Virion({ stateRef, ambientRef, quality, layout, hovered, selecte
   const pM2 = usePointer('m2', onHover, onSelect);
   const pRna = usePointer('rna', onHover, onSelect);
 
-  // respiração: ±0,8 % de escala com ambient.breath enquanto o vírion gira livre (spin > 0,05)
+  // respiração: anisotrópica e lenta (≈ ±1 %, ~0,25 Hz + oscilação a ~0,17 Hz) enquanto o vírion gira livre
+  // (spin > 0,05): a partícula "pulsa" como membrana, não como balão; espinhos acompanham (mesmo grupo)
   useFrame(() => {
     const g = breath.current;
     if (!g) return;
     const s = stateRef.current;
     const a = ambientRef.current;
     const k = clamp01((s.spin - 0.05) / 0.1);
-    g.scale.setScalar(1 + 0.008 * a.breath * k);
+    g.scale.set(1 + (0.009 * a.breath + 0.003 * a.wobble) * k, 1 + (-0.007 * a.breath + 0.004 * a.wobble) * k, 1 + (0.006 * a.breath - 0.004 * a.wobble) * k);
   });
 
   return (
     <group ref={breath}>
-      <Envelope stateRef={stateRef} quality={quality} active={isActive('envelope')} pointer={pEnv} />
+      <Envelope stateRef={stateRef} lookRef={lookRef} quality={quality} active={isActive('envelope')} pointer={pEnv} />
       <Matrix stateRef={stateRef} quality={quality} active={isActive('m1')} pointer={pM1} />
-      <Spikes kind="ha" dirs={layout.ha} stateRef={stateRef} ambientRef={ambientRef} quality={quality} active={isActive('ha')} pointer={pHa} />
-      <Spikes kind="na" dirs={layout.na} stateRef={stateRef} ambientRef={ambientRef} quality={quality} active={isActive('na')} pointer={pNa} />
+      <Spikes kind="ha" dirs={layout.ha} stateRef={stateRef} ambientRef={ambientRef} lookRef={lookRef} quality={quality} active={isActive('ha')} pointer={pHa} />
+      <Spikes kind="na" dirs={layout.na} stateRef={stateRef} ambientRef={ambientRef} lookRef={lookRef} quality={quality} active={isActive('na')} pointer={pNa} />
       <Channels dirs={layout.m2} stateRef={stateRef} ambientRef={ambientRef} quality={quality} active={isActive('m2')} pointer={pM2} />
-      <Rnps stateRef={stateRef} quality={quality} active={isActive('rna')} pointer={pRna} />
+      <Rnps stateRef={stateRef} lookRef={lookRef} quality={quality} active={isActive('rna')} pointer={pRna} />
     </group>
   );
 }

@@ -1,0 +1,9 @@
+3D Reference Organ for Lung, Female v1.4
+Copyright / attribution: Kristen Browne and Heidi Schlehlein, 2024; Human Reference Atlas / HuBMAP.
+DOI: https://doi.org/10.48539/HBM994.HXJP.575
+
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+License summary: https://creativecommons.org/licenses/by/4.0/
+Legal code: https://creativecommons.org/licenses/by/4.0/legalcode.en
+
+You may share and adapt this model, including commercially, provided that appropriate credit is given, a link to the license is provided, and modifications are indicated. No endorsement is implied. No additional restrictions are imposed by this adaptation. See ATTRIBUTION.md for the exact source and modifications.

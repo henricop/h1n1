@@ -134,6 +134,7 @@ body {
   }
 }
 
+@layer components {
 /* ====== Escala tipográfica editorial ====== */
 
 /* Abertura e títulos de capítulo (Instrument Serif). */
@@ -186,21 +187,21 @@ body {
 }
 /* Etiqueta mono "[ 02 ]" (caixa normal). */
 .kicker-mono {
-  @apply font-mono text-[13px] font-medium leading-none text-muted;
+  @apply font-mono text-[14px] font-medium leading-none text-muted;
   letter-spacing: 0.02em;
 }
 /* Kicker em cobalto acima de títulos. */
 .eyebrow,
 .kicker {
-  @apply text-[13px] font-semibold leading-snug text-primary-600;
+  @apply text-[14px] font-semibold leading-snug text-primary-600;
 }
 /* Rótulo pequeno e discreto. */
 .label {
-  @apply text-[13px] font-medium leading-snug text-muted;
+  @apply text-[14px] font-medium leading-snug text-muted;
 }
 /* Rodapé de metadados de um painel: fonte · licença · base. */
 .meta {
-  @apply mt-3 border-t border-line pt-2 font-mono text-[12px] leading-relaxed text-faint;
+  @apply mt-3 border-t border-line pt-2 font-mono text-[14px] leading-relaxed text-faint;
 }
 /* Contador em display (painéis de dados). */
 .value {
@@ -238,7 +239,8 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 240px 240px;
 }
-html[data-theme-current='deep'] .paper-grain {
+html[data-theme-current='deep'] .paper-grain,
+html[data-simple='1'] .paper-grain {
   display: none;
 }
 
@@ -303,6 +305,7 @@ html[data-theme-current='deep'] .btn-primary {
   min-height: 44px;
   min-width: 44px;
 }
+}
 
 /* ====== Corpo editorial (MDX) ====== */
 .prose {
@@ -341,7 +344,7 @@ html[data-theme-current='deep'] .btn-primary {
   @apply border-b border-line px-3 py-2 text-left align-top;
 }
 .prose th {
-  @apply font-mono text-[12px] font-medium text-muted;
+  @apply font-mono text-[14px] font-medium text-muted;
 }
 .prose code {
   @apply rounded bg-bg-soft px-1 font-mono text-[0.9em];
@@ -361,14 +364,14 @@ html[data-theme-current='deep'] .btn-primary {
   @apply w-full border-collapse text-[14px];
 }
 .data-table caption {
-  @apply py-2 text-left font-mono text-[12px] text-muted;
+  @apply py-2 text-left font-mono text-[14px] text-muted;
 }
 .data-table th,
 .data-table td {
   @apply border-b border-line px-2 py-2 text-left;
 }
 .data-table th {
-  @apply font-mono text-[12px] font-medium text-muted;
+  @apply font-mono text-[14px] font-medium text-muted;
 }
 .data-table td.num {
   @apply text-right font-mono text-[0.95em] tabular-nums;

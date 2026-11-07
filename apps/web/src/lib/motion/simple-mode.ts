@@ -43,3 +43,9 @@ export function onSimpleMode(cb: (on: boolean) => void): () => void {
   window.addEventListener(SIMPLE_EVENT, h);
   return () => window.removeEventListener(SIMPLE_EVENT, h);
 }
+
+/**
+ * Script inline e síncrono (no `<head>` do layout) que aplica `data-simple="1"` a partir do localStorage antes da
+ * primeira pintura, evitando o "flash" de movimento. Cabe no CSP (`script-src 'self' 'unsafe-inline'`); não faz rede.
+ */
+export const SIMPLE_MODE_BOOT_SCRIPT = `try{if(localStorage.getItem(${JSON.stringify(SIMPLE_KEY)})==='1')document.documentElement.setAttribute('data-simple','1')}catch(e){}`;

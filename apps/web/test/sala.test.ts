@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 
+// O pôster do globo é um componente de servidor assíncrono (lê public/geo com fs); renderToStaticMarkup não o resolve.
+vi.mock('@/components/sala/GlobePoster', () => ({ GlobePoster: () => createElement('figure', { 'data-poster': 'true' }, 'pôster do globo') }));
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -127,12 +130,14 @@ describe('linha do tempo (scrubber)', () => {
   });
 });
 
-describe('escala do mapa e contadores do HUD', () => {
-  it('mapCell trata nulo e suprimido como hachura, zero como cor própria e escala por raiz quadrada', async () => {
+describe('escala do mapa e contadores da semana', () => {
+  it('mapCell: suprimido = hachura, sem dado = pontilhado (desenhos distintos), zero = cor própria, escala por raiz quadrada', async () => {
     const m = await import('@/lib/map-scale');
     expect(m.mapCell(null, false, 100).kind).toBe('nodata');
+    expect(m.mapCell(null, false, 100).fill).toBe(m.MAP_COLOR_NODATA);
     expect(m.mapCell(50, true, 100).kind).toBe('suppressed');
-    expect(m.mapCell(50, true, 100).fill).toBe(m.MAP_COLOR_NODATA);
+    expect(m.mapCell(50, true, 100).fill).toBe(m.MAP_COLOR_SUPPRESSED);
+    expect(m.MAP_COLOR_SUPPRESSED).not.toBe(m.MAP_COLOR_NODATA);
     expect(m.mapCell(0, false, 100).kind).toBe('zero');
     const c = m.mapCell(25, false, 100);
     expect(c.kind).toBe('value');
@@ -144,6 +149,23 @@ describe('escala do mapa e contadores do HUD', () => {
     expect(m.sqrtRadius(25, 100, 10)).toBeCloseTo(5);
     expect(m.legendStops(100).at(-1)?.value).toBe(100);
     expect(m.mixHex('#000000', '#ffffff', 0.5)).toBe('#808080');
+  });
+
+  it('legendStops é gerada dos dados: inteiros crescentes, sem repetir valores nem "0" quando o máximo é pequeno', async () => {
+    const { legendStops } = await import('@/lib/map-scale');
+    const small = legendStops(3).map((s) => s.value);
+    expect(small).toEqual([...new Set(small)]);
+    expect(small.every((v) => Number.isInteger(v) && v >= 1)).toBe(true);
+    expect(small.at(-1)).toBe(3);
+    expect(legendStops(0)).toEqual([]);
+    const big = legendStops(1000).map((s) => s.value);
+    expect(big).toEqual([...big].sort((a, b) => a - b));
+  });
+
+  it('textOn escolhe tinta ou branco pelo maior contraste sobre a cor da UF', async () => {
+    const { textOn, MAP_COLOR_HIGH, MAP_COLOR_LOW } = await import('@/lib/map-scale');
+    expect(textOn(MAP_COLOR_HIGH)).toBe('#ffffff');
+    expect(textOn(MAP_COLOR_LOW)).toBe('#14130f');
   });
 
   it('hudForWeek soma só valores publicados, conta países e posiciona o Brasil', async () => {
@@ -160,6 +182,12 @@ describe('escala do mapa e contadores do HUD', () => {
     const w1 = hudForWeek(countries, 1);
     expect(w1).toMatchObject({ worldTotal: 5, countriesReporting: 2, brazil: 0, brazilRank: null });
     expect(globalMax(countries)).toBe(100);
+  });
+
+  it('weekTitle mostra a semana em caixa normal (caixa alta só em Big Shoulders)', async () => {
+    const { weekTitle } = await import('@/lib/hud');
+    expect(weekTitle('2009-W17')).toBe('Semana ISO 17 · 2009');
+    expect(weekTitle('abc')).toBe('abc');
   });
 });
 
@@ -295,5 +323,280 @@ describe('sem conexão externa em runtime (só o próprio site e a API própria)
     const pkg = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
     const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
     expect(deps.filter((d) => d === 'ai' || d === 'cmdk' || d.startsWith('@ai-sdk/'))).toEqual([]);
+  });
+});
+
+
+// ---------------------------------------------------------------------------------------------------------------------
+// v4 · páginas de dados no sistema "papel, cinema, dado"
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe('mapa por UF (SSR): legenda, tabela equivalente e seletor', () => {
+  const ufs = [
+    { code: 'BR-SP', uf: 'SP', name: 'São Paulo', ibge: '35', values: [120], suppressed: [false] },
+    { code: 'BR-AC', uf: 'AC', name: 'Acre', ibge: '12', values: [null], suppressed: [true] },
+    { code: 'BR-RR', uf: 'RR', name: 'Roraima', ibge: '14', values: [null], suppressed: [false] },
+    { code: 'BR-DF', uf: 'DF', name: 'Distrito Federal', ibge: '53', values: [0], suppressed: [false] },
+  ];
+  const paths = ufs.map((u, i) => ({ uf: u.uf, name: u.name, d: `M${i * 20},0L${i * 20 + 15},0L${i * 20 + 15},15Z`, cx: i * 20 + 8, cy: 8, w: 40 }));
+  const props = { states: ufs, weekIndex: 0, week: '2026-W40', max: 120, unit: 'notifications', threshold: 5, indicatorName: 'SRAG por A(H1N1)pdm09 confirmada', provisional: true };
+
+  it('legenda traz "<5, ocultado por privacidade" e "sem dado publicado" com desenhos distintos (hachura x pontilhado)', async () => {
+    const { BrazilMap } = await import('@/components/sala/BrazilMap');
+    const html = renderToStaticMarkup(createElement(BrazilMap, { ...props, paths }));
+    const legend = /aria-label="Legenda do mapa">([\s\S]*?)<\/ul>/.exec(html)![1]!;
+    expect(legend).toContain('&lt;5, ocultado por privacidade');
+    expect(legend).toContain('sem dado publicado');
+    expect(legend).toContain('0'); // zero publicado tem cor própria
+    expect(html).toMatch(/<pattern id="hs-[^"]+"/);
+    expect(html).toMatch(/<pattern id="dn-[^"]+"/);
+    // Acre (suprimido) usa a hachura; Roraima (sem dado) usa o pontilhado
+    const fillOf = (uf: string) => new RegExp(`<path d="[^"]+" class="uf-path" fill="url\\(#(hs|dn)-[^)]+\\)"[^>]*aria-label="[^"]*\\(${uf}\\)`).exec(html)?.[1];
+    expect(fillOf('AC')).toBe('hs');
+    expect(fillOf('RR')).toBe('dn');
+    expect(html).toContain('provisório');
+  });
+
+  it('tabela equivalente ("Ver como tabela") em ordem alfabética, com "<5" e "sem dado"; nunca o valor suprimido', async () => {
+    const { BrazilMap } = await import('@/components/sala/BrazilMap');
+    const withLeak = ufs.map((u) => (u.uf === 'AC' ? { ...u, values: [4242] } : u));
+    const html = renderToStaticMarkup(createElement(BrazilMap, { ...props, states: withLeak, paths }));
+    expect(html).toContain('Ver como tabela');
+    const table = /<table[\s\S]*<\/table>/.exec(html)![0]!;
+    const order = ['Acre', 'Distrito Federal', 'Roraima', 'São Paulo'].map((n) => table.indexOf(n));
+    expect(order.every((i) => i > 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(table).toContain('&lt;5');
+    expect(table).toContain('ocultado por privacidade');
+    expect(table).toContain('sem dado');
+    expect(html).not.toContain('4242');
+    expect(html).not.toContain('4.242');
+  });
+
+  it('seletor de UF por formulário GET, UF como link e nenhuma ordenação/ranking', async () => {
+    const { BrazilMap } = await import('@/components/sala/BrazilMap');
+    const html = renderToStaticMarkup(createElement(BrazilMap, { ...props, paths, selectedUf: 'SP', ufHref: '/dados/brasil/?uf={uf}', ufForm: { action: '/dados/brasil/', hidden: { indicador: 'x' }, selected: 'SP' } }));
+    expect(html).toMatch(/<form[^>]*action="\/dados\/brasil\/" method="get"/);
+    expect(html).toContain('<select');
+    expect(html).toContain('name="uf"');
+    expect(html).toContain('<input type="hidden" name="indicador" value="x"/>');
+    expect(html).toContain('href="/dados/brasil/?uf=AC"');
+    expect(html).not.toMatch(/ranking|posição/i);
+  });
+
+  it('sem os caminhos do servidor o SVG ainda não existe, mas legenda e tabela já estão no HTML', async () => {
+    const { BrazilMap } = await import('@/components/sala/BrazilMap');
+    const html = renderToStaticMarkup(createElement(BrazilMap, props));
+    expect(html).toContain('Carregando malha de UFs');
+    expect(html).toContain('ocultado por privacidade');
+    expect(html).toContain('Ver como tabela');
+  });
+
+  it('com a malha real do IBGE o servidor entrega as 27 UFs no SVG (SSR do mapa)', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '1');
+    const { loadUfPaths } = await import('@/components/sala/uf-paths.server');
+    const { getBrazilMap } = await import('@/lib/api');
+    const { BrazilMap } = await import('@/components/sala/BrazilMap');
+    const real = await loadUfPaths();
+    expect(real?.length).toBe(27);
+    expect(real!.every((p) => p.d.startsWith('M') && p.w > 0)).toBe(true);
+    // regressão: sem reorientar os anéis cada UF vira o complemento da esfera e ocupa o viewBox inteiro (560 × 540)
+    expect(real!.every((p) => p.w < 300)).toBe(true);
+    expect(real!.find((p) => p.uf === 'DF')!.w).toBeLessThan(20);
+    expect(real!.find((p) => p.uf === 'AM')!.w).toBeGreaterThan(150);
+    const m = await getBrazilMap({ indicator: 'sivep_srag_ah1n1pdm09_deaths' });
+    expect(m.ok).toBe(true);
+    if (!m.ok) return;
+    const i = m.data.weeks.length - 1;
+    const html = renderToStaticMarkup(createElement(BrazilMap, { states: m.data.states, weekIndex: i, week: m.data.weeks[i]!, max: 10, unit: 'deaths', threshold: 5, indicatorName: m.data.indicator.name, provisional: false, paths: real }));
+    expect((html.match(/class="uf-path"/g) ?? []).length).toBe(27);
+    expect(html).toContain('Ver como tabela');
+  });
+});
+
+describe('número gigante e contagem (SSR)', () => {
+  const base = {
+    id: 'ultimo-valor',
+    kicker: '( 01 ) Último valor publicado',
+    indicatorName: 'SRAG por A(H1N1)pdm09 confirmada por RT-PCR',
+    definition: 'Caso de SRAG hospitalizado com RT-PCR positivo para A(H1N1)pdm09.',
+    value: 1234,
+    suppressed: false,
+    threshold: 5,
+    unit: 'notifications',
+    unitLabel: 'notificações',
+    period: 'SE 41/2026',
+    periodRange: 'de 05/10/2026 a 11/10/2026',
+    provisional: true,
+    universe: 'Hospitalizações por SRAG notificadas ao SIVEP-Gripe.',
+    geography: 'Brasil',
+    source: { name: 'SIVEP-Gripe', agency: 'Ministério da Saúde', href: '/dados/fontes/br_sivep_gripe/' },
+    baseDate: '13/10/2026',
+  };
+
+  it('o número final e TODOS os rótulos estão no HTML do servidor; a contagem usa um clone aria-hidden vazio', async () => {
+    const { BigNumber } = await import('@/components/sala/BigNumber');
+    const html = renderToStaticMarkup(createElement(BigNumber, base));
+    for (const t of ['SRAG por A(H1N1)pdm09 confirmada por RT-PCR', 'RT-PCR positivo', '1.234', 'notificações', 'SE 41/2026', 'de 05/10/2026 a 11/10/2026', 'Provisório', 'provisória (sujeita a revisão)', 'Hospitalizações por SRAG', 'href="/dados/fontes/br_sivep_gripe', 'Ministério da Saúde', 'Base de', '13/10/2026', 'Geografia', 'Universo']) {
+      expect(html, t).toContain(t);
+    }
+    expect(html).toContain('class="bignum"');
+    // clone da contagem: aria-hidden, oculto e sem texto (a animação só roda no cliente)
+    expect(html).toMatch(/<span aria-hidden="true" hidden="" class="[^"]*"><\/span>/);
+    expect(html).not.toMatch(/tempo real/i);
+  });
+
+  it('consolidado diz "consolidada"; suprimido mostra "<5" estático, sem o valor e sem contagem', async () => {
+    const { BigNumber } = await import('@/components/sala/BigNumber');
+    const fin = renderToStaticMarkup(createElement(BigNumber, { ...base, provisional: false }));
+    expect(fin).toContain('Consolidado');
+    expect(fin).toContain('consolidada');
+    const sup = renderToStaticMarkup(createElement(BigNumber, { ...base, value: 4242, suppressed: true }));
+    expect(sup).toContain('&lt;5');
+    expect(sup).toContain('ocultado por privacidade');
+    expect(sup).not.toContain('4242');
+    expect(sup).not.toContain('4.242');
+  });
+
+  it('CountUp: valor final no HTML (SSR), nulo mostra o texto estático informado', async () => {
+    const { CountUp } = await import('@/components/sala/CountUp');
+    expect(renderToStaticMarkup(createElement(CountUp, { value: 98765 }))).toContain('98.765');
+    expect(renderToStaticMarkup(createElement(CountUp, { value: null, empty: '<5' }))).toContain('&lt;5');
+    expect(renderToStaticMarkup(createElement(CountUp, { value: 12.5, unit: 'percent' }))).toContain('12,5%');
+  });
+});
+
+describe('páginas de dados (SSR com a API em modo mock)', () => {
+  const FORBIDDEN_IN_MARKUP = /tempo real|ao vivo|hud-|scanlines|cursor-blink|\buppercase\b|\btext-xs\b|text-\[(?:10|11|13)px\]/i; // 12 px só nos rótulos de eixo do scrubber
+  /** Primeiro trecho proibido (com contexto) ou null: a mensagem de erro do teste mostra onde está. */
+  const forbidden = (html: string): string | null => {
+    const m = FORBIDDEN_IN_MARKUP.exec(html);
+    return m ? html.slice(Math.max(0, m.index - 80), m.index + 80) : null;
+  };
+
+  it('/dados/brasil: kicker, H1, número gigante com rótulos, série, mapa com legenda e tabela, sem ranking nem tempo real', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '1');
+    const { default: Page } = await import('@/app/dados/brasil/page');
+    const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain('[ Observatório · SIVEP-Gripe e FluNet ]');
+    expect(html).toMatch(/<h1 class="display-lg[^"]*">H1N1 no Brasil<\/h1>/);
+    const big = /<article id="ultimo-valor"[\s\S]*?<\/article>/.exec(html)![0]!;
+    expect(big).toContain('class="bignum"');
+    for (const t of ['Período', 'Situação', 'Geografia', 'Universo', 'Fonte', 'Base de']) expect(big, t).toContain(t);
+    expect(big).toMatch(/href="\/dados\/fontes\/[^"]+"/);
+    expect(html).toContain('Os números são os últimos publicados pelas fontes oficiais e podem ter atraso; cada um traz a data da base.');
+    expect(html).toContain('&lt;5, ocultado por privacidade');
+    expect(html).toContain('sem dado publicado');
+    expect(html).toContain('Ver como tabela');
+    expect(html).toContain('provisória'); // cauda provisória na legenda/tabela
+    expect(html).not.toMatch(/Ranking de UFs/);
+    expect(forbidden(html)).toBeNull();
+  });
+
+  it('/dados/brasil com indicador FluNet (sem mapa) e UF ignorada continua válido', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '1');
+    const { default: Page } = await import('@/app/dados/brasil/page');
+    const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ indicador: 'flunet_ah1n1pdm09_detections', uf: 'SP' }) }));
+    expect(html).toContain('o filtro de UF foi ignorado');
+    expect(html).toContain('class="bignum"');
+    expect(html).not.toContain('id="h-mapa"');
+    expect(forbidden(html)).toBeNull();
+  });
+
+  it('/dados/mundo: número gigante da semana com rótulos + globo + tabela por país', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '1');
+    const { default: Page } = await import('@/app/dados/mundo/page');
+    const html = renderToStaticMarkup(await Page());
+    expect(html).toContain('[ FluNet · OMS/GISRS ]');
+    expect(html).toContain('class="bignum"');
+    expect(html).toContain('Detecções laboratoriais de A(H1N1)pdm09 reportadas à OMS');
+    expect(html).toMatch(/Semana ISO \d+ · \d{4}/);
+    expect(html).toContain('Base de');
+    expect(html).toContain('Comparar');
+    expect(forbidden(html)).toBeNull();
+  });
+
+  it('/sala: capítulos ( 01 )…( 05 ), contadores, scrubber, EARS, composição e execuções, sem HUD, sem ranking de UFs, sem tempo real', async () => {
+    vi.stubEnv('H1N1_API_MOCK', '1');
+    const { default: Page } = await import('@/app/sala/page');
+    const html = renderToStaticMarkup(await Page());
+    for (const t of ['( 01 ) Mundo', '( 02 ) Brasil', '( 03 ) Tendência', '( 04 ) Composição', '( 05 ) Execuções', '[ Sala de dados · FluNet e SIVEP-Gripe ]', 'H1N1 em números']) expect(html, t).toContain(t);
+    expect(html).toMatch(/Semana ISO \d+ · \d{4}/);
+    expect(html).not.toContain('SEMANA ISO');
+    expect(html).toContain('Sinal estatístico, não surto confirmado.');
+    expect(html).toContain('console-line');
+    expect(html).toContain('&lt;5, ocultado por privacidade');
+    expect(html).toContain('Os números são os últimos publicados pelas fontes oficiais e podem ter atraso; cada um traz a data da base.');
+    expect(html).not.toMatch(/Ranking de UFs/);
+    expect(forbidden(html)).toBeNull();
+  });
+});
+
+describe('piso de 14 px e tipografia nos arquivos de dados', () => {
+  const ROOTS = ['src/components/sala', 'src/components/charts', 'src/app/dados/brasil', 'src/app/dados/mundo', 'src/app/sala'];
+  const walkFiles = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir)) {
+      const f = path.join(dir, e);
+      if (statSync(f).isDirectory()) walkFiles(f, out);
+      else if (/\.(ts|tsx)$/.test(e)) out.push(f);
+    }
+    return out;
+  };
+  const files = [...ROOTS.flatMap((r) => walkFiles(path.join(process.cwd(), r))), path.join(process.cwd(), 'src/components/IndicatorCard.tsx')];
+
+  it('nenhum text-xs / text-[10–13px], uppercase, negrito em serifa, "Hud" ou "tempo real" nos componentes de dados', () => {
+    const hits = files.flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .flatMap((line, i) => {
+          const rel = path.relative(process.cwd(), file);
+          const out: string[] = [];
+          if (/\btext-xs\b|text-\[(?:10|11|13)px\]/.test(line)) out.push('texto < 14 px');
+          // rótulos de eixo do scrubber são a única exceção declarada (12 px)
+          if (/text-\[12px\]/.test(line) && !rel.endsWith('TimeScrubber.tsx')) out.push('texto 12 px fora de eixo');
+          if (/\buppercase\b/.test(line)) out.push('uppercase');
+          if (/font-display[^'"`]*font-(?:bold|extrabold|semibold)/.test(line)) out.push('negrito em Instrument Serif');
+          if (/\bHud[A-Z]|hud-|HUD_COLORS/.test(line)) out.push('nome de HUD');
+          if (/tempo real/i.test(line) && !/n[aã]o|nunca|sem/i.test(line)) out.push('tempo real');
+          return out.map((o) => `${rel}:${i + 1}: ${o}`);
+        }),
+    );
+    expect(hits, hits.join('\n')).toEqual([]);
+  });
+
+  it('os componentes renomeados existem e os antigos não', () => {
+    const names = files.map((f) => path.basename(f));
+    for (const n of ['DataTopbar.tsx', 'DataFooter.tsx', 'DataCounters.tsx']) expect(names).toContain(n);
+    for (const n of ['HudTopbar.tsx', 'HudFooter.tsx', 'HudCounters.tsx']) expect(names).not.toContain(n);
+  });
+});
+
+describe('cores de gráfico: contraste ≥ 3:1 sobre o papel (WCAG 1.4.11)', () => {
+  const lum = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+  };
+  const contrast = (a: string, b: string) => {
+    const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+    return (x! + 0.05) / (y! + 0.05);
+  };
+
+  it('linhas h1n1, h3, infb, srag/provisório, cinza e primário passam em 3:1 sobre o papel e o cartão', async () => {
+    const { CHART_COLORS } = await import('@/lib/echarts-theme');
+    for (const k of ['primary', 'h1n1', 'h3', 'infb', 'srag', 'gray', 'lineStrong'] as const) {
+      expect(contrast(CHART_COLORS[k], '#f4f1ea'), k).toBeGreaterThanOrEqual(3);
+      expect(contrast(CHART_COLORS[k], '#fbfaf7'), k).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('o tema ECharts é transparente (papel por trás) e sem as cores neon/azul-acinzentado antigas', async () => {
+    const { ECHARTS_THEME } = await import('@/lib/echarts-theme');
+    expect(ECHARTS_THEME.backgroundColor).toBe('transparent');
+    const json = JSON.stringify(ECHARTS_THEME).toLowerCase();
+    for (const old of ['#0f9f93', '#f29a0a', '#9aa5b4', '#e3e8f0', '#0b1220', 'manrope']) expect(json).not.toContain(old);
   });
 });

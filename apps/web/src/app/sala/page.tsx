@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getBrazilMap, getEars, getFreshness, getGlobe, getLatest, getNowcast, getRuns, getSeasons, getSeries, seriesCsvUrl, type ApiResult, type BrazilMapResult } from '@/lib/api';
 import { eligiblePages, firstEligible } from '@/lib/content';
+import { COMPOSITION_COLORS } from '@/lib/echarts-theme';
 import { formatDateBR } from '@/lib/format';
 import { globalMax } from '@/lib/hud';
 import { indicatorLabel } from '@/lib/observatory';
@@ -11,20 +12,24 @@ import { GLOBE_WINDOW_WEEKS, TIMELINE_START, defaultWeekIndex } from '@/lib/time
 import { JsonLd } from '@/components/JsonLd';
 import { DataUnavailable, FreshnessNote, NoDataPublished } from '@/components/Notices';
 import { freshnessState } from '@/lib/api';
+import { LABEL, NOTE } from '@/components/charts/ui';
 import { BrazilStrip, type MapOption } from '@/components/sala/BrazilStrip';
-import { COMPOSITION_COLORS, CompositionChart, type CompositionLayer } from '@/components/sala/CompositionChart';
+import { CompositionChart, type CompositionLayer } from '@/components/sala/CompositionChart';
 import { EarsTable } from '@/components/sala/EarsTable';
 import { GlobeHero } from '@/components/sala/GlobeHero';
 import { GlobePoster } from '@/components/sala/GlobePoster';
 import { LatestChip } from '@/components/sala/LatestChip';
-import { HudFooter } from '@/components/sala/HudFooter';
-import { HudTopbar } from '@/components/sala/HudTopbar';
+import { DataFooter } from '@/components/sala/DataFooter';
+import { DataTopbar } from '@/components/sala/DataTopbar';
 import { IngestConsole } from '@/components/sala/IngestConsole';
+import { PageShell } from '@/components/sala/PageShell';
 import { Panel } from '@/components/sala/Panel';
 import { SeasonsChart } from '@/components/sala/SeasonsChart';
+import { SectionHead } from '@/components/sala/SectionHead';
 import { TimelineProvider } from '@/components/sala/TimelineContext';
 import { TimeScrubber } from '@/components/sala/TimeScrubber';
 import { TrendChart } from '@/components/sala/TrendChart';
+import { loadUfPaths } from '@/components/sala/uf-paths.server';
 
 /** ISR: igual a API_REVALIDATE_SECONDS (src/lib/api.ts); literal por exigência do Next (ver test/cache-policy.test.ts). */
 export const revalidate = 3600;
@@ -50,15 +55,6 @@ const COMPOSITION: Array<{ id: string; name: string; color: string }> = [
   { id: 'flunet_inf_b_detections', name: 'Influenza B', color: COMPOSITION_COLORS.infb },
 ];
 
-function SectionTitle({ id, kicker, children }: { id: string; kicker: string; children: React.ReactNode }) {
-  return (
-    <h2 id={id} className="font-display text-2xl font-bold tracking-[-0.02em] text-ink md:text-3xl">
-      <span className="kicker block">{kicker}</span>
-      {children}
-    </h2>
-  );
-}
-
 export default async function SalaDeDados() {
   const pages = eligiblePages();
   const q = (c: string[]) => firstEligible(c, pages);
@@ -68,7 +64,7 @@ export default async function SalaDeDados() {
     { label: 'Correções', href: q(['/sobre/correcoes/']) },
   ].filter((x): x is { label: string; href: string } => x.href !== null);
 
-  const [fresh, globe, ears, nowcast, seasons, runs, latest, national, ...rest] = await Promise.all([
+  const [fresh, globe, ears, nowcast, seasons, runs, latest, national, ufPaths, ...rest] = await Promise.all([
     getFreshness(),
     getGlobe({ indicator: GLOBE_INDICATOR, from: TIMELINE_START }),
     getEars({ indicator: NATIONAL, geo_level: 'state', weeks: 12 }),
@@ -77,6 +73,7 @@ export default async function SalaDeDados() {
     getRuns(30),
     getLatest(NATIONAL, 'BRA'),
     getSeries({ indicator: NATIONAL, geo_level: 'country', geo_code: 'BRA' }),
+    loadUfPaths(),
     ...MAP_OPTIONS.map((o) => getBrazilMap({ indicator: o.id })),
     ...COMPOSITION.map((c) => getSeries({ indicator: c.id, geo_level: 'country', geo_code: 'BRA' })),
     getSeries({ indicator: 'flunet_influenza_positivity', geo_level: 'country', geo_code: 'BRA' }),
@@ -120,6 +117,7 @@ export default async function SalaDeDados() {
 
   return (
     <TimelineProvider weeks={weeks} initialWeek={weeks[lastIndex]}>
+      <PageShell>
       <JsonLd
         data={{
           '@context': 'https://schema.org',
@@ -151,110 +149,106 @@ export default async function SalaDeDados() {
         }}
       />
 
-      <h1 className="sr-only">Sala de dados: H1N1 em números</h1>
-      <HudTopbar freshness={fresh} entendaHref={q(['/o-que-e-h1n1/', '/transmissao/', '/historia/'])} />
+      <DataTopbar freshness={fresh} entendaHref={q(['/o-que-e-h1n1/', '/transmissao/', '/historia/'])} />
 
-      {/* ===== HERO: globo + contadores + scrubber ===== */}
-      <section aria-labelledby="h-globo" className="mt-10 grid gap-4 lg:grid-cols-12">
-        <h2 id="h-globo" className="sr-only">
-          Detecções de A(H1N1)pdm09 no mundo por semana (FluNet)
-        </h2>
-        {globe.ok ? (
-          <GlobeHero
-            indicator={GLOBE_INDICATOR}
-            countries={globeWindow}
-            offset={globeOffset}
-            axisStart={weeks[0] ?? TIMELINE_START}
-            max={globeMax}
-            dataAsOf={globe.data.meta.data_as_of}
-            universeNote={globe.data.meta.universe_note}
-            poster={<GlobePoster countries={globeWindow} weekIndex={lastIndex - globeOffset} week={weeks[lastIndex] ?? ''} max={globeMax} dataAsOf={globe.data.meta.data_as_of} indicatorName={globe.data.indicator.name} />}
-          />
-        ) : (
-          <>
-            <div className="card p-5 lg:col-span-7">
-              <p className="label">Globo · {indicatorLabel(GLOBE_INDICATOR)}</p>
-              <div className="mt-3">
-                <DataUnavailable attemptedAt={globe.attemptedAt} detail={globe.error} />
+      {/* ===== ( 01 ) MUNDO: globo + contadores + scrubber ===== */}
+      <section aria-labelledby="h-globo" className="mt-24">
+        <SectionHead id="h-globo" n="01" kicker="Mundo" lead="Detecções laboratoriais de A(H1N1)pdm09 reportadas à OMS, semana a semana desde 2009.">
+          Detecções no mundo, semana a semana
+        </SectionHead>
+        <div className="grid gap-6 lg:grid-cols-12">
+          {globe.ok ? (
+            <GlobeHero
+              indicator={GLOBE_INDICATOR}
+              countries={globeWindow}
+              offset={globeOffset}
+              axisStart={weeks[0] ?? TIMELINE_START}
+              max={globeMax}
+              dataAsOf={globe.data.meta.data_as_of}
+              universeNote={globe.data.meta.universe_note}
+              poster={<GlobePoster countries={globeWindow} weekIndex={lastIndex - globeOffset} week={weeks[lastIndex] ?? ''} max={globeMax} dataAsOf={globe.data.meta.data_as_of} indicatorName={globe.data.indicator.name} />}
+            />
+          ) : (
+            <>
+              <div className="card p-5 md:p-7 lg:col-span-7">
+                <p className={LABEL}>Globo · {indicatorLabel(GLOBE_INDICATOR)}</p>
+                <div className="mt-4">
+                  <DataUnavailable attemptedAt={globe.attemptedAt} detail={globe.error} />
+                </div>
               </div>
-            </div>
-            <p className="card p-5 text-[15px] text-muted lg:col-span-5">Contadores indisponíveis sem o globo.</p>
-          </>
-        )}
-        <div className="lg:col-span-12">
-          {weeks.length > 0 && <TimeScrubber />}
-          <p className="mt-3 px-1 text-[14px] leading-relaxed text-muted">
-            O globo mostra <strong className="text-ink">detecções laboratoriais</strong> de A(H1N1)pdm09 reportadas à OMS por semana ISO, não casos na população. Países sem valor na semana não aparecem. Licença: termos de uso da OMS (FluNet).
-            {globe.ok && ` Base de ${formatDateBR(globe.data.meta.data_as_of)}.`}
-          </p>
+              <p className={`card p-5 md:p-7 lg:col-span-5 ${NOTE}`}>Contadores indisponíveis sem o globo.</p>
+            </>
+          )}
+          <div className="lg:col-span-12">
+            {weeks.length > 0 && <TimeScrubber />}
+            <p className={`mt-4 max-w-4xl ${NOTE}`}>
+              O globo mostra <strong className="text-ink">detecções laboratoriais</strong> de A(H1N1)pdm09 reportadas à OMS por semana ISO, não casos na população. Países sem valor na semana não aparecem. Licença: termos de uso da OMS (FluNet).
+              {globe.ok && ` Base de ${formatDateBR(globe.data.meta.data_as_of)}.`}
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* ===== BRASIL ===== */}
-      <section aria-labelledby="h-brasil" className="mt-16">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <SectionTitle id="h-brasil" kicker="Brasil">
-            Por UF, sincronizado com a semana selecionada
-          </SectionTitle>
-          <LatestChip latest={latest} fresh={fresh} />
-        </div>
-        <BrazilStrip options={MAP_OPTIONS} datasets={datasets} threshold={threshold} ears={<EarsTable ears={ears} threshold={threshold} />} />
+      {/* ===== ( 02 ) BRASIL ===== */}
+      <section aria-labelledby="h-brasil" className="mt-28">
+        <SectionHead id="h-brasil" n="02" kicker="Brasil" lead="Por UF, sincronizado com a semana escolhida acima. Sem ranking: o mapa mostra onde há registros, não onde é pior." aside={<LatestChip latest={latest} fresh={fresh} />}>
+          O Brasil, UF por UF
+        </SectionHead>
+        <BrazilStrip options={MAP_OPTIONS} datasets={datasets} threshold={threshold} paths={ufPaths} ears={<EarsTable ears={ears} threshold={threshold} />} />
       </section>
 
-      {/* ===== TENDÊNCIA ===== */}
-      <section aria-labelledby="h-tend" className="mt-16 grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-12">
-          <SectionTitle id="h-tend" kicker="Tendência">
-            Série nacional, nowcast e temporadas
-          </SectionTitle>
-        </div>
-        <div className="lg:col-span-7">
-          <Panel
-            id="painel-tendencia"
-            label="Série nacional · últimas 52 semanas"
-            title={national.ok ? national.data.indicator.name : indicatorLabel(NATIONAL)}
-            minHeight={420}
-            meta={
-              national.ok ? (
-                <>
-                  {national.data.meta.universe_note} · fonte {national.data.source.name} ({national.data.source.agency}) · licença {national.data.meta.license ?? 'verificar'} · base de {formatDateBR(national.data.meta.data_as_of)} · <FreshnessNote state={freshnessState(fresh, NATIONAL)} />{' '}
-                  <a href={csv} download>
-                    CSV
-                  </a>{' '}
-                  · <Link href={`/dados/brasil/?indicador=${NATIONAL}&intervalo=ultimas-52-semanas`}>abrir no observatório</Link>
-                </>
-              ) : undefined
-            }
-          >
-            {!national.ok ? (
-              <DataUnavailable attemptedAt={national.attemptedAt} detail={national.error} />
-            ) : natObs.length === 0 ? (
-              <NoDataPublished what="as últimas 52 semanas" />
-            ) : (
-              <TrendChart obs={natObs} unit={natUnit} title={`${national.data.indicator.name}, Brasil`} periodType={national.data.indicator.period_type} threshold={threshold} nowcast={nowcast} tableId="tabela-tendencia" />
-            )}
-          </Panel>
-        </div>
-        <div className="lg:col-span-5">
-          <Panel
-            id="painel-temporadas"
-            label="Sobreposição de temporadas · semanas 1–53"
-            title={seasons.ok ? `${seasons.data.indicator.name}: ${seasons.data.seasons[0]?.year}–${seasons.data.seasons[seasons.data.seasons.length - 1]?.year}` : 'Temporadas'}
-            minHeight={420}
-            meta={seasons.ok ? `${seasons.data.meta.universe_note} · fonte ${seasons.data.meta.source_id} · base de ${formatDateBR(seasons.data.meta.data_as_of)} · ano corrente em rosa; os demais em tons neutros` : undefined}
-          >
-            {seasons.ok ? <SeasonsChart seasons={seasons.data} unit={natUnit} tableId="tabela-temporadas" /> : <DataUnavailable attemptedAt={seasons.attemptedAt} detail={seasons.error} />}
-          </Panel>
+      {/* ===== ( 03 ) TENDÊNCIA ===== */}
+      <section aria-labelledby="h-tend" className="mt-28">
+        <SectionHead id="h-tend" n="03" kicker="Tendência" lead="Últimas 52 semanas, com a cauda provisória tracejada, a estimativa do que ainda não foi digitado (nowcast) e a comparação com temporadas anteriores.">
+          Série nacional, nowcast e temporadas
+        </SectionHead>
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <Panel
+              id="painel-tendencia"
+              label="Série nacional · últimas 52 semanas"
+              title={national.ok ? national.data.indicator.name : indicatorLabel(NATIONAL)}
+              minHeight={420}
+              meta={
+                national.ok ? (
+                  <>
+                    {national.data.meta.universe_note} · fonte {national.data.source.name} ({national.data.source.agency}) · licença {national.data.meta.license ?? 'verificar'} · base de {formatDateBR(national.data.meta.data_as_of)} <FreshnessNote state={freshnessState(fresh, NATIONAL)} /> ·{' '}
+                    <a href={csv} download>
+                      CSV
+                    </a>{' '}
+                    · <Link href={`/dados/brasil/?indicador=${NATIONAL}&intervalo=ultimas-52-semanas`}>abrir no observatório</Link>
+                  </>
+                ) : undefined
+              }
+            >
+              {!national.ok ? (
+                <DataUnavailable attemptedAt={national.attemptedAt} detail={national.error} />
+              ) : natObs.length === 0 ? (
+                <NoDataPublished what="as últimas 52 semanas" />
+              ) : (
+                <TrendChart obs={natObs} unit={natUnit} title={`${national.data.indicator.name}, Brasil`} periodType={national.data.indicator.period_type} threshold={threshold} nowcast={nowcast} tableId="tabela-tendencia" />
+              )}
+            </Panel>
+          </div>
+          <div className="lg:col-span-5">
+            <Panel
+              id="painel-temporadas"
+              label="Sobreposição de temporadas · semanas 1–53"
+              title={seasons.ok ? `${seasons.data.indicator.name}: ${seasons.data.seasons[0]?.year}–${seasons.data.seasons[seasons.data.seasons.length - 1]?.year}` : 'Temporadas'}
+              minHeight={420}
+              meta={seasons.ok ? `${seasons.data.meta.universe_note} · fonte ${seasons.data.meta.source_id} · base de ${formatDateBR(seasons.data.meta.data_as_of)} · ano corrente em rosa, ano anterior em azul; os demais em cinza` : undefined}
+            >
+              {seasons.ok ? <SeasonsChart seasons={seasons.data} unit={natUnit} tableId="tabela-temporadas" /> : <DataUnavailable attemptedAt={seasons.attemptedAt} detail={seasons.error} />}
+            </Panel>
+          </div>
         </div>
       </section>
 
-      {/* ===== COMPOSIÇÃO ===== */}
-      <section aria-labelledby="h-comp" className="mt-16">
-        <div className="mb-4">
-          <SectionTitle id="h-comp" kicker="Composição">
-            Detecções de influenza no Brasil por tipo e subtipo (FluNet)
-          </SectionTitle>
-        </div>
+      {/* ===== ( 04 ) COMPOSIÇÃO ===== */}
+      <section aria-labelledby="h-comp" className="mt-28">
+        <SectionHead id="h-comp" n="04" kicker="Composição" lead="Detecções de influenza no Brasil por tipo e subtipo (FluNet). A não subtipada não é H1N1.">
+          Quais vírus da gripe circulam
+        </SectionHead>
         <Panel
           id="painel-composicao"
           label="Área empilhada por tipo e subtipo · positividade em linha"
@@ -268,25 +262,24 @@ export default async function SalaDeDados() {
           ) : (
             <NoDataPublished what="a composição das últimas 52 semanas" />
           )}
-          {!positivity.ok && <p className="mt-2 text-[13px] text-muted">Positividade indisponível no momento ({indicatorLabel('flunet_influenza_positivity')}).</p>}
+          {!positivity.ok && <p className={`mt-3 ${NOTE}`}>Positividade indisponível no momento ({indicatorLabel('flunet_influenza_positivity')}).</p>}
         </Panel>
       </section>
 
-      {/* ===== BASTIDORES: execuções dos conectores ===== */}
-      <section aria-labelledby="h-bastidores" className="mt-16">
-        <div className="mb-4">
-          <SectionTitle id="h-bastidores" kicker="Bastidores">
-            Execuções dos conectores
-          </SectionTitle>
-        </div>
-        <Panel id="painel-console" label="Execuções dos conectores · últimas 30" minHeight={480} meta="Cada linha é uma execução registrada de um conector, com linhas lidas e publicadas. Falhas mantêm a versão anterior claramente datada (regra 10).">
+      {/* ===== ( 05 ) EXECUÇÕES DOS CONECTORES ===== */}
+      <section aria-labelledby="h-execucoes" className="mt-28">
+        <SectionHead id="h-execucoes" n="05" kicker="Execuções" lead="Cada linha é uma execução registrada de um conector, com linhas lidas e publicadas.">
+          Execuções dos conectores
+        </SectionHead>
+        <Panel id="painel-console" label="Execuções dos conectores · últimas 30" minHeight={420} meta="Falhas mantêm a versão anterior claramente datada (regra 10).">
           <IngestConsole runs={runs} />
         </Panel>
       </section>
 
-      <div className="mt-16">
-        <HudFooter institutional={institutional} />
+      <div className="mt-28">
+        <DataFooter institutional={institutional} alertHref={q(['/sintomas/sinais-de-alerta/'])} />
       </div>
+      </PageShell>
     </TimelineProvider>
   );
 }

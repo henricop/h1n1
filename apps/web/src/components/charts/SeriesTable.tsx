@@ -1,6 +1,7 @@
 import type { SeriesObservation } from '@/lib/api';
 import { formatDateBR, formatNumberBR, formatPeriod } from '@/lib/format';
 import { publishedValue } from '@/lib/series';
+import { NOTE, TABLE } from './ui';
 
 interface Props {
   id: string;
@@ -19,14 +20,14 @@ export function SeriesTable({ id, caption, obs, unit, periodType, suppressionThr
   const t = suppressionThreshold || 5;
   return (
     <div className="overflow-x-auto">
-      <table id={id} className="data-table">
+      <table id={id} className={TABLE}>
         <caption>{caption}</caption>
         <thead>
           <tr>
             <th scope="col">Semana</th>
             {!compact && <th scope="col">Início</th>}
             {!compact && <th scope="col">Fim</th>}
-            <th scope="col" className="text-right">
+            <th scope="col" className="text-right!">
               Valor
             </th>
             <th scope="col">Situação</th>
@@ -47,10 +48,10 @@ export function SeriesTable({ id, caption, obs, unit, periodType, suppressionThr
         </tbody>
       </table>
       {(anySuppressed || anyProvisional) && (
-        <ul className="mt-2 space-y-1 text-xs text-muted">
+        <ul className={`mt-3 space-y-1 ${NOTE}`}>
           {anySuppressed && (
             <li>
-              &lt;{t}: célula com contagem pequena suprimida para evitar reidentificação (regra 9 de integridade). O valor exato não é publicado.
+              &lt;{t}: célula com contagem pequena, ocultada por privacidade para evitar reidentificação (regra 9 de integridade). O valor exato não é publicado.
             </li>
           )}
           {anyProvisional && <li>Semanas provisórias: sujeitas a atraso de notificação e digitação; tendem a subir em revisões.</li>}
