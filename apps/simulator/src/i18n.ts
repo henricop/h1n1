@@ -1,4 +1,4 @@
-/** Brazilian Portuguese is the default. English is an explicit, shareable choice. */
+/** English is the default. Portuguese is an explicit, shareable choice. */
 export type AppLocale = 'en' | 'pt';
 
 export const LOCALE_STORAGE_KEY = 'h1n1.lang';
@@ -12,18 +12,15 @@ export function normalizeLocale(value: string | null | undefined): AppLocale | n
 }
 
 /**
- * A shared `?lang=` link wins, then a saved choice, then the browser language
- * on a first visit. Every other case stays in Brazilian Portuguese.
+ * A shared `?lang=` link wins, then a saved choice. A first visit with neither
+ * stays in English. `languages` is accepted and does not select a locale.
  */
 export function resolveLocale(input: { languages?: readonly string[]; query?: string | null; stored?: string | null } = {}): AppLocale {
   const fromQuery = normalizeLocale(input.query);
   if (fromQuery) return fromQuery;
   const fromStore = normalizeLocale(input.stored);
   if (fromStore) return fromStore;
-  const primary = input.languages?.[0]?.toLowerCase() ?? '';
-  if (primary.startsWith('en')) return 'en';
-  if (primary.startsWith('pt')) return 'pt';
-  return 'pt';
+  return 'en';
 }
 
 function readQuery(): string | null {
@@ -36,13 +33,7 @@ function readStored(): string | null {
   try { return localStorage.getItem(LOCALE_STORAGE_KEY); } catch { return null; }
 }
 
-function browserLanguages(): readonly string[] {
-  if (typeof navigator === 'undefined') return [];
-  if (navigator.languages?.length) return navigator.languages;
-  return navigator.language ? [navigator.language] : [];
-}
-
-export const locale: AppLocale = resolveLocale({ languages: browserLanguages(), query: readQuery(), stored: readStored() });
+export const locale: AppLocale = resolveLocale({ query: readQuery(), stored: readStored() });
 export const localeTag = locale === 'pt' ? 'pt-BR' : 'en-US';
 export const htmlLang = locale === 'pt' ? 'pt-BR' : 'en';
 
