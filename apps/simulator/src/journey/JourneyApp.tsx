@@ -16,7 +16,8 @@ import { ADVERSITIES, INITIAL_PRESETS } from '../engine/journey/config';
 import { anatomyRegion, LEVELS } from './anatomy';
 import { journey, useJourney } from './store';
 import type { AnatomyLevel, JourneyLogEntry, JourneySnapshot } from './types';
-import { localized } from '../i18n';
+import { locale, localeHref, localized } from '../i18n';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 type SheetName = 'help' | 'settings' | 'state' | 'event' | 'compare' | 'graphs' | 'log' | null;
 function Icon({ type }: { type: 'left' | 'right' | 'in' | 'out' | 'frame' | 'close' | 'settings' | 'layers' }) {
@@ -137,7 +138,7 @@ export function JourneyApp() {
 
   return <main className={`lab-app ${presentation ? 'is-presentation' : ''}`}>
     <a className="lab-skip" href="#lab-timeline">Ir para o tempo da simulação</a>
-    <header className="lab-header"><a className="lab-brand" href="/" aria-label="H1N1 Jornada da Infecção, início"><span className="lab-brand-symbol" aria-hidden="true"><svg viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M18 3v11m0 0C10 12 5 19 7 28c2 7 10 4 10 0V14Zm0 0c8-2 13 5 11 14-2 7-10 4-10 0V14Z" /><path d="m18 13-6 8m6-8 6 8" /></svg></span><span><h1>H1N1 <span>Jornada da Infecção</span></h1><small>Explore por dentro.</small></span></a>{macro && scales('lab-scales lab-header-scales')}<div className="lab-header-actions"><button className="lab-text-button" onClick={() => openSheet('help')}>Como explorar</button><button className="lab-icon-button" aria-label="Configurar simulação" onClick={() => openSheet('settings')}><Icon type="settings" /></button><button className="lab-reset" aria-label="Reiniciar jornada" onClick={() => reset()}>↻ <span>Reiniciar</span></button></div></header>
+    <header className="lab-header"><a className="lab-brand" href={localeHref(locale, '/')} aria-label="H1N1 Jornada da Infecção, início"><span className="lab-brand-symbol" aria-hidden="true"><svg viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M18 3v11m0 0C10 12 5 19 7 28c2 7 10 4 10 0V14Zm0 0c8-2 13 5 11 14-2 7-10 4-10 0V14Z" /><path d="m18 13-6 8m6-8 6 8" /></svg></span><span><h1>H1N1 <span>Jornada da Infecção</span></h1><small>Explore por dentro.</small></span></a>{macro && scales('lab-scales lab-header-scales')}<div className="lab-header-actions"><LanguageSwitcher /><button className="lab-text-button" onClick={() => openSheet('help')}>Como explorar</button><button className="lab-icon-button" aria-label="Configurar simulação" onClick={() => openSheet('settings')}><Icon type="settings" /></button><button className="lab-reset" aria-label="Reiniciar jornada" onClick={() => reset()}>↻ <span>Reiniciar</span></button></div></header>
 
     <PatientMonitor viralRate={viralRate} onViralRate={setViralRate} />
     <div className="lab-exploration"><section className={`lab-stage ${macro ? 'has-atlas' : ''}`} aria-label="Exploração 3D" data-level={level} data-hour={snapshot.simulatedHour}>

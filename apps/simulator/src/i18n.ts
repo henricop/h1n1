@@ -1,14 +1,88 @@
-/** Browser language is the source of truth. English is the fallback for every other locale. */
+/** Brazilian Portuguese is the default. English is an explicit, shareable choice. */
 export type AppLocale = 'en' | 'pt';
 
-export function resolveLocale(languages: readonly string[] = [], override?: string | null): AppLocale {
-  if (override === 'en' || override === 'pt') return override;
-  return languages[0]?.toLowerCase().startsWith('pt') ? 'pt' : 'en';
+export const LOCALE_STORAGE_KEY = 'h1n1.lang';
+
+export function normalizeLocale(value: string | null | undefined): AppLocale | null {
+  if (!value) return null;
+  const token = value.trim().toLowerCase();
+  if (token === 'en' || token.startsWith('en-')) return 'en';
+  if (token === 'pt' || token.startsWith('pt-')) return 'pt';
+  return null;
 }
 
-const queryLanguage = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('lang');
-export const locale: AppLocale = resolveLocale(typeof navigator === 'undefined' ? [] : navigator.languages?.length ? navigator.languages : [navigator.language], queryLanguage);
+/**
+ * A shared `?lang=` link wins, then a saved choice, then the browser language
+ * on a first visit. Every other case stays in Brazilian Portuguese.
+ */
+export function resolveLocale(input: { languages?: readonly string[]; query?: string | null; stored?: string | null } = {}): AppLocale {
+  const fromQuery = normalizeLocale(input.query);
+  if (fromQuery) return fromQuery;
+  const fromStore = normalizeLocale(input.stored);
+  if (fromStore) return fromStore;
+  const primary = input.languages?.[0]?.toLowerCase() ?? '';
+  if (primary.startsWith('en')) return 'en';
+  if (primary.startsWith('pt')) return 'pt';
+  return 'pt';
+}
+
+function readQuery(): string | null {
+  if (typeof location === 'undefined') return null;
+  try { return new URLSearchParams(location.search).get('lang'); } catch { return null; }
+}
+
+function readStored(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  try { return localStorage.getItem(LOCALE_STORAGE_KEY); } catch { return null; }
+}
+
+function browserLanguages(): readonly string[] {
+  if (typeof navigator === 'undefined') return [];
+  if (navigator.languages?.length) return navigator.languages;
+  return navigator.language ? [navigator.language] : [];
+}
+
+export const locale: AppLocale = resolveLocale({ languages: browserLanguages(), query: readQuery(), stored: readStored() });
 export const localeTag = locale === 'pt' ? 'pt-BR' : 'en-US';
+export const htmlLang = locale === 'pt' ? 'pt-BR' : 'en';
+
+/** Chrome copy. Both languages are required, so a missing translation is a type error. */
+const chrome = {
+  language: { pt: 'Idioma', en: 'Language' },
+  portuguese: { pt: 'Português (Brasil)', en: 'Portuguese (Brazil)' },
+  english: { pt: 'Inglês', en: 'English' },
+  documentTitle: { pt: 'H1N1 · Jornada da Infecção', en: 'H1N1 · Infection Journey' },
+  documentDescription: {
+    pt: 'Explore a jornada de uma infecção simulada, do corpo humano à célula, em um atlas 3D interativo.',
+    en: 'Explore a simulated infection from the human body to a cell in an interactive 3D anatomy atlas.',
+  },
+} as const satisfies Record<string, { readonly pt: string; readonly en: string }>;
+
+export type ChromeKey = keyof typeof chrome;
+export function t(key: ChromeKey, language: AppLocale = locale): string {
+  return chrome[key][language];
+}
+
+export function localeHref(next: AppLocale, href: string): string {
+  const url = new URL(href, 'http://localhost');
+  url.searchParams.set('lang', next);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+export function persistLocale(next: AppLocale = locale): void {
+  if (typeof localStorage === 'undefined') return;
+  try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch { /* private browsing */ }
+}
+
+/** Saves the choice and reloads so module-level copy picks up the new language. */
+export function selectLocale(next: AppLocale): void {
+  if (typeof location === 'undefined') return;
+  persistLocale(next);
+  const nextHref = localeHref(next, location.href);
+  if (next === locale && normalizeLocale(readQuery()) === next) return;
+  location.assign(nextHref);
+}
+
 export const formatNumber = (value: number, maximumFractionDigits = 0) => new Intl.NumberFormat(localeTag, { maximumFractionDigits, minimumFractionDigits: maximumFractionDigits }).format(value);
 export const localized = (english: string, portuguese: string) => locale === 'pt' ? portuguese : english;
 
@@ -140,6 +214,67 @@ const EXTRA_EN: Record<string, string> = {
   'aplicado ao cenário B.': 'applied to scenario B.',
   'no cenário B.': 'to scenario B.',
   'em 3D': 'in 3D',
+  // Anatomy aliases shown from the atlas catalog
+  'Cérebro': 'Brain', 'Fígado': 'Liver', 'Estômago': 'Stomach', 'Baço': 'Spleen', 'Pâncreas': 'Pancreas', 'Laringe': 'Larynx', 'Faringe': 'Pharynx', 'Diafragma': 'Diaphragm',
+  'Pulmão': 'Lung', 'Pulmões': 'Lungs', 'Pulmão direito': 'Right lung', 'Pulmão esquerdo': 'Left lung', 'Sistema respiratório': 'Respiratory system', 'Bexiga': 'Bladder',
+  'Brônquio principal direito': 'Right main bronchus', 'Brônquio principal esquerdo': 'Left main bronchus',
+  'Célula': 'Cell', '+1 hora': '+1 hour', 'Contato com a mucosa': 'Contact with the mucosa',
+  'Alta': 'High', 'Equilibrada': 'Balanced', 'Compacta': 'Compact', 'Atlas completo': 'Full atlas',
+  'Preparando a escala microscópica…': 'Preparing the microscopic scale…',
+  'O catálogo anatômico não pôde ser carregado.': 'The anatomy catalog could not be loaded.',
+  'Não foi possível carregar um arquivo de anatomia.': 'An anatomy file could not be loaded.',
+  'Um arquivo de anatomia chegou incompleto. Recarregue o visualizador.': 'An anatomy file was incomplete. Reload the viewer.',
+  'Não foi possível construir a geometria das partículas virais.': 'The viral particle geometry could not be built.',
+  'Não foi possível montar a anatomia.': 'The anatomy could not be assembled.',
+  'Não foi possível iniciar a cena 3D.': 'The 3D scene could not start.',
+  'Não foi possível iniciar o atlas 3D.': 'The 3D atlas could not start.',
+  'Tipo de evento desconhecido.': 'Unknown event type.',
+  'Limite de 40 eventos por cenário.': 'This scenario has reached its 40-event limit.',
+  'Nenhum backend gráfico disponível': 'No graphics backend is available',
+  'WebGL 2 não pôde iniciar. Verifique a aceleração gráfica.': 'WebGL 2 could not start. Check graphics acceleration.',
+  'WebGPU e WebGL 2 não puderam iniciar.': 'WebGPU and WebGL 2 could not start.',
+  'O modelo anatômico local não contém uma superfície humana.': 'The local anatomical model does not include a human surface.',
+  'O atlas pulmonar local não contém estruturas.': 'The local lung atlas does not include any structures.',
+  'Este navegador não conseguiu inicializar WebGL 2.': 'This browser could not start WebGL 2.',
+  'Não foi possível iniciar a cena 3D. Ative a aceleração gráfica ou use um navegador com WebGL 2.': 'The 3D scene could not start. Turn on graphics acceleration or use a browser with WebGL 2.',
+  'WebGPU e WebGL 2 não estão disponíveis. Ative a aceleração gráfica para abrir o simulador.': 'WebGPU and WebGL 2 are unavailable. Turn on graphics acceleration to open the simulator.',
+  'O navegador não conseguiu compilar a cena 3D. Tente o modo WebGL 2 ou atualize o navegador.': 'The browser could not compile the 3D scene. Try WebGL 2 mode or update the browser.',
+  'Idioma': 'Language',
+  'Estruturas de sustentação e proteção. Oculte os músculos para observar os ossos e suas relações.': 'Supporting and protective structures. Hide the muscles to see the bones and how they relate.',
+  'Músculos e seus pontos de inserção. Sua visibilidade ajuda a revelar as camadas mais profundas.': 'Muscles and where they attach. Showing them helps reveal the deeper layers.',
+  'O coração ocupa o tórax entre os pulmões. Neste experimento, o modelo de infecção acompanha as vias respiratórias.': 'The heart sits in the chest between the lungs. In this experiment, the infection model follows the airways.',
+  'Estruturas relacionadas aos sentidos, identificadas pela anatomia de origem.': 'Structures related to the senses, identified from the source anatomy.',
+  'Vasos que conduzem sangue para fora do coração. As cores são convenções desta visualização.': 'Vessels that carry blood away from the heart. The colors are conventions of this view.',
+  'Vasos de retorno ao coração. Ative e oculte camadas para acompanhar seus trajetos.': 'Vessels that return blood to the heart. Show and hide layers to follow their paths.',
+  'Cérebro, medula e nervos representados nesta anatomia de referência.': 'Brain, spinal cord, and nerves included in this reference anatomy.',
+  'Selecione uma via ou um segmento pulmonar, isole a estrutura e entre no tecido para observar a infecção no mesmo instante da simulação.': 'Select an airway or a lung segment, isolate it, and enter the tissue to see the infection at the same moment in the simulation.',
+  'Órgãos e estruturas do aparelho digestório, no contexto das demais estruturas do tronco.': 'Organs of the digestive tract, shown among the other structures of the torso.',
+  'Rins e vias urinárias representados na anatomia de referência.': 'Kidneys and urinary tract from the reference anatomy.',
+  'Estruturas linfáticas disponíveis neste conjunto. A quantidade de peças não representa a complexidade biológica do sistema.': 'Lymphatic structures available in this set. The number of parts does not represent the biological complexity of the system.',
+  'Órgãos endócrinos identificados no conjunto de referência.': 'Endocrine organs identified in the reference set.',
+  'Estruturas do aparelho reprodutor da referência masculina adulta.': 'Structures of the reproductive system from the adult male reference.',
+  'Superfície externa usada como referência de posição. Desative esta camada para explorar os sistemas internos.': 'Outer surface used as a position reference. Hide this layer to explore the internal systems.',
+  'Cartilagens, ligamentos e outros tecidos de sustentação disponíveis no atlas.': 'Cartilage, ligaments, and other supportive tissues available in the atlas.',
+  'Não foi possível iniciar o atlas em WebGL 2. Verifique a aceleração gráfica.': 'The atlas could not start in WebGL 2. Check graphics acceleration.',
+  'Não foi possível carregar a anatomia.': 'The anatomy could not be loaded.',
+  'O contexto gráfico foi interrompido. Recarregue para continuar.': 'The graphics context was interrupted. Reload to continue.',
+  'O contexto gráfico foi perdido. Recarregue a cena para continuar a partir dos controles.': 'The graphics context was lost. Reload the scene to continue from the controls.',
+  'A renderização foi interrompida. Reinicie a cena ou tente o modo WebGL 2.': 'Rendering stopped. Restart the scene or try WebGL 2 mode.',
+  'A cena não pôde continuar.': 'The scene could not continue.',
+  'Ambiente microscópico 3D interativo': 'Interactive 3D microscopic environment',
+  'Partícula neutralizada pela defesa.': 'Particle neutralized by defense.',
+  'Janela de observação concluída.': 'Observation window complete.',
+  'Nenhuma partícula ativa ou célula infectada restante.': 'No active particles or infected cells remain.',
+  'Equilíbrio': 'Balance',
+  'Observe infecção e defesa disputando o mesmo ambiente.': 'Watch infection and defense share the same environment.',
+  'Propagação': 'Spread',
+  'Mais partículas e uma defesa inicial reduzida.': 'More particles and a lower initial defense.',
+  'Defesa ativa': 'Active defense',
+  'Uma resposta mais intensa encontra as partículas cedo.': 'A stronger response meets the particles early.',
+  'A JORNADA ATÉ AQUI': 'THE JOURNEY SO FAR',
+  'Escolha um card para voltar àquele instante no 3D.': 'Choose a card to revisit that moment in 3D.',
+  'Próximo marco': 'Next milestone',
+  'Não há exposição ou infecção calculada nesta célula.': 'No exposure or infection has been calculated for this cell.',
 };
 const DICTIONARY = { ...EN, ...EXTRA_EN };
 const PHRASES = Object.entries(DICTIONARY).filter(([key]) => key.length >= 8).sort((a, b) => b[0].length - a[0].length);
@@ -210,7 +345,12 @@ export function translateText(value: string, target: AppLocale = locale): string
   result = result
     .replace(/Último marco: dia (\d+), (\d+)h/g, 'Latest milestone: day $1, $2h')
     .replace(/\bDia (\d+)/g, 'Day $1')
+    .replace(/\bdia (\d+), (\d+) h\b/g, 'day $1, $2 h')
+    .replace(/\bde (\d+) dias\b/g, '$1 days')
     .replace(/\b(\d+) dias\b/g, '$1 days')
+    .replace(/\bgeração (\d+)\b/g, 'generation $1')
+    .replace(/^Ritmo viral do cenário ([AB]) ajustado para ([0-9]+(?:[.,][0-9]+)?) vezes a partir da próxima hora\.$/g, 'Scenario $1 viral pace set to $2× from the next hour.')
+    .replace(/^event:.+$/g, 'Scenario event')
     .replace(/\bCarregando ([\d.]+) peças\b/g, (_, n: string) => `Loading ${n.replace('.', ',')} parts`)
     .replace(/\bCenário ([AB])\b/g, 'Scenario $1')
     .replace(/\bcélula (\d+)\b/g, 'cell $1')
@@ -279,9 +419,11 @@ export function localizeRoot(root: HTMLElement): () => void {
 
 export function setDocumentLocale(): void {
   if (typeof document === 'undefined') return;
-  document.documentElement.lang = localeTag;
-  document.title = locale === 'pt' ? 'H1N1 · Jornada da Infecção' : 'H1N1 · Infection Journey';
-  document.querySelector('meta[name="description"]')?.setAttribute('content', locale === 'pt'
-    ? 'Explore a jornada de uma infecção simulada, do corpo humano à célula, em um atlas 3D interativo.'
-    : 'Explore a simulated infection from the human body to a cell in an interactive 3D anatomy atlas.');
+  document.documentElement.lang = htmlLang;
+  document.title = t('documentTitle');
+  document.querySelector('meta[name="description"]')?.setAttribute('content', t('documentDescription'));
+  persistLocale(locale);
+  if (typeof history === 'undefined' || typeof location === 'undefined') return;
+  if (normalizeLocale(readQuery()) === locale) return;
+  history.replaceState(history.state, '', localeHref(locale, location.href));
 }

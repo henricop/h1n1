@@ -26,7 +26,7 @@ describe('complete licensed anatomical atlas',()=>{
     const chunk=atlas.chunks[0]!;const compressed=readFileSync(base+chunk.gzip!.split('/').at(-1));const raw=readFileSync(base+chunk.url.split('/').at(-1));
     expect((await decodeModelResponse(new Response(compressed),chunk.bytes,true)).byteLength).toBe(chunk.bytes);
     expect((await decodeModelResponse(new Response(raw),chunk.bytes,true)).byteLength).toBe(chunk.bytes);
-    await expect(decodeModelResponse(new Response(raw.subarray(0,40)),chunk.bytes,true)).rejects.toThrow('incomplete');
+    await expect(decodeModelResponse(new Response(raw.subarray(0,40)),chunk.bytes,true)).rejects.toThrow('incompleto');
   });
   it('packs respiratory parts without overlapping cells at desktop and mobile proportions',()=>{
     const parts=atlas.parts.filter(p=>p.system==='respiratory');
