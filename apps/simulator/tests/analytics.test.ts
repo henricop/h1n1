@@ -8,7 +8,7 @@ describe('GA4 measurement id', () => {
     expect(resolveGaMeasurementId('')).toBe(DEFAULT_GA_MEASUREMENT_ID);
     expect(resolveGaMeasurementId('UA-123')).toBe(DEFAULT_GA_MEASUREMENT_ID);
     expect(resolveGaMeasurementId('  G-OVERRIDE1  ')).toBe('G-OVERRIDE1');
-    expect(DEFAULT_GA_MEASUREMENT_ID).toBe('G-7DC7DWPTND');
+    expect(DEFAULT_GA_MEASUREMENT_ID).toBe('G-ZSNQX6DE9R');
   });
 });
 

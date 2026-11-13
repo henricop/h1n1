@@ -1,6 +1,6 @@
 /** GA4 for the public simulator. Dev and test builds do not send hits. */
 
-export const DEFAULT_GA_MEASUREMENT_ID = 'G-7DC7DWPTND';
+export const DEFAULT_GA_MEASUREMENT_ID = 'G-ZSNQX6DE9R';
 
 const MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/;
 const GTAG_ORIGIN = 'https://www.googletagmanager.com/gtag/js';
