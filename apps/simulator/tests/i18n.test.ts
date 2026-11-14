@@ -4,18 +4,29 @@ import { describe, expect, it } from 'vitest';
 import { localeHref, normalizeLocale, resolveLocale, t, translateText } from '../src/i18n';
 
 describe('language choice', () => {
-  it('prefers a shared link, then a saved choice, then the browser, and otherwise Portuguese', () => {
-    expect(resolveLocale({ languages: ['pt-BR', 'en-US'] })).toBe('pt');
-    expect(resolveLocale({ languages: ['pt-PT'] })).toBe('pt');
+  it('prefers a shared link, then a saved choice, and otherwise English', () => {
+    expect(resolveLocale({ languages: ['pt-BR', 'en-US'] })).toBe('en');
+    expect(resolveLocale({ languages: ['pt-PT'] })).toBe('en');
     expect(resolveLocale({ languages: ['en-US', 'pt-BR'] })).toBe('en');
     expect(resolveLocale({ languages: ['en'] })).toBe('en');
-    expect(resolveLocale({ languages: ['es-ES'] })).toBe('pt');
-    expect(resolveLocale({})).toBe('pt');
+    expect(resolveLocale({ languages: ['es-ES'] })).toBe('en');
+    expect(resolveLocale({})).toBe('en');
     expect(resolveLocale({ languages: ['en-US'], stored: 'pt' })).toBe('pt');
     expect(resolveLocale({ languages: ['pt-BR'], query: 'en', stored: 'pt' })).toBe('en');
+    expect(resolveLocale({ languages: ['en-US'], query: 'pt', stored: 'en' })).toBe('pt');
     expect(resolveLocale({ query: 'pt-BR' })).toBe('pt');
     expect(resolveLocale({ query: 'en-US' })).toBe('en');
     expect(normalizeLocale('fr')).toBeNull();
+  });
+
+  it('ships English document metadata before JavaScript runs', () => {
+    const html = readFileSync(join(import.meta.dirname, '../index.html'), 'utf8');
+    const head = html.slice(0, html.indexOf('<script>'));
+    expect(head).toContain('<html lang="en">');
+    expect(head).toContain('<title>H1N1 · Infection Journey</title>');
+    expect(head).toContain('name="description" content="Explore a simulated infection from the human body to a cell in an interactive 3D anatomy atlas."');
+    expect(html).toContain("var lang = query || stored || 'en'");
+    expect(html).not.toContain('navigator.language');
   });
 
   it('builds a shareable address without dropping the rest of the query', () => {

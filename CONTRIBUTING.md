@@ -24,7 +24,7 @@ Open `http://127.0.0.1:3000`. The root commands target the active simulator.
 1. Branch from the current `main` and keep the pull request focused on one issue.
 2. Keep simulation rules in `apps/simulator/src/engine`, rendering in `src/graphics` or `src/atlas`, and controls in React components. The five scales must share one simulated clock.
 3. Preserve deterministic replay: use the seeded model, fixed one-hour steps and bounded populations. Events must change model parameters and leave an explanation in the log. Do not tie stages or symptoms to hard-coded day numbers.
-4. Keep visible copy and accessible labels in English and Portuguese. English is the fallback; Portuguese follows a Portuguese primary browser language. Check both with `?lang=en` and `?lang=pt`.
+4. Keep visible copy and accessible labels in English and Portuguese. English is the first-visit language. A saved choice or `?lang=en` / `?lang=pt` selects the language for a visit. Check both with those parameters.
 5. Treat the scene as an educational illustration. Model indices and possible symptoms are not clinical measurements or individual predictions.
 6. Include source, author, license and adaptation details for any new 3D asset or data. Do not add assets whose redistribution terms are unclear. Keep the existing Human Atlas, BodyParts3D and Human Reference Atlas notices.
 

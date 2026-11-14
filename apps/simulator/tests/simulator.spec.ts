@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-async function ready(page: Page, path = '/') {
+async function ready(page: Page, path = '/?lang=pt') {
   await page.goto(path);
   await expect(page.getByRole('heading', { name: 'H1N1 Jornada da Infecção', exact: true })).toBeVisible();
   await expect(page.getByTestId('journey-renderer-status')).toContainText(/WebGPU|WebGL 2/);
@@ -58,7 +58,7 @@ test('dialog pauses reading time and resumes the ongoing demonstration',async({p
 });
 
 test('WebGL 2 renders the same anatomy and running clock',async({page},testInfo)=>{
-  await ready(page,'/?renderer=webgl');
+  await ready(page,'/?renderer=webgl&lang=pt');
   await expect(page.getByTestId('journey-renderer-status')).toContainText('WebGL 2');
   await expect.poll(()=>hour(page)).toBeGreaterThan(0);
   await page.screenshot({path:testInfo.outputPath('journey-webgl.png'),fullPage:true});

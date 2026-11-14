@@ -38,9 +38,9 @@ The build is written to `apps/simulator/dist`. The preview uses port 3000 and st
 
 ## English and Portuguese
 
-The interface follows your browser's primary language. A browser set to Portuguese displays **Português**; every other language uses **English**. English is the default. The page title, accessible labels, controls, explanations, atlas panels and simulation messages follow the same setting.
+English is the language on a first visit, before any choice is saved. The page title, accessible labels, controls, explanations, atlas panels and simulation messages follow the active language. The PT-BR/EN switch saves that choice in this browser.
 
-For a local language check, add `?lang=en` or `?lang=pt` to the preview URL. This explicit URL choice overrides the browser language for that visit. It does not change the simulation's seed or outcomes.
+For a local language check, add `?lang=en` or `?lang=pt` to the preview URL. This explicit URL choice overrides a saved choice for that visit. It does not change the simulation's seed or outcomes.
 
 ## How it works
 
@@ -51,7 +51,7 @@ For a local language check, add `?lang=en` or `?lang=pt` to the preview URL. Thi
 | `apps/simulator/src/graphics/journey/` | Tissue and cell scenes, animation and graphics resource cleanup |
 | `apps/simulator/src/journey/` | Shared timeline, anatomy registry and simulated-person narrative |
 | `apps/simulator/src/components/journey/` | Controls, status, milestones, comparisons and charts |
-| `apps/simulator/src/i18n.ts` | Browser language selection and English/Portuguese presentation |
+| `apps/simulator/src/i18n.ts` | Saved language choice and English/Portuguese presentation |
 
 One shared clock drives the atlas and microscopic scenes. Biological changes come from the model, while animations use the same simulated hour so pause and replay return to the same visual state. The app bounds representative particles and releases graphics resources when changing scales.
 
