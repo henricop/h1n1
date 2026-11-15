@@ -42,6 +42,9 @@ const chrome = {
   language: { pt: 'Idioma', en: 'Language' },
   portuguese: { pt: 'Português (Brasil)', en: 'Portuguese (Brazil)' },
   english: { pt: 'Inglês', en: 'English' },
+  developedBy: { pt: 'Desenvolvido por', en: 'Developed by' },
+  contact: { pt: 'Contato', en: 'Contact' },
+  contactDeveloper: { pt: 'Contato com Henrico Piubello, desenvolvedor do site, no GitHub', en: 'Contact Henrico Piubello, the site developer, on GitHub' },
   documentTitle: { pt: 'H1N1 · Jornada da Infecção', en: 'H1N1 · Infection Journey' },
   documentDescription: {
     pt: 'Explore a jornada de uma infecção simulada, do corpo humano à célula, em um atlas 3D interativo.',
